@@ -1,0 +1,11 @@
+# -*- mode: yaml; -*-
+
+---
+BasedOnStyle: Google
+IndentWidth: 2
+ConstructorInitializerIndentWidth: 2
+ContinuationIndentWidth: 2
+---
+Language: Cpp
+PointerAlignment: Right
+---

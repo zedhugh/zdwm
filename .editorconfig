@@ -1,0 +1,20 @@
+root = true
+
+[*.{c,h}]
+indent_style = space
+indent_size = 2
+
+[.clangd]
+indent_style = space
+indent_size = 2
+
+[*.cmake]
+indent_style = space
+indent_size = 4
+
+[CMakeLists.txt]
+indent_style = space
+indent_size = 4
+
+[Makefile]
+indent_style = tab
