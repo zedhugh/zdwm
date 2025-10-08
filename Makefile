@@ -35,7 +35,7 @@ prepare:
 	@cp $(BUILD_DIR)/compile_commands.json $(MAKEFILE_DIR)
 
 build: prepare
-	${RM} -f $(TARGET)
+	${RM} $(TARGET)
 	@cmake --build $(BUILD_DIR)
 	@cp $(BUILD_DIR)/$(TARGET_NAME) $(TARGET)
 
