@@ -11,24 +11,24 @@
 #include "types.h"
 #include "utils.h"
 
-zdwm_t global_state;
+global_state_t global_state;
 
-/** argv used to run zdwm */
-static char **zdwm_argv;
+/** argv used to run wm */
+static char **cmd_argv;
 
 /** A pipe that is used to asynchronously handle SIGCHLD */
 static int sigchld_pipe[2];
 
-static void zdwm_atexit(bool restart) { global_state.need_restart = restart; }
+static void wm_atexit(bool restart) { global_state.need_restart = restart; }
 
-static void zdwm_restart(void) {
-  zdwm_atexit(true);
-  execvp(zdwm_argv[0], zdwm_argv);
+static void wm_restart(void) {
+  wm_atexit(true);
+  execvp(cmd_argv[0], cmd_argv);
   fatal("execv() failed: %s", strerror(errno));
 }
 
 static gboolean restart_on_signal(gpointer data) {
-  zdwm_restart();
+  wm_restart();
   return TRUE;
 }
 
@@ -54,7 +54,7 @@ static void signal_child(int signum) {
 int main(int argc, char *argv[]) {
   p_clear(&global_state, 1);
 
-  zdwm_argv = argv;
+  cmd_argv = argv;
 
   g_unix_signal_add(SIGINT, exit_on_signal, NULL);
   g_unix_signal_add(SIGTERM, exit_on_signal, NULL);
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
   g_main_loop_unref(global_state.loop);
   global_state.loop = NULL;
 
-  zdwm_atexit(false);
+  wm_atexit(false);
 
   return EXIT_SUCCESS;
 }

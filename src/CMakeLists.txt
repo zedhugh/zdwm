@@ -4,7 +4,7 @@ set(APP_NAME "zdwm")
 set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
 set(BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
-add_compile_definitions(LOG_FILE="$ENV{HOME}/zdwm-log.txt")
+add_compile_definitions(LOG_FILE="$ENV{HOME}/${APP_NAME}-log.txt")
 
 # generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

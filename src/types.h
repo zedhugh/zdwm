@@ -2,7 +2,7 @@
 
 #include <glib.h>
 
-typedef struct zdwm_t {
+typedef struct global_state_t {
   bool need_restart;
   GMainLoop *loop;
-} zdwm_t;
+} global_state_t;
