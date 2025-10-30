@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
+#include <xcb/xproto.h>
 
 #include "backtrace.h"
 #include "buffer.h"
@@ -51,6 +54,34 @@ static void signal_child(int signum) {
   assert(res == 1);
 }
 
+static void check_other_wm(void) {
+  /* connect X server */
+  int default_screen;
+  xcb_connection_t *conn = xcb_connect(NULL, &default_screen);
+  int xcb_conn_error = xcb_connection_has_error(conn);
+  if (xcb_conn_error) fatal("cannot open display (error %d)", xcb_conn_error);
+
+  xcb_screen_t *screen = xcb_aux_get_screen(conn, default_screen);
+  xcb_window_t root = screen->root;
+
+  /* check other window manager running */
+  uint32_t mask = XCB_CW_EVENT_MASK;
+  const xcb_params_cw_t params = {
+    .event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
+  };
+  xcb_void_cookie_t cookie =
+    xcb_aux_change_window_attributes_checked(conn, root, mask, &params);
+  if (xcb_request_check(conn, cookie)) {
+    fatal(
+      "another window manager is already running (cannot select "
+      "SubstructureRedirect)");
+  }
+
+  global_state.xcb_conn = conn;
+  global_state.default_screen = default_screen;
+  global_state.screen = screen;
+}
+
 int main(int argc, char *argv[]) {
   p_clear(&global_state, 1);
 
@@ -72,6 +103,8 @@ int main(int argc, char *argv[]) {
   sa.sa_handler = signal_child;
   sa.sa_flags = SA_NOCLDSTOP | SA_RESTART;
   sigaction(SIGCHLD, &sa, 0);
+
+  check_other_wm();
 
   if (global_state.loop == NULL) {
     global_state.loop = g_main_loop_new(NULL, FALSE);

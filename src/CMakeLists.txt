@@ -28,6 +28,9 @@ find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(deps REQUIRED
     glib-2.0
+
+    xcb
+    xcb-aux
 )
 
 target_include_directories(${APP_NAME} SYSTEM
