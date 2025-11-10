@@ -1,14 +1,13 @@
 #include "backtrace.h"
 
+#include "app.h"
 #include "buffer.h"
-#include "config.h"
 
 #ifdef HAS_EXECINFO
 #include <execinfo.h>
 #endif
 
 #define MAX_STACK_SIZE 32
-
 
 /**
  * Get a backtrace.

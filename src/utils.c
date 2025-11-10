@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "config.h"
+#include "app.h"
 
 const char *current_time_str(void) {
   static char buffer[25];

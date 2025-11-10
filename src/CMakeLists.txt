@@ -19,7 +19,7 @@ project(${APP_NAME}
     LANGUAGES C
 )
 
-add_executable(${APP_NAME} main.c utils.c buffer.c backtrace.c)
+add_executable(${APP_NAME} wm.c utils.c buffer.c backtrace.c monitor.c client.c)
 
 # use C23
 set_property(TARGET ${APP_NAME} PROPERTY C_STANDARD 23)
@@ -31,6 +31,9 @@ pkg_check_modules(deps REQUIRED
 
     xcb
     xcb-aux
+    xcb-randr
+    xcb-xfixes
+    xcb-xinerama
 )
 
 target_include_directories(${APP_NAME} SYSTEM
@@ -63,8 +66,8 @@ else()
     message(STATUS "checking for execinfo -- not found")
 endif()
 
-configure_file("${SOURCE_DIR}/config.h.in"
-    "${BUILD_DIR}/config.h"
+configure_file("${SOURCE_DIR}/app.h.in"
+    "${BUILD_DIR}/app.h"
     ESCAPE_QUOTES
     @ONLY
 )
