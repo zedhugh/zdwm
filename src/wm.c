@@ -20,6 +20,7 @@
 #include "buffer.h"
 #include "default_config.h"
 #include "monitor.h"
+#include "text.h"
 #include "types.h"
 #include "utils.h"
 
@@ -257,6 +258,11 @@ void wm_clean(void) {
 }
 
 static void wm_setup(void) {
+  int font_height = text_init_pango_layout("Terminus, Emacs Simsun", 10, 144);
+  wm.bar_height = (uint32_t)font_height + 2 * bar_y_padding;
+
+  printf("font height: %d, bar height: %u\n", font_height, wm.bar_height);
+
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
     monitor_initialize_tag(m, (const char **)tags);
   }

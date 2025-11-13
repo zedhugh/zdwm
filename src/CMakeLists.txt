@@ -19,7 +19,15 @@ project(${APP_NAME}
     LANGUAGES C
 )
 
-add_executable(${APP_NAME} wm.c utils.c buffer.c backtrace.c monitor.c client.c)
+add_executable(${APP_NAME}
+    wm.c
+    utils.c
+    buffer.c
+    backtrace.c
+    monitor.c
+    client.c
+    text.c
+)
 
 # use C23
 set_property(TARGET ${APP_NAME} PROPERTY C_STANDARD 23)
@@ -34,6 +42,9 @@ pkg_check_modules(deps REQUIRED
     xcb-randr
     xcb-xfixes
     xcb-xinerama
+
+    pango
+    pangocairo
 )
 
 target_include_directories(${APP_NAME} SYSTEM

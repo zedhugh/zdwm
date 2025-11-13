@@ -1,8 +1,12 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "types.h"
 
 typedef struct wm_t {
+  uint32_t bar_height;
+
   bool need_restart;
   GMainLoop *loop;
 
