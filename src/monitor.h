@@ -6,3 +6,4 @@
 
 void monitor_initialize_tag(monitor_t *monitor, const char **tags);
 void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask);
+void monitor_clean(monitor_t *monitor);

@@ -28,6 +28,8 @@ static void wm_check_other_wm(void);
 static void wm_check_xcb_extensions(void);
 static void wm_detect_monitor(void);
 static void wm_scan_clients(void);
+static void wm_clean(void);
+static void wm_setup(void);
 
 wm_t wm;
 
@@ -37,7 +39,10 @@ static char **cmd_argv;
 /** A pipe that is used to asynchronously handle SIGCHLD */
 static int sigchld_pipe[2];
 
-static void wm_atexit(bool restart) { wm.need_restart = restart; }
+static void wm_atexit(bool restart) {
+  wm.need_restart = restart;
+  wm_clean();
+}
 
 static gboolean restart_on_signal(gpointer data) {
   wm_restart();
@@ -63,10 +68,12 @@ static void signal_child(int signum) {
   assert(res == 1);
 }
 
+static guint sources[3] = {0};
+
 void wm_setup_signal(void) {
-  g_unix_signal_add(SIGINT, exit_on_signal, NULL);
-  g_unix_signal_add(SIGTERM, exit_on_signal, NULL);
-  g_unix_signal_add(SIGHUP, restart_on_signal, NULL);
+  sources[0] = g_unix_signal_add(SIGINT, exit_on_signal, NULL);
+  sources[1] = g_unix_signal_add(SIGTERM, exit_on_signal, NULL);
+  sources[2] = g_unix_signal_add(SIGHUP, restart_on_signal, NULL);
 
   struct sigaction sa = {.sa_handler = signal_fatal, .sa_flags = SA_RESETHAND};
   sigemptyset(&sa.sa_mask);
@@ -239,6 +246,22 @@ void wm_detect_monitor(void) {
 
 void wm_scan_clients(void) {}
 
+void wm_clean(void) {
+  text_clean_pango_layout();
+  monitor_clean(wm.monitor_list);
+
+  for (int i = 0; i < countof(sources); i++) {
+    guint source_id = sources[i];
+    if (source_id) g_source_remove(source_id);
+  }
+}
+
+static void wm_setup(void) {
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    monitor_initialize_tag(m, (const char **)tags);
+  }
+}
+
 void wm_restart(void) {
   wm_atexit(true);
   execvp(cmd_argv[0], cmd_argv);
@@ -272,9 +295,7 @@ int main(int argc, char *argv[]) {
   wm_check_xcb_extensions();
 
   wm_detect_monitor();
-  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
-    monitor_initialize_tag(m, (const char **)tags);
-  }
+  wm_setup();
 
   debug_show_monitor_list();
 
