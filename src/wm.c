@@ -18,6 +18,8 @@
 
 #include "backtrace.h"
 #include "buffer.h"
+#include "default_config.h"
+#include "monitor.h"
 #include "types.h"
 #include "utils.h"
 
@@ -255,6 +257,9 @@ static void debug_show_monitor_list(void) {
     printf("x: %4d, y: %4d, width: %4u, height: %4u -> monitor[%s]\n",
            m->geometry.x, m->geometry.y, m->geometry.width, m->geometry.height,
            m->name);
+    for (const tag_t *tag = m->tag_list; tag; tag = tag->next) {
+      printf("tag[\"%s\"]: 0b%09b\n", tag->name, tag->mask);
+    }
   }
 }
 
@@ -267,6 +272,9 @@ int main(int argc, char *argv[]) {
   wm_check_xcb_extensions();
 
   wm_detect_monitor();
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    monitor_initialize_tag(m, (const char **)tags);
+  }
 
   debug_show_monitor_list();
 
