@@ -7,6 +7,7 @@
 #define countof(foo) (ssizeof(foo) / ssizeof(foo[0]))
 
 #define p_alloc_nr(x) (((x) + 16) * 3 / 2)
+#define p_new(type, count) ((type *)xmalloc(sizeof(type) * (count)))
 #define p_clear(p, count) ((void)memset((p), 0, sizeof(*(p)) * (count)))
 #define p_realloc(pp, count) xrealloc((void *)(pp), sizeof(**(pp)) * (count))
 
@@ -62,5 +63,10 @@ static inline ssize_t a_strlen(const char *s) { return s ? strlen(s) : 0; }
 void _fatal(int line, const char *function, const char *file,
             const char *format, ...) __attribute__((noreturn))
 __attribute__((format(printf, 4, 5)));
+
+#define warn(format, ...) \
+  _fatal(__LINE__, __FUNCTION__, __FILE__, format, ##__VA_ARGS__)
+void _warn(int line, const char *function, const char *file, const char *format,
+           ...) __attribute__((format(printf, 4, 5)));
 
 const char *current_time_str(void);

@@ -18,6 +18,7 @@
 
 #include "backtrace.h"
 #include "buffer.h"
+#include "types.h"
 #include "utils.h"
 
 static void wm_setup_signal(void);
@@ -123,7 +124,117 @@ void wm_check_xcb_extensions(void) {
   wm.have_randr = query && query->present;
 }
 
-void wm_detect_monitor(void) {}
+static bool wm_detect_monitor_by_randr(void) {
+  xcb_randr_get_monitors_cookie_t monitors_cookie =
+    xcb_randr_get_monitors(wm.xcb_conn, wm.screen->root, 1);
+  xcb_randr_get_monitors_reply_t *monitors_reply =
+    xcb_randr_get_monitors_reply(wm.xcb_conn, monitors_cookie, NULL);
+  if (monitors_reply == NULL) {
+    warn("RandR get monitor failed");
+    return false;
+  }
+
+  monitor_t *prev_monitor = NULL;
+  xcb_randr_monitor_info_iterator_t monitor_iter =
+    xcb_randr_get_monitors_monitors_iterator(monitors_reply);
+  for (; monitor_iter.rem; xcb_randr_monitor_info_next(&monitor_iter)) {
+    monitor_t *monitor = p_new(monitor_t, 1);
+    monitor->geometry.x = monitor_iter.data->x;
+    monitor->geometry.y = monitor_iter.data->y;
+    monitor->geometry.width = monitor_iter.data->width;
+    monitor->geometry.height = monitor_iter.data->height;
+
+    xcb_get_atom_name_cookie_t name_cookie =
+      xcb_get_atom_name_unchecked(wm.xcb_conn, monitor_iter.data->name);
+    xcb_get_atom_name_reply_t *name_reply =
+      xcb_get_atom_name_reply(wm.xcb_conn, name_cookie, NULL);
+
+    if (name_reply) {
+      char *name = xcb_get_atom_name_name(name_reply);
+      int length = xcb_get_atom_name_name_length(name_reply);
+      monitor->name = memcpy(p_new(char, length + 1), name, length);
+      monitor->name[length] = '\0';
+      p_delete(&name_reply);
+    } else {
+      monitor->name = strdup("unknown");
+    }
+
+    if (prev_monitor) {
+      prev_monitor->next = monitor;
+    } else {
+      wm.monitor_list = monitor;
+    }
+
+    prev_monitor = monitor;
+  }
+
+  p_delete(&monitors_reply);
+
+  return true;
+}
+
+static bool wm_detect_monitor_by_xinerama(void) {
+  xcb_xinerama_is_active_cookie_t active_cookie =
+    xcb_xinerama_is_active(wm.xcb_conn);
+  xcb_xinerama_is_active_reply_t *active_reply =
+    xcb_xinerama_is_active_reply(wm.xcb_conn, active_cookie, NULL);
+  if (!active_reply || !active_reply->state) {
+    p_delete(&active_reply);
+    return false;
+  }
+
+  xcb_xinerama_query_screens_cookie_t screens_cookie =
+    xcb_xinerama_query_screens(wm.xcb_conn);
+  xcb_xinerama_query_screens_reply_t *screens_reply =
+    xcb_xinerama_query_screens_reply(wm.xcb_conn, screens_cookie, NULL);
+
+  if (screens_reply == NULL) return false;
+
+  int count = xcb_xinerama_query_screens_screen_info_length(screens_reply);
+  if (count <= 0) {
+    p_delete(&screens_reply);
+    return false;
+  }
+
+  xcb_xinerama_screen_info_t *screen_info =
+    xcb_xinerama_query_screens_screen_info(screens_reply);
+
+  monitor_t *prev_monitor = NULL;
+  for (int i = 0; i < count; i++) {
+    monitor_t *monitor = p_new(monitor_t, 1);
+    monitor->geometry.x = screen_info[i].x_org;
+    monitor->geometry.y = screen_info[i].y_org;
+    monitor->geometry.width = screen_info[i].width;
+    monitor->geometry.height = screen_info[i].height;
+
+    if (prev_monitor) {
+      prev_monitor->next = monitor;
+    } else {
+      wm.monitor_list = monitor;
+    }
+
+    prev_monitor = monitor;
+  }
+  p_delete(&screens_reply);
+
+  return true;
+}
+
+void wm_detect_monitor(void) {
+  if (wm.have_randr && wm_detect_monitor_by_randr()) return;
+  if (wm.have_xinerama && wm_detect_monitor_by_xinerama()) return;
+
+  if (wm.screen == NULL) fatal("cannot detect monitor info");
+
+  monitor_t *monitor = p_new(monitor_t, 1);
+  monitor->geometry.x = 0;
+  monitor->geometry.y = 0;
+  monitor->geometry.width = wm.screen->width_in_pixels;
+  monitor->geometry.height = wm.screen->height_in_pixels;
+
+  wm.monitor_list = monitor;
+}
+
 void wm_scan_clients(void) {}
 
 void wm_restart(void) {
@@ -138,6 +249,15 @@ void wm_quit(void) {
   }
 }
 
+static void debug_show_monitor_list(void) {
+  printf("\n========================== monitors ==========================\n");
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    printf("x: %4d, y: %4d, width: %4u, height: %4u -> monitor[%s]\n",
+           m->geometry.x, m->geometry.y, m->geometry.width, m->geometry.height,
+           m->name);
+  }
+}
+
 int main(int argc, char *argv[]) {
   p_clear(&wm, 1);
   cmd_argv = argv;
@@ -147,6 +267,8 @@ int main(int argc, char *argv[]) {
   wm_check_xcb_extensions();
 
   wm_detect_monitor();
+
+  debug_show_monitor_list();
 
   if (wm.loop == NULL) {
     wm.loop = g_main_loop_new(NULL, FALSE);

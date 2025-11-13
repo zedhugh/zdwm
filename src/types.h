@@ -53,6 +53,8 @@ struct monitor_t {
   tag_t *tag_list;
   tag_t *selected_tag;
 
+  char *name;
+
   xcb_window_t bar_window;
 };
 

@@ -19,7 +19,8 @@ const char *current_time_str(void) {
   return buffer;
 }
 
-/** Print error and exit with EXIT_FAILURE code.
+/**
+ * Print error and exit with EXIT_FAILURE code.
  */
 void _fatal(int line, const char *fct, const char *file, const char *fmt, ...) {
   va_list ap;
@@ -31,4 +32,18 @@ void _fatal(int line, const char *fct, const char *file, const char *fmt, ...) {
   va_end(ap);
   fprintf(stderr, "\n");
   exit(EXIT_FAILURE);
+}
+
+/**
+ * Print error message on stderr
+ */
+void _warn(int line, const char *fct, const char *file, const char *fmt, ...) {
+  va_list ap;
+
+  va_start(ap, fmt);
+  const char *format = "(WW) [%s] %s\n%s:%d:%s:\n";
+  fprintf(stderr, format, APP_NAME, current_time_str(), file, line, fct);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  fprintf(stderr, "\n");
 }
