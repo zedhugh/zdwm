@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cairo.h>
 #include <glib.h>
 #include <stdint.h>
 #include <xcb/xcb.h>
@@ -54,6 +55,9 @@ struct monitor_t {
   tag_t *selected_tag;
 
   char *name;
+  cairo_t *bar_cr;
+
+  extent_in_bar_t tag_extent;
 
   xcb_window_t bar_window;
 };
@@ -74,3 +78,15 @@ struct task_in_tag_t {
   area_t geometry;
   extent_in_bar_t bar_extent;
 };
+
+typedef struct color_set_t {
+  color_t bar_bg;
+  color_t tag_bg;
+  color_t active_tag_bg;
+  color_t tag_color;
+  color_t active_tag_color;
+} color_set_t;
+
+typedef struct padding_t {
+  uint16_t tag_x;
+} padding_t;

@@ -18,11 +18,13 @@
 
 #include "backtrace.h"
 #include "buffer.h"
+#include "color.h"
 #include "default_config.h"
 #include "monitor.h"
 #include "text.h"
 #include "types.h"
 #include "utils.h"
+#include "xcursor.h"
 
 static void wm_setup_signal(void);
 static void wm_check_other_wm(void);
@@ -31,6 +33,7 @@ static void wm_detect_monitor(void);
 static void wm_scan_clients(void);
 static void wm_clean(void);
 static void wm_setup(void);
+static void wm_init_color_set(void);
 
 wm_t wm;
 
@@ -255,17 +258,37 @@ void wm_clean(void) {
     guint source_id = sources[i];
     if (source_id) g_source_remove(source_id);
   }
+
+  xcursor_clean();
+  xcb_disconnect(wm.xcb_conn);
 }
 
 static void wm_setup(void) {
-  int font_height = text_init_pango_layout("Terminus, Emacs Simsun", 10, 144);
-  wm.bar_height = (uint32_t)font_height + 2 * bar_y_padding;
+  wm.padding.tag_x = tag_x_padding;
+
+  wm_init_color_set();
+
+  int font_height = text_init_pango_layout(font_family, font_size, default_dpi);
+  wm.bar_height = (uint16_t)font_height + 2 * bar_y_padding;
 
   printf("font height: %d, bar height: %u\n", font_height, wm.bar_height);
 
+  uint32_t tag_count = 0;
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
-    monitor_initialize_tag(m, (const char **)tags);
+    tag_count += monitor_initialize_tag(m, (const char **)tags, tag_count);
+    monitor_init_bar(m);
+    monitor_draw_bar(m);
   }
+
+  xcb_flush(wm.xcb_conn);
+}
+
+void wm_init_color_set(void) {
+  color_parse(bar_bg, &wm.color_set.bar_bg);
+  color_parse(tag_bg, &wm.color_set.tag_bg);
+  color_parse(active_tag_bg, &wm.color_set.active_tag_bg);
+  color_parse(tag_color, &wm.color_set.tag_color);
+  color_parse(active_tag_color, &wm.color_set.active_tag_color);
 }
 
 void wm_restart(void) {
@@ -286,8 +309,13 @@ static void debug_show_monitor_list(void) {
     printf("x: %4d, y: %4d, width: %4u, height: %4u -> monitor[%s]\n",
            m->geometry.x, m->geometry.y, m->geometry.width, m->geometry.height,
            m->name);
+    printf("x: %4d, y: %4d, width: %4u, height: %4u -> workarea[%s]: %u\n",
+           m->workarea.x, m->workarea.y, m->workarea.width, m->workarea.height,
+           m->name, wm.bar_height);
+    printf("tag extend: [%d, %d]\n", m->tag_extent.start, m->tag_extent.end);
     for (const tag_t *tag = m->tag_list; tag; tag = tag->next) {
-      printf("tag[\"%s\"]: 0b%09b\n", tag->name, tag->mask);
+      printf("tag[%u]: 0b%09b, \"%s\", [%d, %d]\n", tag->index, tag->mask,
+             tag->name, tag->bar_extent.start, tag->bar_extent.end);
     }
   }
 }

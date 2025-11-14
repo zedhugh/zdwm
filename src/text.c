@@ -1,9 +1,11 @@
 #include "text.h"
 
+#include <cairo.h>
 #include <glib-object.h>
 #include <glibconfig.h>
 #include <pango/pango-attributes.h>
 #include <pango/pango-context.h>
+#include <pango/pango-enum-types.h>
 #include <pango/pango-font.h>
 #include <pango/pango-fontmap.h>
 #include <pango/pango-layout.h>
@@ -11,6 +13,9 @@
 #include <pango/pangocairo.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#include "base.h"
+#include "color.h"
 
 static PangoContext *context = nullptr;
 static PangoLayout *layout = nullptr;
@@ -24,6 +29,8 @@ static PangoAttrList *attr_list = nullptr;
  * @return layout 高度，可用于确定 bar 高度
  */
 int text_init_pango_layout(const char *family, uint32_t size, uint32_t dpi) {
+  printf("family: %s, size: %u, dpi: %u\n", family, size, dpi);
+
   static const char *layout_family = nullptr;
   static uint32_t layout_size = 0;
   static uint32_t layout_dpi = 0;
@@ -55,6 +62,10 @@ int text_init_pango_layout(const char *family, uint32_t size, uint32_t dpi) {
   PangoAttribute *attr = pango_attr_font_desc_new(desc);
   attr_list = pango_attr_list_new();
   pango_attr_list_insert(attr_list, attr);
+  pango_layout_set_attributes(layout, attr_list);
+
+  pango_layout_set_wrap(layout, PANGO_WRAP_NONE);
+  pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
 
   int height = pango_font_metrics_get_height(metrics);
   int ascent = pango_font_metrics_get_ascent(metrics);
@@ -89,4 +100,83 @@ void text_clean_pango_layout(void) {
     g_object_unref(context);
     context = nullptr;
   }
+}
+
+static void get_layout_size(int *width, int *height) {
+  PangoRectangle logical_rect;
+  pango_layout_get_pixel_extents(layout, nullptr, &logical_rect);
+  if (width) *width = logical_rect.width;
+  if (height) *height = logical_rect.height;
+}
+
+void text_get_size(const char *text, int *width, int *height) {
+  pango_layout_set_width(layout, -1);
+  pango_layout_set_text(layout, text, -1);
+  get_layout_size(width, height);
+}
+
+static void text_layout_prepare(bool align_center) {
+  if (layout == nullptr) {
+    layout = pango_layout_new(context);
+    pango_layout_set_attributes(layout, attr_list);
+    pango_layout_set_wrap(layout, PANGO_WRAP_NONE);
+    pango_layout_set_ellipsize(layout, PANGO_ELLIPSIZE_END);
+  }
+
+  PangoAlignment align = align_center ? PANGO_ALIGN_CENTER : PANGO_ALIGN_LEFT;
+  pango_layout_set_alignment(layout, align);
+}
+
+void draw_text(cairo_t *cr, const char *text, color_t *color, area_t area,
+               bool align_center) {
+  text_layout_prepare(align_center);
+  pango_layout_set_width(layout, (int)area.width * PANGO_SCALE);
+  pango_layout_set_text(layout, text, -1);
+  cairo_set_source_rgba(cr, (double)color->red, (double)color->green,
+                        (double)color->blue, (double)color->alpha);
+  int height = 0;
+  get_layout_size(nullptr, &height);
+
+  double offset_y = ((double)area.height - (double)height) / 2;
+  pango_cairo_update_layout(cr, layout);
+  cairo_move_to(cr, (double)area.x, offset_y + (double)area.y);
+  pango_cairo_show_layout(cr, layout);
+}
+
+void draw_rect(cairo_t *cr, area_t area, bool fill, color_t *color,
+               uint16_t line_width) {
+  cairo_set_line_width(cr, (double)line_width);
+  double x = (double)area.x;
+  double y = (double)area.y;
+  double width = (double)area.width;
+  double height = (double)area.height;
+  if (fill) {
+    cairo_rectangle(cr, x, y, width, height);
+    cairo_set_source_rgba(cr, (double)color->red, (double)color->green,
+                          (double)color->blue, (double)color->alpha);
+    cairo_fill(cr);
+  } else {
+    double half_line_width = (double)line_width / 2;
+    x += half_line_width;
+    y += half_line_width;
+    width -= half_line_width;
+    height -= half_line_width;
+
+    cairo_rectangle(cr, x, y, width, height);
+    cairo_set_source_rgba(cr, (double)color->red, (double)color->green,
+                          (double)color->blue, (double)color->alpha);
+    cairo_stroke(cr);
+  }
+}
+
+void draw_background(cairo_t *cr, color_t *color, area_t area) {
+  double x = (double)area.x;
+  double y = (double)area.y;
+  double width = (double)area.width;
+  double height = (double)area.height;
+  cairo_move_to(cr, x, y);
+  cairo_set_source_rgba(cr, (double)color->red, (double)color->green,
+                        (double)color->blue, (double)color->alpha);
+  cairo_rectangle(cr, x, y, width, height);
+  cairo_fill(cr);
 }

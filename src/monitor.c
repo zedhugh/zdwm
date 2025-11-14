@@ -1,11 +1,23 @@
 #include "monitor.h"
 
+#include <cairo-xcb.h>
+#include <cairo.h>
+#include <stdint.h>
 #include <string.h>
+#include <xcb/xcb_aux.h>
 
+#include "base.h"
+#include "color.h"
+#include "text.h"
 #include "types.h"
 #include "utils.h"
+#include "wm.h"
+#include "xcursor.h"
+#include "xwindow.h"
 
-void monitor_initialize_tag(monitor_t *monitor, const char **tags) {
+uint32_t monitor_initialize_tag(monitor_t *monitor, const char **tags,
+                                uint32_t tag_index_start_at) {
+  uint32_t tag_count = 0;
   int i = 0;
   const char *tag_name = nullptr;
   tag_t *prev_tag = nullptr;
@@ -13,6 +25,7 @@ void monitor_initialize_tag(monitor_t *monitor, const char **tags) {
     tag_t *tag = p_new(tag_t, 1);
     tag->name = strdup(tag_name);
     tag->mask = 1u << i;
+    tag->index = tag_index_start_at + tag_count;
 
     if (prev_tag) {
       prev_tag->next = tag;
@@ -21,9 +34,11 @@ void monitor_initialize_tag(monitor_t *monitor, const char **tags) {
     }
 
     prev_tag = tag;
+    tag_count++;
   }
 
   monitor->selected_tag = monitor->tag_list;
+  return tag_count;
 }
 
 static void tag_clean(tag_t *tag) {
@@ -45,7 +60,117 @@ void monitor_clean(monitor_t *monitor) {
     m->selected_tag = nullptr;
     m->tag_list = nullptr;
 
+    cairo_destroy(m->bar_cr);
+    m->bar_cr = nullptr;
+
     next_monitor = m->next;
     p_delete(&m);
   }
+}
+
+void monitor_init_bar(monitor_t *monitor) {
+  static xcb_colormap_t colormap = XCB_NONE;
+  visual_t *visual = xwindow_get_xcb_visual(true);
+  xcb_visualid_t visual_id = visual->visual->visual_id;
+  xcb_connection_t *conn = wm.xcb_conn;
+  if (colormap == XCB_NONE) {
+    colormap = xcb_generate_id(conn);
+    uint8_t alloc = XCB_COLORMAP_ALLOC_NONE;
+    xcb_create_colormap(conn, alloc, colormap, wm.screen->root, visual_id);
+  }
+
+  xcb_window_t window = xcb_generate_id(conn);
+  uint32_t value_mask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
+                        XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK |
+                        XCB_CW_CURSOR | XCB_CW_COLORMAP;
+  const xcb_create_window_value_list_t value_list = {
+    .override_redirect = true,
+    .background_pixel = wm.color_set.bar_bg.argb,
+    .border_pixel = 0,
+    .event_mask = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE,
+    .cursor = xcursor_get_xcb_cursor(cursor_normal),
+    .colormap = colormap,
+  };
+  xcb_void_cookie_t cookie;
+  cookie = xcb_create_window_aux_checked(
+    conn, visual->depth, window, wm.screen->root, monitor->geometry.x,
+    monitor->geometry.y, monitor->geometry.width, wm.bar_height, 0,
+    XCB_WINDOW_CLASS_INPUT_OUTPUT, visual_id, value_mask, &value_list);
+  if (xcb_request_check(conn, cookie)) fatal("cannot create bar window");
+
+  cookie = xcb_map_window(conn, window);
+  if (xcb_request_check(conn, cookie)) fatal("cannot map bar window:");
+
+  xcb_aux_sync(conn);
+
+  uint16_t width = monitor->geometry.width;
+  monitor->workarea.x = monitor->geometry.x;
+  monitor->workarea.y = monitor->geometry.y;
+  monitor->workarea.width = width;
+  monitor->workarea.height = monitor->geometry.height - wm.bar_height;
+  monitor->bar_window = window;
+  cairo_surface_t *surface = cairo_xcb_surface_create(
+    wm.xcb_conn, window, visual->visual, width, wm.bar_height);
+  cairo_t *cr = cairo_create(surface);
+  cairo_surface_destroy(surface);
+  p_delete(&visual);
+
+  cairo_status_t status = cairo_status(cr);
+  if (status != CAIRO_STATUS_SUCCESS) {
+    fatal("cannot create cairo context: %s", cairo_status_to_string(status));
+  }
+  monitor->bar_cr = cr;
+}
+
+static void monitor_draw_tags(monitor_t *monitor) {
+  int16_t x = 0;
+  for (tag_t *tag = monitor->tag_list; tag; tag = tag->next) {
+    bool selected = monitor->selected_tag == tag;
+    bool has_client = tag->task_list;
+    color_t *bg = nullptr;
+    color_t *color = nullptr;
+    if (selected) {
+      bg = &wm.color_set.active_tag_bg;
+      color = &wm.color_set.active_tag_color;
+    } else {
+      bg = &wm.color_set.tag_bg;
+      color = &wm.color_set.tag_color;
+    }
+    int width = 0, height = 0;
+    text_get_size(tag->name, &width, &height);
+    width += 2 * wm.padding.tag_x;
+    tag->bar_extent.start = x;
+    tag->bar_extent.end = x + width;
+
+    area_t tag_rect = {.x = x, .y = 0, .width = width, .height = wm.bar_height};
+    if (bg->rgba != wm.color_set.bar_bg.rgba) {
+      draw_background(monitor->bar_cr, bg, tag_rect);
+    }
+    if (has_client) {
+      area_t rect = {.x = x, .y = 0, .width = 4, .height = 4};
+      draw_rect(monitor->bar_cr, rect, selected, color, 1);
+    }
+    area_t text_rect = tag_rect;
+    tag_rect.y = (int16_t)((int)wm.bar_height - height) / 2;
+    tag_rect.height = (int16_t)height;
+    draw_text(monitor->bar_cr, tag->name, color, text_rect, true);
+    x += width;
+  }
+
+  monitor->tag_extent.start = 0;
+  monitor->tag_extent.end = x;
+}
+
+void monitor_draw_bar(monitor_t *monitor) {
+  cairo_t *cr = monitor->bar_cr;
+  uint16_t height = wm.bar_height;
+  area_t bar_area = {
+    .x = 0,
+    .y = 0,
+    .width = monitor->geometry.width,
+    .height = height,
+  };
+  draw_background(cr, &wm.color_set.bar_bg, bar_area);
+
+  monitor_draw_tags(monitor);
 }

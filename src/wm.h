@@ -5,7 +5,8 @@
 #include "types.h"
 
 typedef struct wm_t {
-  uint32_t bar_height;
+  padding_t padding;
+  uint16_t bar_height;
 
   bool need_restart;
   GMainLoop *loop;
@@ -22,6 +23,8 @@ typedef struct wm_t {
   bool have_xfixes;
   bool have_xinerama;
   bool have_randr;
+
+  color_set_t color_set;
 } wm_t;
 
 extern wm_t wm;

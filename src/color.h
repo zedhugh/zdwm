@@ -19,4 +19,4 @@ typedef struct color_t {
    have: RGB/RGBA/RRGGBB/RRGGBBAA/#RGB/#RGBA/#RRGGBB/#RRGGBBAA
  * @param color return the parsed color
  */
-void parse_color(const char *hex, color_t *const color);
+void color_parse(const char *hex, color_t *const color);

@@ -27,6 +27,9 @@ add_executable(${APP_NAME}
     monitor.c
     client.c
     text.c
+    color.c
+    xcursor.c
+    xwindow.c
 )
 
 # use C23
@@ -37,12 +40,16 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(deps REQUIRED
     glib-2.0
 
+    x11
     xcb
     xcb-aux
+    xcb-cursor
     xcb-randr
     xcb-xfixes
     xcb-xinerama
 
+    cairo
+    cairo-xcb
     pango
     pangocairo
 )
