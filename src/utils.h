@@ -15,7 +15,7 @@
   do {                               \
     void **__ptr = (void **)(mem_p); \
     free(*__ptr);                    \
-    *(void **)__ptr = NULL;          \
+    *(void **)__ptr = nullptr;       \
   } while (0)
 
 #ifdef __GNUC__
@@ -29,7 +29,7 @@
 static inline void *__attribute__((malloc)) xmalloc(ssize_t size) {
   void *ptr;
 
-  if (size <= 0) return NULL;
+  if (size <= 0) return nullptr;
 
   ptr = calloc(1, size);
 
@@ -48,13 +48,13 @@ static inline void xrealloc(void **ptr, ssize_t newsize) {
 }
 
 /**
- * @brief NULL resistant strlen.
+ * @brief nullptr resistant strlen.
  *
  * Unlike it's libc sibling, a_strlen returns a ssize_t, and supports its
- * argument being NULL.
+ * argument being nullptr.
  *
  * @param s the string.
- * @return the string length (or 0 if s is NULL).
+ * @return the string length (or 0 if s is nullptr).
  */
 static inline ssize_t a_strlen(const char *s) { return s ? strlen(s) : 0; }
 

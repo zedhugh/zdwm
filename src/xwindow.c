@@ -64,7 +64,7 @@ static visual_t *find_alpha_visual() {
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 static visual_t *find_root_visual() {
@@ -84,7 +84,7 @@ static visual_t *find_root_visual() {
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -96,7 +96,7 @@ visual_t *xwindow_get_xcb_visual(bool prefer_alpha) {
   if (!prefer_alpha) return find_root_visual();
 
   visual_t *visual = find_alpha_visual();
-  if (visual == NULL) visual = find_root_visual();
+  if (visual == nullptr) visual = find_root_visual();
 
   return visual;
 }

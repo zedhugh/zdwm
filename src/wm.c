@@ -75,9 +75,9 @@ static void signal_child(int signum) {
 static guint sources[3] = {0};
 
 void wm_setup_signal(void) {
-  sources[0] = g_unix_signal_add(SIGINT, exit_on_signal, NULL);
-  sources[1] = g_unix_signal_add(SIGTERM, exit_on_signal, NULL);
-  sources[2] = g_unix_signal_add(SIGHUP, restart_on_signal, NULL);
+  sources[0] = g_unix_signal_add(SIGINT, exit_on_signal, nullptr);
+  sources[1] = g_unix_signal_add(SIGTERM, exit_on_signal, nullptr);
+  sources[2] = g_unix_signal_add(SIGHUP, restart_on_signal, nullptr);
 
   struct sigaction sa = {.sa_handler = signal_fatal, .sa_flags = SA_RESETHAND};
   sigemptyset(&sa.sa_mask);
@@ -96,7 +96,7 @@ void wm_setup_signal(void) {
 void wm_check_other_wm(void) {
   /* connect X server */
   int default_screen;
-  xcb_connection_t *conn = xcb_connect(NULL, &default_screen);
+  xcb_connection_t *conn = xcb_connect(nullptr, &default_screen);
   int xcb_conn_error = xcb_connection_has_error(conn);
   if (xcb_conn_error) fatal("cannot open display (error %d)", xcb_conn_error);
 
@@ -141,13 +141,13 @@ static bool wm_detect_monitor_by_randr(void) {
   xcb_randr_get_monitors_cookie_t monitors_cookie =
     xcb_randr_get_monitors(wm.xcb_conn, wm.screen->root, 1);
   xcb_randr_get_monitors_reply_t *monitors_reply =
-    xcb_randr_get_monitors_reply(wm.xcb_conn, monitors_cookie, NULL);
-  if (monitors_reply == NULL) {
+    xcb_randr_get_monitors_reply(wm.xcb_conn, monitors_cookie, nullptr);
+  if (monitors_reply == nullptr) {
     warn("RandR get monitor failed");
     return false;
   }
 
-  monitor_t *prev_monitor = NULL;
+  monitor_t *prev_monitor = nullptr;
   xcb_randr_monitor_info_iterator_t monitor_iter =
     xcb_randr_get_monitors_monitors_iterator(monitors_reply);
   for (; monitor_iter.rem; xcb_randr_monitor_info_next(&monitor_iter)) {
@@ -160,7 +160,7 @@ static bool wm_detect_monitor_by_randr(void) {
     xcb_get_atom_name_cookie_t name_cookie =
       xcb_get_atom_name_unchecked(wm.xcb_conn, monitor_iter.data->name);
     xcb_get_atom_name_reply_t *name_reply =
-      xcb_get_atom_name_reply(wm.xcb_conn, name_cookie, NULL);
+      xcb_get_atom_name_reply(wm.xcb_conn, name_cookie, nullptr);
 
     if (name_reply) {
       char *name = xcb_get_atom_name_name(name_reply);
@@ -190,7 +190,7 @@ static bool wm_detect_monitor_by_xinerama(void) {
   xcb_xinerama_is_active_cookie_t active_cookie =
     xcb_xinerama_is_active(wm.xcb_conn);
   xcb_xinerama_is_active_reply_t *active_reply =
-    xcb_xinerama_is_active_reply(wm.xcb_conn, active_cookie, NULL);
+    xcb_xinerama_is_active_reply(wm.xcb_conn, active_cookie, nullptr);
   if (!active_reply || !active_reply->state) {
     p_delete(&active_reply);
     return false;
@@ -199,9 +199,9 @@ static bool wm_detect_monitor_by_xinerama(void) {
   xcb_xinerama_query_screens_cookie_t screens_cookie =
     xcb_xinerama_query_screens(wm.xcb_conn);
   xcb_xinerama_query_screens_reply_t *screens_reply =
-    xcb_xinerama_query_screens_reply(wm.xcb_conn, screens_cookie, NULL);
+    xcb_xinerama_query_screens_reply(wm.xcb_conn, screens_cookie, nullptr);
 
-  if (screens_reply == NULL) return false;
+  if (screens_reply == nullptr) return false;
 
   int count = xcb_xinerama_query_screens_screen_info_length(screens_reply);
   if (count <= 0) {
@@ -212,7 +212,7 @@ static bool wm_detect_monitor_by_xinerama(void) {
   xcb_xinerama_screen_info_t *screen_info =
     xcb_xinerama_query_screens_screen_info(screens_reply);
 
-  monitor_t *prev_monitor = NULL;
+  monitor_t *prev_monitor = nullptr;
   for (int i = 0; i < count; i++) {
     monitor_t *monitor = p_new(monitor_t, 1);
     monitor->geometry.x = screen_info[i].x_org;
@@ -237,7 +237,7 @@ void wm_detect_monitor(void) {
   if (wm.have_randr && wm_detect_monitor_by_randr()) return;
   if (wm.have_xinerama && wm_detect_monitor_by_xinerama()) return;
 
-  if (wm.screen == NULL) fatal("cannot detect monitor info");
+  if (wm.screen == nullptr) fatal("cannot detect monitor info");
 
   monitor_t *monitor = p_new(monitor_t, 1);
   monitor->geometry.x = 0;
@@ -333,12 +333,12 @@ int main(int argc, char *argv[]) {
 
   debug_show_monitor_list();
 
-  if (wm.loop == NULL) {
-    wm.loop = g_main_loop_new(NULL, FALSE);
+  if (wm.loop == nullptr) {
+    wm.loop = g_main_loop_new(nullptr, FALSE);
     g_main_loop_run(wm.loop);
   }
   g_main_loop_unref(wm.loop);
-  wm.loop = NULL;
+  wm.loop = nullptr;
 
   wm_atexit(false);
 

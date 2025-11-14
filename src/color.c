@@ -61,7 +61,7 @@ bool hex_color_to_rgba(const char *hex, uint32_t *rgba) {
     return false;
   }
 
-  color = strtoul(extended, NULL, 16) & 0xffffffff;
+  color = strtoul(extended, nullptr, 16) & 0xffffffff;
   *rgba = color;
   return true;
 }
