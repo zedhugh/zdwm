@@ -26,6 +26,7 @@
 #include "types.h"
 #include "utils.h"
 #include "xcursor.h"
+#include "xwindow.h"
 
 static void wm_setup_signal(void);
 static void wm_check_other_wm(void);
@@ -284,6 +285,7 @@ static void wm_setup(void) {
     monitor_draw_bar(m);
   }
 
+  xwindow_change_cursor(wm.screen->root, cursor_normal);
   xcb_flush(wm.xcb_conn);
 }
 

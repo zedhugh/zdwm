@@ -100,3 +100,8 @@ visual_t *xwindow_get_xcb_visual(bool prefer_alpha) {
 
   return visual;
 }
+
+void xwindow_change_cursor(xcb_window_t window, cursor_t cursor) {
+  xcb_params_cw_t params = {.cursor = xcursor_get_xcb_cursor(cursor)};
+  xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_CURSOR, &params);
+}
