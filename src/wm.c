@@ -20,6 +20,7 @@
 #include "buffer.h"
 #include "color.h"
 #include "default_config.h"
+#include "event.h"
 #include "monitor.h"
 #include "text.h"
 #include "types.h"
@@ -176,6 +177,7 @@ static bool wm_detect_monitor_by_randr(void) {
       prev_monitor->next = monitor;
     } else {
       wm.monitor_list = monitor;
+      wm.current_monitor = monitor;
     }
 
     prev_monitor = monitor;
@@ -224,6 +226,7 @@ static bool wm_detect_monitor_by_xinerama(void) {
       prev_monitor->next = monitor;
     } else {
       wm.monitor_list = monitor;
+      wm.current_monitor = monitor;
     }
 
     prev_monitor = monitor;
@@ -246,6 +249,7 @@ void wm_detect_monitor(void) {
   monitor->geometry.height = wm.screen->height_in_pixels;
 
   wm.monitor_list = monitor;
+  wm.current_monitor = monitor;
 }
 
 void wm_scan_clients(void) {}
@@ -332,6 +336,8 @@ int main(int argc, char *argv[]) {
   wm_setup();
 
   debug_show_monitor_list();
+
+  setup_event_loop();
 
   if (wm.loop == nullptr) {
     wm.loop = g_main_loop_new(nullptr, FALSE);

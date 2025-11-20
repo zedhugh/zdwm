@@ -41,6 +41,19 @@ uint32_t monitor_initialize_tag(monitor_t *monitor, const char **tags,
   return tag_count;
 }
 
+void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask) {
+  if (monitor->selected_tag->mask == tag_mask) return;
+
+  for (tag_t *tag = monitor->tag_list; tag; tag = tag->next) {
+    if (tag->mask == tag_mask) {
+      monitor->selected_tag = tag;
+      monitor_draw_bar(monitor);
+      xcb_flush(wm.xcb_conn);
+      break;
+    }
+  }
+}
+
 static void tag_clean(tag_t *tag) {
   tag_t *next_tag = nullptr;
   for (tag_t *t = tag; t; t = next_tag) {

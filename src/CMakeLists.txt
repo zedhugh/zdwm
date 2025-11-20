@@ -30,6 +30,7 @@ add_executable(${APP_NAME}
     color.c
     xcursor.c
     xwindow.c
+    event.c
 )
 
 # use C23
