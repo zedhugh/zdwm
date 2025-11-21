@@ -31,6 +31,7 @@ add_executable(${APP_NAME}
     xcursor.c
     xwindow.c
     event.c
+    action.c
 )
 
 # use C23

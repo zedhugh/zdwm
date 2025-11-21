@@ -7,25 +7,46 @@
 #include <xcb/xcb_event.h>
 #include <xcb/xproto.h>
 
-#include "monitor.h"
+#include "action.h"
+#include "default_config.h"
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
 
 static void button_press(xcb_button_press_event_t *ev) {
-  if (ev->event == wm.current_monitor->bar_window) {
-    if (ev->event_x >= wm.current_monitor->tag_extent.start &&
-        ev->event_x <= wm.current_monitor->tag_extent.end) {
-      for (tag_t *tag = wm.current_monitor->tag_list; tag; tag = tag->next) {
-        if (ev->event_x >= tag->bar_extent.start &&
-            ev->event_x <= tag->bar_extent.end) {
-          monitor_select_tag(wm.current_monitor, tag->mask);
-          break;
+  click_area_t click_area = click_none;
+  user_action_arg_t arg = {0};
+
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    if (ev->event == m->bar_window) {
+      if (wm.current_monitor != m) wm.current_monitor = m;
+
+      if (ev->event_x >= m->tag_extent.start &&
+          ev->event_x <= m->tag_extent.end) {
+        click_area = click_tag;
+
+        for (tag_t *tag = m->tag_list; tag; tag = tag->next) {
+          if (ev->event_x >= tag->bar_extent.start &&
+              ev->event_x <= tag->bar_extent.end) {
+            arg.ui = tag->mask;
+            break;
+          }
         }
       }
+      break;
+    }
+  }
+
+  for (int i = 0; i < countof(button_list); i++) {
+    if (click_area == button_list[i].click_area &&
+        button_list[i].button == ev->detail &&
+        button_list[i].modifiers == ev->state) {
+      button_list[i].func(&arg);
     }
   }
 }
+
+static void key_press(xcb_key_press_event_t *ev) { printf("key press\n"); }
 
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
@@ -37,6 +58,7 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     break
 
     EVENT(XCB_BUTTON_PRESS, button_press);
+    EVENT(XCB_KEY_PRESS, key_press);
 
 #undef EVENT
   }

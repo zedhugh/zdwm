@@ -1,6 +1,10 @@
+#pragma once
+
 #include <stdint.h>
 
-static const char *font_family = "monospace";
+#include "action.h"
+
+static const char *const font_family = "monospace";
 static const int font_size = 10;
 static const int default_dpi = 144;
 
@@ -15,3 +19,7 @@ static const char *const tag_bg = "#222222";
 static const char *const active_tag_bg = "#005577";
 static const char *const tag_color = "#bbbbbb";
 static const char *const active_tag_color = "#eeeeee";
+
+static const button_t button_list[] = {
+  {click_tag, modifier_none, button_left, select_tag_of_current_monitor, {0}},
+};
