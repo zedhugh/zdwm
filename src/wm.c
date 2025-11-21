@@ -320,7 +320,7 @@ static void debug_show_monitor_list(void) {
            m->name, wm.bar_height);
     printf("tag extend: [%d, %d]\n", m->tag_extent.start, m->tag_extent.end);
     for (const tag_t *tag = m->tag_list; tag; tag = tag->next) {
-      printf("tag[%u]: 0b%09b, \"%s\", [%d, %d]\n", tag->index, tag->mask,
+      printf("tag[%u]: %4u, \"%s\", [%d, %d]\n", tag->index, tag->mask,
              tag->name, tag->bar_extent.start, tag->bar_extent.end);
     }
   }
