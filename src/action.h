@@ -7,7 +7,7 @@ typedef union user_action_arg_t {
   bool b;
   int32_t i;
   uint32_t ui;
-  void *ptr;
+  const void *ptr;
 } user_action_arg_t;
 
 typedef enum click_area_t {
@@ -24,6 +24,8 @@ typedef enum modifier_t {
   modifier_any = XCB_MOD_MASK_ANY,
 } modifier_t;
 
+typedef uint16_t modifier_value_t;
+
 typedef enum button_index_t {
   button_any = XCB_BUTTON_INDEX_ANY,
   button_left = XCB_BUTTON_INDEX_1,
@@ -32,11 +34,19 @@ typedef enum button_index_t {
 } button_index_t;
 
 typedef struct button_t {
-  click_area_t click_area;
-  modifier_t modifiers;
+  click_area_t click_area : 16;
+  modifier_value_t modifiers;
   button_index_t button;
   void (*func)(const user_action_arg_t *arg);
   const user_action_arg_t arg;
 } button_t;
 
+typedef struct keyboard_t {
+  modifier_value_t modifiers;
+  xcb_keysym_t keysym;
+  void (*func)(const user_action_arg_t *arg);
+  const user_action_arg_t arg;
+} keyboard_t;
+
 void select_tag_of_current_monitor(const user_action_arg_t *arg);
+void spawn(const user_action_arg_t *arg);

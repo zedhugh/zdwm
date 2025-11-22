@@ -1,5 +1,6 @@
 #pragma once
 
+#include <X11/keysym.h>
 #include <stdint.h>
 
 #include "action.h"
@@ -22,4 +23,10 @@ static const char *const active_tag_color = "#eeeeee";
 
 static const button_t button_list[] = {
   {click_tag, modifier_none, button_left, select_tag_of_current_monitor, {0}},
+};
+
+static const char launcher[] =
+  "rofi -show combi -modes window,drun,run,ssh,combi,windowcd";
+static const keyboard_t key_list[] = {
+  {modifier_super, XK_p, spawn, {.ptr = launcher}},
 };

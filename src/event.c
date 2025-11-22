@@ -2,9 +2,9 @@
 
 #include <glib.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
 #include "action.h"
@@ -46,7 +46,16 @@ static void button_press(xcb_button_press_event_t *ev) {
   }
 }
 
-static void key_press(xcb_key_press_event_t *ev) { printf("key press\n"); }
+static void key_press(xcb_key_press_event_t *ev) {
+  xcb_keysym_t keysym = xcb_key_press_lookup_keysym(wm.key_symbols, ev, 0);
+  for (int i = 0; i < countof(key_list); i++) {
+    keyboard_t key = key_list[i];
+    if (keysym == key.keysym && ev->state == key.modifiers && key.func) {
+      key.func(&key.arg);
+      return;
+    }
+  }
+}
 
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);

@@ -1,7 +1,11 @@
 #include "xwindow.h"
 
+#include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_keysyms.h>
+#include <xcb/xproto.h>
 
+#include "action.h"
 #include "utils.h"
 #include "wm.h"
 #include "xcursor.h"
@@ -104,4 +108,22 @@ visual_t *xwindow_get_xcb_visual(bool prefer_alpha) {
 void xwindow_change_cursor(xcb_window_t window, cursor_t cursor) {
   xcb_params_cw_t params = {.cursor = xcursor_get_xcb_cursor(cursor)};
   xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_CURSOR, &params);
+}
+
+void xwindow_grab_keys(xcb_window_t window, const keyboard_t *keys,
+                       int keys_length) {
+  xcb_connection_t *conn = wm.xcb_conn;
+  xcb_ungrab_key(conn, XCB_GRAB_ANY, window, modifier_any);
+
+  xcb_grab_mode_t mode = XCB_GRAB_MODE_ASYNC;
+  for (int i = 0; i < keys_length; i++) {
+    xcb_keycode_t *keycodes =
+      xcb_key_symbols_get_keycode(wm.key_symbols, keys[i].keysym);
+    if (keycodes) {
+      for (xcb_keycode_t *kc = keycodes; *kc != XCB_NO_SYMBOL; kc++) {
+        xcb_grab_key(conn, true, window, keys[i].modifiers, *kc, mode, mode);
+      }
+      p_delete(&keycodes);
+    }
+  }
 }

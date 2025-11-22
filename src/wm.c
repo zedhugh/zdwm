@@ -12,10 +12,12 @@
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xfixes.h>
 #include <xcb/xinerama.h>
 #include <xcb/xproto.h>
 
+#include "action.h"
 #include "backtrace.h"
 #include "buffer.h"
 #include "color.h"
@@ -36,6 +38,7 @@ static void wm_scan_clients(void);
 static void wm_clean(void);
 static void wm_setup(void);
 static void wm_init_color_set(void);
+static void wm_setup_keybindings(void);
 
 wm_t wm;
 
@@ -265,6 +268,8 @@ void wm_clean(void) {
   }
 
   xcursor_clean();
+  xcb_ungrab_key(wm.xcb_conn, XCB_GRAB_ANY, wm.screen->root, modifier_any);
+  xcb_key_symbols_free(wm.key_symbols);
   xcb_disconnect(wm.xcb_conn);
 }
 
@@ -285,7 +290,15 @@ static void wm_setup(void) {
     monitor_draw_bar(m);
   }
 
-  xwindow_change_cursor(wm.screen->root, cursor_normal);
+  xcb_params_cw_t params = {
+    .cursor = xcursor_get_xcb_cursor(cursor_normal),
+    .event_mask =
+      XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_KEY_PRESS,
+  };
+  xcb_aux_change_window_attributes(wm.xcb_conn, wm.screen->root, XCB_CW_CURSOR,
+                                   &params);
+
+  wm_setup_keybindings();
   xcb_flush(wm.xcb_conn);
 }
 
@@ -295,6 +308,16 @@ void wm_init_color_set(void) {
   color_parse(active_tag_bg, &wm.color_set.active_tag_bg);
   color_parse(tag_color, &wm.color_set.tag_color);
   color_parse(active_tag_color, &wm.color_set.active_tag_color);
+}
+
+void wm_setup_keybindings(void) {
+  if (wm.key_symbols) {
+    xcb_key_symbols_free(wm.key_symbols);
+    p_delete(&wm.key_symbols);
+  }
+
+  wm.key_symbols = xcb_key_symbols_alloc(wm.xcb_conn);
+  xwindow_grab_keys(wm.screen->root, key_list, countof(key_list));
 }
 
 void wm_restart(void) {

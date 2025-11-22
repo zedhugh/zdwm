@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <xcb/xcb_keysyms.h>
 
 #include "types.h"
 
@@ -19,6 +20,7 @@ typedef struct wm_t {
 
   xcb_connection_t *xcb_conn;
   xcb_screen_t *screen;
+  xcb_key_symbols_t *key_symbols;
   int default_screen;
   bool have_xfixes;
   bool have_xinerama;
