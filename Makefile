@@ -2,7 +2,7 @@ MAKEFILE_ABS_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 MAKEFILE_DIR := $(dir $(MAKEFILE_ABS_PATH))
 PWD_DIR := $(CURDIR)/
 BUILD_DIR := $(addprefix $(MAKEFILE_DIR),build)
-SRC_DIR := $(addprefix $(MAKEFILE_DIR),src/)
+SRC_DIR := $(addprefix $(MAKEFILE_DIR),/)
 
 TARGET_NAME := zdwm
 TARGET := $(addprefix $(MAKEFILE_DIR),$(TARGET_NAME))

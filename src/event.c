@@ -12,6 +12,7 @@
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
+#include "xkb.h"
 
 static void button_press(xcb_button_press_event_t *ev) {
   click_area_t click_area = click_none;
@@ -64,12 +65,17 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
 #define EVENT(type, callback) \
   case type:                  \
     callback((void *)event);  \
-    break
+    return
 
     EVENT(XCB_BUTTON_PRESS, button_press);
     EVENT(XCB_KEY_PRESS, key_press);
 
 #undef EVENT
+  }
+
+  /* 处理 XKB 事件 */
+  if (wm.event_base_xkb != 0 && event_type == wm.event_base_xkb) {
+    xkb_handle_event(event);
   }
 }
 

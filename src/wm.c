@@ -17,7 +17,7 @@
 #include <xcb/xinerama.h>
 #include <xcb/xproto.h>
 
-#include "action.h"
+#include "atoms.h"
 #include "backtrace.h"
 #include "buffer.h"
 #include "color.h"
@@ -28,6 +28,7 @@
 #include "types.h"
 #include "utils.h"
 #include "xcursor.h"
+#include "xkb.h"
 #include "xwindow.h"
 
 static void wm_setup_signal(void);
@@ -268,6 +269,7 @@ void wm_clean(void) {
   }
 
   xcursor_clean();
+  xkb_free();
   xcb_ungrab_key(wm.xcb_conn, XCB_GRAB_ANY, wm.screen->root, modifier_any);
   xcb_key_symbols_free(wm.key_symbols);
   xcb_disconnect(wm.xcb_conn);
@@ -299,6 +301,8 @@ static void wm_setup(void) {
                                    &params);
 
   wm_setup_keybindings();
+  atoms_init(wm.xcb_conn);
+  xkb_init();
   xcb_flush(wm.xcb_conn);
 }
 
@@ -358,11 +362,10 @@ int main(int argc, char *argv[]) {
   wm_check_xcb_extensions();
 
   wm_detect_monitor();
+  setup_event_loop();
   wm_setup();
 
   debug_show_monitor_list();
-
-  setup_event_loop();
 
   if (wm.loop == nullptr) {
     wm.loop = g_main_loop_new(nullptr, FALSE);

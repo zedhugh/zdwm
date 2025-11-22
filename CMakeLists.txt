@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
 set(APP_NAME "zdwm")
-set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_compile_definitions(LOG_FILE="$ENV{HOME}/${APP_NAME}-log.txt")
@@ -20,18 +20,20 @@ project(${APP_NAME}
 )
 
 add_executable(${APP_NAME}
-    wm.c
-    utils.c
-    buffer.c
-    backtrace.c
-    monitor.c
-    client.c
-    text.c
-    color.c
-    xcursor.c
-    xwindow.c
-    event.c
-    action.c
+    ${SOURCE_DIR}/wm.c
+    ${SOURCE_DIR}/utils.c
+    ${SOURCE_DIR}/buffer.c
+    ${SOURCE_DIR}/backtrace.c
+    ${SOURCE_DIR}/monitor.c
+    ${SOURCE_DIR}/client.c
+    ${SOURCE_DIR}/text.c
+    ${SOURCE_DIR}/color.c
+    ${SOURCE_DIR}/xcursor.c
+    ${SOURCE_DIR}/xwindow.c
+    ${SOURCE_DIR}/event.c
+    ${SOURCE_DIR}/action.c
+    ${SOURCE_DIR}/xkb.c
+    ${SOURCE_DIR}/atoms.c
 )
 
 # use C23
@@ -50,6 +52,8 @@ pkg_check_modules(deps REQUIRED
     xcb-randr
     xcb-xfixes
     xcb-xinerama
+    xcb-xkb
+    xkbcommon-x11
 
     cairo
     cairo-xcb
@@ -92,3 +96,27 @@ configure_file("${SOURCE_DIR}/app.h.in"
     ESCAPE_QUOTES
     @ONLY
 )
+
+set(ATOM_LIST_FILE "${SOURCE_DIR}/atoms-list.txt")
+add_custom_command(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-utils/atoms-extern.sh
+    ARGS ${ATOM_LIST_FILE} > ${BUILD_DIR}/atoms-extern.h
+    OUTPUT ${BUILD_DIR}/atoms-extern.h
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    DEPENDS ${ATOM_LIST_FILE}
+    COMMENT "Generating atoms-extern.h"
+    VERBATIM
+)
+add_custom_command(
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-utils/atoms-intern.sh
+    ARGS ${ATOM_LIST_FILE} > ${BUILD_DIR}/atoms-intern.h
+    OUTPUT ${BUILD_DIR}/atoms-intern.h
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    DEPENDS ${ATOM_LIST_FILE}
+    COMMENT "Generating atoms-intern.h"
+    VERBATIM
+)
+add_custom_target(generate_atoms
+    DEPENDS ${BUILD_DIR}/atoms-extern.h ${BUILD_DIR}/atoms-intern.h
+)
+add_dependencies(${APP_NAME} generate_atoms)
