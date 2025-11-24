@@ -49,11 +49,6 @@ static char **cmd_argv;
 /** A pipe that is used to asynchronously handle SIGCHLD */
 static int sigchld_pipe[2];
 
-static void wm_atexit(bool restart) {
-  wm.need_restart = restart;
-  wm_clean();
-}
-
 static gboolean restart_on_signal(gpointer data) {
   wm_restart();
   return TRUE;
@@ -272,6 +267,7 @@ void wm_clean(void) {
   xkb_free();
   xcb_ungrab_key(wm.xcb_conn, XCB_GRAB_ANY, wm.screen->root, modifier_any);
   xcb_key_symbols_free(wm.key_symbols);
+  xcb_aux_sync(wm.xcb_conn);
   xcb_disconnect(wm.xcb_conn);
 }
 
@@ -325,12 +321,14 @@ void wm_setup_keybindings(void) {
 }
 
 void wm_restart(void) {
-  wm_atexit(true);
-  execvp(cmd_argv[0], cmd_argv);
-  fatal("execv() failed: %s", strerror(errno));
+  wm.need_restart = true;
+  if (g_main_loop_is_running(wm.loop)) {
+    g_main_loop_quit(wm.loop);
+  }
 }
 
 void wm_quit(void) {
+  wm.need_restart = false;
   if (g_main_loop_is_running(wm.loop)) {
     g_main_loop_quit(wm.loop);
   }
@@ -374,7 +372,12 @@ int main(int argc, char *argv[]) {
   g_main_loop_unref(wm.loop);
   wm.loop = nullptr;
 
-  wm_atexit(false);
+  wm_clean();
+
+  if (wm.need_restart) {
+    execvp(cmd_argv[0], cmd_argv);
+    fatal("execv() failed: %s", strerror(errno));
+  }
 
   return EXIT_SUCCESS;
 }
