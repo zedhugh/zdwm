@@ -48,6 +48,7 @@ pkg_check_modules(deps REQUIRED
     xcb
     xcb-aux
     xcb-cursor
+    xcb-icccm
     xcb-keysyms
     xcb-randr
     xcb-xfixes
