@@ -2,10 +2,12 @@
 
 #include <glib.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
+#include <xkbcommon/xkbcommon.h>
 
 #include "action.h"
 #include "default_config.h"
@@ -48,7 +50,15 @@ static void button_press(xcb_button_press_event_t *ev) {
 }
 
 static void key_press(xcb_key_press_event_t *ev) {
+  bool is_press = XCB_EVENT_RESPONSE_TYPE(ev) == XCB_KEY_PRESS;
   xcb_keysym_t keysym = xcb_key_press_lookup_keysym(wm.key_symbols, ev, 0);
+  char key_name[16];
+  if (xkb_keysym_get_name(keysym, key_name, sizeof(key_name)) != -1) {
+    printf("key %s: %s\n", is_press ? "press" : "release", key_name);
+  }
+
+  if (!is_press) return;
+
   for (int i = 0; i < countof(key_list); i++) {
     keyboard_t key = key_list[i];
     if (keysym == key.keysym && ev->state == key.modifiers && key.func) {
@@ -60,6 +70,9 @@ static void key_press(xcb_key_press_event_t *ev) {
 
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
+  const char *label = xcb_event_get_label(event_type);
+  printf("event type: %u[%s], xkb_event: %u\n", event_type, label,
+         wm.event_base_xkb);
 
   switch (event_type) {
 #define EVENT(type, callback) \
@@ -69,6 +82,7 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
 
     EVENT(XCB_BUTTON_PRESS, button_press);
     EVENT(XCB_KEY_PRESS, key_press);
+    EVENT(XCB_KEY_RELEASE, key_press);
 
 #undef EVENT
   }
