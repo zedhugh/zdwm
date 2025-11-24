@@ -50,3 +50,4 @@ typedef struct keyboard_t {
 
 void select_tag_of_current_monitor(const user_action_arg_t *arg);
 void spawn(const user_action_arg_t *arg);
+void quit(const user_action_arg_t *arg);

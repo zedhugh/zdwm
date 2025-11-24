@@ -16,3 +16,12 @@ void spawn(const user_action_arg_t *arg) {
 
   g_spawn_command_line_async((const char *)arg->ptr, nullptr);
 }
+
+void quit(const user_action_arg_t *arg) {
+  const bool restart = arg->b;
+  if (restart) {
+    wm_restart();
+  } else {
+    wm_quit();
+  }
+}
