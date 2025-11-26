@@ -10,6 +10,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "action.h"
+#include "client.h"
 #include "default_config.h"
 #include "types.h"
 #include "utils.h"
@@ -49,6 +50,23 @@ static void button_press(xcb_button_press_event_t *ev) {
   }
 }
 
+static void configure_request(xcb_configure_request_event_t *ev) {
+  client_t *client = client_get_by_window(ev->window);
+  if (!client) {
+    uint16_t value_mask = ev->value_mask;
+    xcb_configure_window_value_list_t value_list = {
+      .x = ev->x,
+      .y = ev->y,
+      .width = ev->width,
+      .height = ev->height,
+      .border_width = ev->border_width,
+      .sibling = ev->sibling,
+      .stack_mode = ev->stack_mode,
+    };
+    xcb_configure_window_aux(wm.xcb_conn, ev->window, value_mask, &value_list);
+  }
+}
+
 static void key_press(xcb_key_press_event_t *ev) {
   bool is_press = XCB_EVENT_RESPONSE_TYPE(ev) == XCB_KEY_PRESS;
   xcb_keysym_t keysym = xcb_key_press_lookup_keysym(wm.key_symbols, ev, 0);
@@ -68,6 +86,36 @@ static void key_press(xcb_key_press_event_t *ev) {
   }
 }
 
+static void map_request(xcb_map_request_event_t *ev) {
+  xcb_get_window_attributes_cookie_t wa_cookie =
+    xcb_get_window_attributes_unchecked(wm.xcb_conn, ev->window);
+  xcb_get_window_attributes_reply_t *wa_reply =
+    xcb_get_window_attributes_reply(wm.xcb_conn, wa_cookie, nullptr);
+
+  if (!wa_reply) return;
+  if (wa_reply->override_redirect) {
+    p_delete(&wa_reply);
+    return;
+  }
+
+  client_t *c = client_get_by_window(ev->window);
+  if (!c) {
+    xcb_get_geometry_cookie_t geo_cookie =
+      xcb_get_geometry(wm.xcb_conn, ev->window);
+    xcb_get_geometry_reply_t *geo_reply =
+      xcb_get_geometry_reply(wm.xcb_conn, geo_cookie, nullptr);
+    if (!geo_reply) {
+      p_delete(&wa_reply);
+      return;
+    }
+
+    client_manage(ev->window, geo_reply);
+    p_delete(&geo_reply);
+  }
+
+  p_delete(&wa_reply);
+}
+
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
@@ -83,6 +131,8 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_BUTTON_PRESS, button_press);
     EVENT(XCB_KEY_PRESS, key_press);
     EVENT(XCB_KEY_RELEASE, key_press);
+    EVENT(XCB_CONFIGURE_REQUEST, configure_request);
+    EVENT(XCB_MAP_REQUEST, map_request);
 
 #undef EVENT
   }

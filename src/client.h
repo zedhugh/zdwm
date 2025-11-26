@@ -5,7 +5,9 @@
 #include "color.h"
 #include "types.h"
 
-void client_manage(xcb_window_t window);
+client_t *client_get_by_window(xcb_window_t window);
+void client_manage(xcb_window_t window,
+                   xcb_get_geometry_reply_t *geometry_reply);
 
 void client_send_to_tag(client_t *client, uint32_t tag_mask);
 void client_send_to_monitor(client_t *client, monitor_t *monitor);

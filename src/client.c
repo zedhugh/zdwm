@@ -1,1 +1,109 @@
 #include "client.h"
+
+#include <string.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
+#include <xcb/xcb_icccm.h>
+#include <xcb/xproto.h>
+
+#include "atoms-extern.h"
+#include "types.h"
+#include "utils.h"
+#include "wm.h"
+#include "xwindow.h"
+
+client_t *client_get_by_window(xcb_window_t window) {
+  for (client_t *c = wm.client_list; c; c = c->next) {
+    if (c->window == window) return c;
+  }
+
+  return nullptr;
+}
+
+static void client_attach_list(client_t *client) {
+  client->next = wm.client_list;
+  wm.client_list = client;
+}
+
+static void client_detach_list(client_t *client) {
+  for (client_t **c = &wm.client_list; *c && *c != client; c = &(*c)->next) {
+    *c = client->next;
+  }
+}
+
+static void client_attach_stack(client_t *client) {
+  client->stack_next = wm.client_stack_list;
+  wm.client_stack_list = client;
+}
+
+static void client_detach_stack(client_t *client) {
+  client_t **tc = &wm.client_stack_list;
+  for (; *tc && *tc != client; tc = &(*tc)->stack_next);
+  *tc = client->stack_next;
+
+  if (client == wm.client_focused) {
+    client_t *t = wm.client_stack_list;
+    for (; t && !client_is_visible(t); t = t->stack_next);
+    wm.client_focused = t;
+  }
+}
+
+void client_manage(xcb_window_t window,
+                   xcb_get_geometry_reply_t *geometry_reply) {
+  client_t *c = p_new(client_t, 1);
+  c->window = window;
+
+  c->name = xwindow_get_text_property(c->window, WM_NAME);
+  c->icon_name = xwindow_get_text_property(c->window, WM_ICON_NAME);
+  c->net_name = xwindow_get_text_property(c->window, _NET_WM_NAME);
+  c->net_icon_name = xwindow_get_text_property(c->window, _NET_WM_ICON_NAME);
+  c->role = xwindow_get_text_property(c->window, WM_WINDOW_ROLE);
+
+  client_attach_list(c);
+  client_attach_stack(c);
+
+  {
+    xcb_icccm_get_wm_class_reply_t prop;
+    xcb_get_property_cookie_t cookie =
+      xcb_icccm_get_wm_class_unchecked(wm.xcb_conn, c->window);
+    if (xcb_icccm_get_wm_class_reply(wm.xcb_conn, cookie, &prop, nullptr)) {
+      c->class = strdup(prop.class_name);
+      c->instance = strdup(prop.instance_name);
+      xcb_icccm_get_wm_class_reply_wipe(&prop);
+    }
+  }
+
+  {
+    xcb_get_property_cookie_t cookie =
+      xcb_icccm_get_wm_transient_for_unchecked(wm.xcb_conn, window);
+    xcb_icccm_get_wm_transient_for_reply(wm.xcb_conn, cookie,
+                                         &c->transient_for_window, nullptr);
+
+    client_t *transient_for_client = nullptr;
+    if (c->transient_for_window && (transient_for_client = client_get_by_window(
+                                      c->transient_for_window))) {
+      c->monitor = transient_for_client->monitor;
+      c->tags = transient_for_client->tags;
+    } else {
+      c->monitor = wm.current_monitor;
+      c->tags = c->monitor->selected_tag->mask;
+    }
+  }
+
+  {
+    const xcb_params_cw_t params = {
+      .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
+                    XCB_EVENT_MASK_PROPERTY_CHANGE |
+                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+    };
+    xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_EVENT_MASK,
+                                     &params);
+    xcb_map_window(wm.xcb_conn, window);
+  }
+
+  xcb_flush(wm.xcb_conn);
+}
+
+bool client_is_visible(client_t *client) {
+  return client->tags & client->monitor->selected_tag->mask;
+}

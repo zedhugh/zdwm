@@ -1,6 +1,7 @@
 #include "xwindow.h"
 
 #include <stdint.h>
+#include <string.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_icccm.h>
@@ -170,4 +171,33 @@ void xwindow_focus(xcb_window_t window) {
                         _NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 32, 1, &window);
     xwindow_send_event(window, WM_TAKE_FOCUS);
   }
+}
+
+/**
+ * 获取目标窗口的文本属性
+ * @param window 目标窗口
+ * @param property 属性名
+ * @returns 返回的信息使用后记得使用 free 释放
+ */
+char *xwindow_get_text_property(xcb_window_t window, xcb_atom_t property) {
+  xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
+    wm.xcb_conn, false, window, property, XCB_ATOM_STRING, 0, UINT32_MAX);
+  xcb_get_property_reply_t *reply =
+    xcb_get_property_reply(wm.xcb_conn, cookie, nullptr);
+  int length = xcb_get_property_value_length(reply);
+
+  char *value = nullptr;
+
+  if (reply &&
+      (reply->type == XCB_ATOM_STRING || reply->type == UTF8_STRING ||
+       reply->type == COMPOUND_TEXT) &&
+      reply->format == 8 && length) {
+    value = p_new(char, length + 1);
+    memcpy(value, xcb_get_property_value(reply), length);
+    value[length] = '\0';
+  }
+
+  p_delete(&reply);
+
+  return value;
 }
