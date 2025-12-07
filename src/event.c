@@ -72,7 +72,7 @@ static void key_press(xcb_key_press_event_t *ev) {
   xcb_keysym_t keysym = xcb_key_press_lookup_keysym(wm.key_symbols, ev, 0);
   char key_name[16];
   if (xkb_keysym_get_name(keysym, key_name, sizeof(key_name)) != -1) {
-    printf("key %s: %s\n", is_press ? "press" : "release", key_name);
+    logger("key %s: %s\n", is_press ? "press" : "release", key_name);
   }
 
   if (!is_press) return;
@@ -119,7 +119,7 @@ static void map_request(xcb_map_request_event_t *ev) {
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
-  printf("event type: %u[%s], xkb_event: %u\n", event_type, label,
+  logger("event type: %u[%s], xkb_event: %u\n", event_type, label,
          wm.event_base_xkb);
 
   switch (event_type) {

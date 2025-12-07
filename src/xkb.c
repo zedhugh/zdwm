@@ -116,7 +116,7 @@ void xkb_init(void) {
     wm.xcb_conn, XKB_X11_MIN_MAJOR_XKB_VERSION, XKB_X11_MIN_MINOR_XKB_VERSION,
     XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS, nullptr, nullptr, &wm.event_base_xkb,
     nullptr);
-  printf("xkb base event: %u\n", wm.event_base_xkb);
+  logger("xkb base event: %u\n", wm.event_base_xkb);
   if (!wm.have_xkb) {
     warn("XKB not found or not supported");
     xkb_init_keymap();
@@ -182,7 +182,7 @@ static void xkb_schedule_refresh(void) {
 void xkb_handle_event(xcb_generic_event_t *event) {
   assert(wm.have_xkb);
 
-  printf("xkb event type: %u\n", event->pad0);
+  logger("xkb event type: %u\n", event->pad0);
 
   /* XKB 中没有对应所有事件的泛型类型，xcb_generic_event_t 类型中的 pad0
    * 字段对应 XKB 事件中的 xkbType 字段，故用该字段判断 XKB 事件类型 */
@@ -205,7 +205,7 @@ void xkb_handle_event(xcb_generic_event_t *event) {
         state_notify_event->baseGroup, state_notify_event->latchedGroup,
         state_notify_event->lockedGroup);
 
-      printf("changed: %u\n",
+      logger("changed: %u\n",
              state_notify_event->changed & XCB_XKB_STATE_PART_GROUP_STATE);
       if (state_notify_event->changed & XCB_XKB_STATE_PART_GROUP_STATE) {
         xkb_schedule_refresh();

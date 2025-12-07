@@ -16,6 +16,7 @@
 
 #include "base.h"
 #include "color.h"
+#include "utils.h"
 
 static PangoContext *context = nullptr;
 static PangoLayout *layout = nullptr;
@@ -29,7 +30,7 @@ static PangoAttrList *attr_list = nullptr;
  * @return layout 高度，可用于确定 bar 高度
  */
 int text_init_pango_layout(const char *family, uint32_t size, uint32_t dpi) {
-  printf("family: %s, size: %u, dpi: %u\n", family, size, dpi);
+  logger("family: %s, size: %u, dpi: %u\n", family, size, dpi);
 
   static const char *layout_family = nullptr;
   static uint32_t layout_size = 0;
@@ -38,7 +39,7 @@ int text_init_pango_layout(const char *family, uint32_t size, uint32_t dpi) {
 
   if (layout_family != nullptr && strcmp(layout_family, family) == 0 &&
       layout_size == size && layout_dpi == dpi) {
-    printf("text pango layout config cached\n");
+    logger("text pango layout config cached\n");
     return text_height;
   }
 

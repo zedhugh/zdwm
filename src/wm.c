@@ -281,7 +281,7 @@ static void wm_setup(void) {
   int font_height = text_init_pango_layout(font_family, font_size, default_dpi);
   wm.bar_height = (uint16_t)font_height + 2 * bar_y_padding;
 
-  printf("font height: %d, bar height: %u\n", font_height, wm.bar_height);
+  logger("font height: %d, bar height: %u\n", font_height, wm.bar_height);
 
   uint32_t tag_count = 0;
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
@@ -337,17 +337,17 @@ void wm_quit(void) {
 }
 
 static void debug_show_monitor_list(void) {
-  printf("\n========================== monitors ==========================\n");
+  logger("\n========================== monitors ==========================\n");
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
-    printf("x: %4d, y: %4d, width: %4u, height: %4u -> monitor[%s]\n",
+    logger("x: %4d, y: %4d, width: %4u, height: %4u -> monitor[%s]\n",
            m->geometry.x, m->geometry.y, m->geometry.width, m->geometry.height,
            m->name);
-    printf("x: %4d, y: %4d, width: %4u, height: %4u -> workarea[%s]: %u\n",
+    logger("x: %4d, y: %4d, width: %4u, height: %4u -> workarea[%s]: %u\n",
            m->workarea.x, m->workarea.y, m->workarea.width, m->workarea.height,
            m->name, wm.bar_height);
-    printf("tag extend: [%d, %d]\n", m->tag_extent.start, m->tag_extent.end);
+    logger("tag extend: [%d, %d]\n", m->tag_extent.start, m->tag_extent.end);
     for (const tag_t *tag = m->tag_list; tag; tag = tag->next) {
-      printf("tag[%u]: %4u, \"%s\", [%d, %d]\n", tag->index, tag->mask,
+      logger("tag[%u]: %4u, \"%s\", [%d, %d]\n", tag->index, tag->mask,
              tag->name, tag->bar_extent.start, tag->bar_extent.end);
     }
   }
