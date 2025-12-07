@@ -273,6 +273,8 @@ void wm_clean(void) {
 
 static void wm_setup(void) {
   wm.padding.tag_x = tag_x_padding;
+  wm.layout_list = layout_list;
+  wm.layout_count = (uint16_t)countof(layout_list);
 
   wm_init_color_set();
 

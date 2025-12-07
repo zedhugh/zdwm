@@ -9,6 +9,7 @@
 typedef struct wm_t {
   padding_t padding;
   uint16_t bar_height;
+  uint16_t layout_count;
 
   bool need_restart;
   GMainLoop *loop;
@@ -18,6 +19,7 @@ typedef struct wm_t {
   client_t *client_focused;
   monitor_t *monitor_list;
   monitor_t *current_monitor;
+  const layout_t *layout_list;
 
   xcb_connection_t *xcb_conn;
   xcb_screen_t *screen;

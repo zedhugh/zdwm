@@ -27,6 +27,10 @@ uint32_t monitor_initialize_tag(monitor_t *monitor, const char **tags,
     tag->mask = 1u << i;
     tag->index = tag_index_start_at + tag_count;
 
+    if (wm.layout_count > 0 && wm.layout_list) {
+      tag->layout = &wm.layout_list[0];
+    }
+
     if (prev_tag) {
       prev_tag->next = tag;
     } else {
@@ -174,6 +178,24 @@ static void monitor_draw_tags(monitor_t *monitor) {
   monitor->tag_extent.end = x;
 }
 
+static void monitor_draw_layout_symbol(monitor_t *monitor) {
+  const layout_t *layout = monitor->selected_tag->layout;
+  if (layout && layout->symbol) {
+    color_t *color = &wm.color_set.tag_color;
+    int width = 0;
+    text_get_size(layout->symbol, &width, nullptr);
+    area_t area = {
+      .x = monitor->tag_extent.end,
+      .y = monitor->geometry.y,
+      .width = width + 2 * wm.padding.tag_x,
+      .height = wm.bar_height,
+    };
+    monitor->layout_symbol_extent.start = area.x;
+    monitor->layout_symbol_extent.end = area.x + area.width;
+    draw_text(monitor->bar_cr, layout->symbol, color, area, true);
+  }
+}
+
 void monitor_draw_bar(monitor_t *monitor) {
   cairo_t *cr = monitor->bar_cr;
   uint16_t height = wm.bar_height;
@@ -186,4 +208,5 @@ void monitor_draw_bar(monitor_t *monitor) {
   draw_background(cr, &wm.color_set.bar_bg, bar_area);
 
   monitor_draw_tags(monitor);
+  monitor_draw_layout_symbol(monitor);
 }

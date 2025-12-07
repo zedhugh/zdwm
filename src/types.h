@@ -58,6 +58,7 @@ struct monitor_t {
   cairo_t *bar_cr;
 
   extent_in_bar_t tag_extent;
+  extent_in_bar_t layout_symbol_extent;
 
   xcb_window_t bar_window;
 };
@@ -68,7 +69,7 @@ struct tag_t {
   extent_in_bar_t bar_extent;
   tag_t *next;
   char *name;
-  layout_t *layout;
+  const layout_t *layout;
   task_in_tag_t *task_list;
 };
 
