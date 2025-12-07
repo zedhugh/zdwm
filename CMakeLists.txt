@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.24)
 
+# use GNU23
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS ON)
+
 set(APP_NAME "zdwm")
 set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
@@ -35,9 +40,6 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/xkb.c
     ${SOURCE_DIR}/atoms.c
 )
-
-# use C23
-set_property(TARGET ${APP_NAME} PROPERTY C_STANDARD 23)
 
 find_package(PkgConfig REQUIRED)
 
