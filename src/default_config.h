@@ -28,7 +28,7 @@ static const button_t button_list[] = {
 };
 
 static const char launcher[] =
-  "rofi -show combi -modes window,drun,run,ssh,combi,windowcd";
+  "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
 static const keyboard_t key_list[] = {
   {modifier_alt, XK_p, spawn, {.ptr = launcher}},
   {modifier_alt, XK_q, quit, {.b = false}},
