@@ -123,7 +123,7 @@ void monitor_init_bar(monitor_t *monitor) {
 
   uint16_t width = monitor->geometry.width;
   monitor->workarea.x = monitor->geometry.x;
-  monitor->workarea.y = monitor->geometry.y;
+  monitor->workarea.y = monitor->geometry.y + wm.bar_height;
   monitor->workarea.width = width;
   monitor->workarea.height = monitor->geometry.height - wm.bar_height;
   monitor->bar_window = window;
