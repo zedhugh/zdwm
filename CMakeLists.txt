@@ -39,6 +39,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/action.c
     ${SOURCE_DIR}/xkb.c
     ${SOURCE_DIR}/atoms.c
+    ${SOURCE_DIR}/layout.c
 )
 
 find_package(PkgConfig REQUIRED)

@@ -7,6 +7,7 @@
 #include <xcb/xcb_aux.h>
 
 #include "base.h"
+#include "client.h"
 #include "color.h"
 #include "text.h"
 #include "types.h"
@@ -209,4 +210,30 @@ void monitor_draw_bar(monitor_t *monitor) {
 
   monitor_draw_tags(monitor);
   monitor_draw_layout_symbol(monitor);
+}
+
+void monitor_arrange(monitor_t *monitor) {
+  tag_t *tag = monitor->selected_tag;
+  if (tag->layout && tag->layout->arrange) tag->layout->arrange(tag);
+
+  for (client_t *c = wm.client_list; c; c = c->next) {
+    task_in_tag_t *task = client_get_task_in_tag(c, tag);
+    if (task) {
+      if (task->geometry.x != c->geometry.x ||
+          task->geometry.y != c->geometry.y) {
+        client_move_to(c, task->geometry.x, task->geometry.y);
+      }
+      if (task->geometry.width != c->geometry.width ||
+          task->geometry.height != c->geometry.height) {
+        client_resize(c, task->geometry.width, task->geometry.height);
+      }
+    } else {
+      int16_t x = -c->geometry.width;
+      int16_t y = -c->geometry.height;
+      if (x != c->geometry.x || y != c->geometry.y) {
+        client_move_to(c, x, y);
+      }
+    }
+  }
+  xcb_flush(wm.xcb_conn);
 }

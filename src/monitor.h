@@ -10,3 +10,4 @@ void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask);
 void monitor_clean(monitor_t *monitor);
 void monitor_init_bar(monitor_t *monitor);
 void monitor_draw_bar(monitor_t *monitor);
+void monitor_arrange(monitor_t *monitor);

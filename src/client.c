@@ -1,5 +1,6 @@
 #include "client.h"
 
+#include <stdint.h>
 #include <string.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
@@ -46,6 +47,13 @@ static void client_detach_stack(client_t *client) {
     for (; t && !client_is_visible(t); t = t->stack_next);
     wm.client_focused = t;
   }
+}
+
+task_in_tag_t *client_get_task_in_tag(client_t *client, tag_t *tag) {
+  for (task_in_tag_t *task = tag->task_list; task; task = task->next) {
+    if (task->client == client) return task;
+  }
+  return nullptr;
 }
 
 void client_manage(xcb_window_t window,
@@ -102,6 +110,36 @@ void client_manage(xcb_window_t window,
   }
 
   xcb_flush(wm.xcb_conn);
+}
+
+bool client_need_layout(client_t *client) {
+  if (client->floating || client->fullscreen || client->maximize ||
+      client->minimize) {
+    return false;
+  }
+  return true;
+}
+
+void client_move_to(client_t *client, int16_t x, int16_t y) {
+  client->geometry.x = x;
+  client->geometry.y = y;
+  uint16_t mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+  const xcb_params_configure_window_t params = {.x = x, .y = y};
+  xcb_aux_configure_window(wm.xcb_conn, client->window, mask, &params);
+  logger("== client 0x%x move to x: %d, y: %d\n", client->window, x, y);
+}
+
+void client_resize(client_t *client, uint16_t width, uint16_t height) {
+  client->geometry.width = width;
+  client->geometry.height = height;
+  uint16_t mask = XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
+  const xcb_params_configure_window_t params = {
+    .width = width,
+    .height = height,
+  };
+  xcb_aux_configure_window(wm.xcb_conn, client->window, mask, &params);
+  logger("== client 0x%x resize to width: %d, height: %d\n", client->window,
+         width, height);
 }
 
 bool client_is_visible(client_t *client) {

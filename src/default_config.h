@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "action.h"
+#include "layout.h"
 #include "types.h"
 
 static const char *const font_family = "monospace";
@@ -35,6 +36,6 @@ static const keyboard_t key_list[] = {
 };
 
 static const layout_t layout_list[] = {
-  {.symbol = "[M]", .arrange = nullptr},
+  {.symbol = "[M]", .arrange = monocle},
   {.symbol = "><=", .arrange = nullptr},
 };
