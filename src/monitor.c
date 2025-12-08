@@ -197,6 +197,34 @@ static void monitor_draw_layout_symbol(monitor_t *monitor) {
   }
 }
 
+static void monitor_draw_tasks(monitor_t *monitor) {
+  task_in_tag_t *task_list = monitor->selected_tag->task_list;
+  if (!task_list) return;
+
+  uint16_t task_count = 0;
+  for (task_in_tag_t *task = task_list; task; task = task->next) ++task_count;
+  if (task_count == 0) return;
+
+  int16_t x = monitor->layout_symbol_extent.end;
+  uint16_t task_width = (monitor->geometry.width - x) / task_count;
+  for (task_in_tag_t *task = task_list; task; task = task->next) {
+    task->bar_extent.start = x;
+    task->bar_extent.end = x + task_width;
+    x += task_width;
+
+    char **title = client_get_task_title(task->client);
+    if (title == nullptr || *title == nullptr) continue;
+    color_t *color = &wm.color_set.active_tag_color;
+    area_t area = {
+      .x = task->bar_extent.start,
+      .y = monitor->geometry.y,
+      .width = task_width,
+      .height = wm.bar_height,
+    };
+    draw_text(monitor->bar_cr, *title, color, area, false);
+  }
+}
+
 void monitor_draw_bar(monitor_t *monitor) {
   cairo_t *cr = monitor->bar_cr;
   uint16_t height = wm.bar_height;
@@ -210,6 +238,7 @@ void monitor_draw_bar(monitor_t *monitor) {
 
   monitor_draw_tags(monitor);
   monitor_draw_layout_symbol(monitor);
+  monitor_draw_tasks(monitor);
 }
 
 void monitor_arrange(monitor_t *monitor) {

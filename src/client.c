@@ -8,6 +8,7 @@
 #include <xcb/xproto.h>
 
 #include "atoms-extern.h"
+#include "monitor.h"
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
@@ -56,16 +57,57 @@ task_in_tag_t *client_get_task_in_tag(client_t *client, tag_t *tag) {
   return nullptr;
 }
 
+static void client_add_to_tag(client_t *client, tag_t *tag) {
+  if (client_get_task_in_tag(client, tag)) return;
+
+  task_in_tag_t *task = p_new(task_in_tag_t, 1);
+  task->client = client;
+  task->next = tag->task_list;
+  tag->task_list = task;
+}
+
+static void client_remove_from_tag(client_t *client, tag_t *tag) {
+  for (task_in_tag_t **task = &tag->task_list; *task; task = &(*task)->next) {
+    if ((*task)->client != client) continue;
+    p_delete(task);
+    *task = (*task)->next;
+  }
+}
+
+static inline void client_wipe(client_t *client) {
+  p_delete(&client->class);
+  p_delete(&client->instance);
+  p_delete(&client->name);
+  p_delete(&client->icon_name);
+  p_delete(&client->net_name);
+  p_delete(&client->net_icon_name);
+  p_delete(&client->role);
+  p_delete(&client);
+}
+
+static inline void client_tags_apply(client_t *client) {
+  for (tag_t *tag = client->monitor->tag_list; tag; tag = tag->next) {
+    if (client->tags & tag->mask) {
+      client_add_to_tag(client, tag);
+    } else {
+      client_remove_from_tag(client, tag);
+    }
+  }
+
+  if (client->tags == 0) client_wipe(client);
+}
+
+static inline void client_update_names(client_t *c) {
+  xwindow_get_text_property(c->window, WM_NAME, &c->name);
+  xwindow_get_text_property(c->window, WM_ICON_NAME, &c->icon_name);
+  xwindow_get_text_property(c->window, _NET_WM_NAME, &c->net_name);
+  xwindow_get_text_property(c->window, _NET_WM_ICON_NAME, &c->net_icon_name);
+}
+
 void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply) {
   client_t *c = p_new(client_t, 1);
   c->window = window;
-
-  c->name = xwindow_get_text_property(c->window, WM_NAME);
-  c->icon_name = xwindow_get_text_property(c->window, WM_ICON_NAME);
-  c->net_name = xwindow_get_text_property(c->window, _NET_WM_NAME);
-  c->net_icon_name = xwindow_get_text_property(c->window, _NET_WM_ICON_NAME);
-  c->role = xwindow_get_text_property(c->window, WM_WINDOW_ROLE);
 
   client_attach_list(c);
   client_attach_stack(c);
@@ -79,6 +121,7 @@ void client_manage(xcb_window_t window,
       c->instance = strdup(prop.instance_name);
       xcb_icccm_get_wm_class_reply_wipe(&prop);
     }
+    xwindow_get_text_property(c->window, WM_WINDOW_ROLE, &c->role);
   }
 
   {
@@ -96,8 +139,11 @@ void client_manage(xcb_window_t window,
       c->monitor = wm.current_monitor;
       c->tags = c->monitor->selected_tag->mask;
     }
+
+    client_tags_apply(c);
   }
 
+  monitor_arrange(c->monitor);
   {
     const xcb_params_cw_t params = {
       .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
@@ -109,7 +155,17 @@ void client_manage(xcb_window_t window,
     xcb_map_window(wm.xcb_conn, window);
   }
 
+  client_update_names(c);
+  monitor_draw_bar(c->monitor);
   xcb_flush(wm.xcb_conn);
+}
+
+char **client_get_task_title(client_t *client) {
+  if (client->net_icon_name) return &client->net_icon_name;
+  if (client->net_name) return &client->net_name;
+  if (client->icon_name) return &client->icon_name;
+  if (client->name) return &client->name;
+  return nullptr;
 }
 
 bool client_need_layout(client_t *client) {

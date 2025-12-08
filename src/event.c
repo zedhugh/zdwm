@@ -2,7 +2,7 @@
 
 #include <glib.h>
 #include <stdint.h>
-#include <stdio.h>
+#include <string.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcb_keysyms.h>
@@ -10,12 +10,15 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "action.h"
+#include "atoms-extern.h"
 #include "client.h"
 #include "default_config.h"
+#include "monitor.h"
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
 #include "xkb.h"
+#include "xwindow.h"
 
 static void button_press(xcb_button_press_event_t *ev) {
   click_area_t click_area = click_none;
@@ -116,6 +119,26 @@ static void map_request(xcb_map_request_event_t *ev) {
   p_delete(&wa_reply);
 }
 
+static void property_notify(xcb_property_notify_event_t *ev) {
+  client_t *client = client_get_by_window(ev->window);
+  if (client == nullptr) return;
+
+  if (ev->atom == WM_NAME) {
+    xwindow_get_text_property(ev->window, ev->atom, &client->name);
+    monitor_draw_bar(client->monitor);
+  } else if (ev->atom == WM_ICON_NAME) {
+    if (client->icon_name) p_delete(&client->icon_name);
+    xwindow_get_text_property(ev->window, ev->atom, &client->icon_name);
+    monitor_draw_bar(client->monitor);
+  } else if (ev->atom == _NET_WM_NAME) {
+    xwindow_get_text_property(ev->window, ev->atom, &client->net_name);
+    monitor_draw_bar(client->monitor);
+  } else if (ev->atom == _NET_WM_ICON_NAME) {
+    xwindow_get_text_property(ev->window, ev->atom, &client->net_icon_name);
+    monitor_draw_bar(client->monitor);
+  }
+}
+
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
@@ -133,6 +156,7 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_KEY_RELEASE, key_press);
     EVENT(XCB_CONFIGURE_REQUEST, configure_request);
     EVENT(XCB_MAP_REQUEST, map_request);
+    EVENT(XCB_PROPERTY_NOTIFY, property_notify);
 
 #undef EVENT
   }

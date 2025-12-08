@@ -9,6 +9,7 @@ client_t *client_get_by_window(xcb_window_t window);
 task_in_tag_t *client_get_task_in_tag(client_t *client, tag_t *tag);
 void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply);
+char **client_get_task_title(client_t *client);
 bool client_need_layout(client_t *client);
 
 void client_send_to_tag(client_t *client, uint32_t tag_mask);
