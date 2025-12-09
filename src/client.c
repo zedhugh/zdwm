@@ -28,9 +28,9 @@ static void client_attach_list(client_t *client) {
 }
 
 static void client_detach_list(client_t *client) {
-  for (client_t **c = &wm.client_list; *c && *c != client; c = &(*c)->next) {
-    *c = client->next;
-  }
+  client_t **tc = nullptr;
+  for (tc = &wm.client_list; *tc && *tc != client; tc = &(*tc)->next);
+  *tc = client->next;
 }
 
 static void client_attach_stack(client_t *client) {
