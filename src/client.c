@@ -67,10 +67,16 @@ static void client_add_to_tag(client_t *client, tag_t *tag) {
 }
 
 static void client_remove_from_tag(client_t *client, tag_t *tag) {
-  for (task_in_tag_t **task = &tag->task_list; *task; task = &(*task)->next) {
-    if ((*task)->client != client) continue;
-    p_delete(task);
-    *task = (*task)->next;
+  task_in_tag_t **task = &tag->task_list;
+  while (*task) {
+    if ((*task)->client == client) {
+      task_in_tag_t *t = *task;
+      *task = (*task)->next;
+      p_delete(&t);
+      continue;
+    }
+
+    task = &(*task)->next;
   }
 }
 
