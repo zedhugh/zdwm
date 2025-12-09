@@ -139,6 +139,16 @@ static void property_notify(xcb_property_notify_event_t *ev) {
   }
 }
 
+static void destroy_notify(xcb_destroy_notify_event_t *ev) {
+  client_t *client = client_get_by_window(ev->window);
+  if (client) client_unmanage(client);
+}
+
+static void unmap_notify(xcb_unmap_notify_event_t *ev) {
+  client_t *client = client_get_by_window(ev->window);
+  if (client) client_unmanage(client);
+}
+
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
@@ -157,6 +167,8 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_CONFIGURE_REQUEST, configure_request);
     EVENT(XCB_MAP_REQUEST, map_request);
     EVENT(XCB_PROPERTY_NOTIFY, property_notify);
+    EVENT(XCB_UNMAP_NOTIFY, unmap_notify);
+    EVENT(XCB_DESTROY_NOTIFY, destroy_notify);
 
 #undef EVENT
   }

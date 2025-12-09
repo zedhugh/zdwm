@@ -204,6 +204,23 @@ void client_resize(client_t *client, uint16_t width, uint16_t height) {
          width, height);
 }
 
+void client_unmanage(client_t *client) {
+  monitor_t *m = client->monitor;
+
+  client_detach_list(client);
+  client_detach_stack(client);
+
+  for (tag_t *tag = m->tag_list; tag; tag = tag->next) {
+    if (tag->mask & client->tags) client_remove_from_tag(client, tag);
+  }
+
+  client_wipe(client);
+
+  monitor_arrange(m);
+  monitor_draw_bar(m);
+  xcb_flush(wm.xcb_conn);
+}
+
 bool client_is_visible(client_t *client) {
   return client->tags & client->monitor->selected_tag->mask;
 }
