@@ -154,7 +154,7 @@ void client_manage(xcb_window_t window,
     const xcb_params_cw_t params = {
       .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
                     XCB_EVENT_MASK_PROPERTY_CHANGE |
-                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+                    XCB_EVENT_MASK_STRUCTURE_NOTIFY,
     };
     xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_EVENT_MASK,
                                      &params);
