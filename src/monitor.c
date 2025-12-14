@@ -5,7 +5,9 @@
 #include <stdint.h>
 #include <string.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_icccm.h>
 
+#include "app.h"
 #include "base.h"
 #include "client.h"
 #include "color.h"
@@ -118,6 +120,9 @@ void monitor_init_bar(monitor_t *monitor) {
 
   cookie = xcb_map_window(conn, window);
   if (xcb_request_check(conn, cookie)) fatal("cannot map bar window:");
+
+  xwindow_set_class_instance(window);
+  xwindow_set_name_static(window, APP_NAME "_bar");
 
   xcb_aux_sync(conn);
 
