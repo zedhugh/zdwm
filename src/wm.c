@@ -5,18 +5,20 @@
 #include <glibconfig.h>
 #include <signal.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xfixes.h>
 #include <xcb/xinerama.h>
 #include <xcb/xproto.h>
 
+#include "app.h"
+#include "atoms-extern.h"
 #include "atoms.h"
 #include "backtrace.h"
 #include "buffer.h"
@@ -263,6 +265,9 @@ void wm_clean(void) {
     if (source_id) g_source_remove(source_id);
   }
 
+  xcb_destroy_window(wm.xcb_conn, wm.wm_check_window);
+  wm.wm_check_window = XCB_WINDOW_NONE;
+
   xcursor_clean();
   xkb_free();
   xcb_ungrab_key(wm.xcb_conn, XCB_GRAB_ANY, wm.screen->root, modifier_any);
@@ -300,6 +305,27 @@ static void wm_setup(void) {
 
   wm_setup_keybindings();
   atoms_init(wm.xcb_conn);
+
+  {
+    wm.wm_check_window = xcb_generate_id(wm.xcb_conn);
+    xcb_create_window(wm.xcb_conn, wm.screen->root_depth, wm.wm_check_window,
+                      wm.screen->root, -1, -1, 1, 1, 0, XCB_COPY_FROM_PARENT,
+                      wm.screen->root_visual, XCB_NONE, nullptr);
+    xwindow_set_class_instance(wm.wm_check_window);
+#define NAME APP_NAME "_wm_check"
+    xwindow_set_name_static(wm.wm_check_window, NAME);
+    const void *data = &wm.wm_check_window;
+    xcb_atom_t type = XCB_ATOM_WINDOW;
+    uint8_t mode = XCB_PROP_MODE_REPLACE;
+    xcb_change_property(wm.xcb_conn, mode, wm.wm_check_window, _NET_WM_NAME,
+                        UTF8_STRING, 8, sizeof(NAME) - 1, NAME);
+    xcb_change_property(wm.xcb_conn, mode, wm.wm_check_window,
+                        _NET_SUPPORTING_WM_CHECK, type, 32, 1, data);
+    xcb_change_property(wm.xcb_conn, mode, wm.screen->root,
+                        _NET_SUPPORTING_WM_CHECK, type, 32, 1, data);
+#undef NAME
+  }
+
   xkb_init();
   xcb_flush(wm.xcb_conn);
 }
@@ -362,8 +388,8 @@ int main(int argc, char *argv[]) {
   wm_check_xcb_extensions();
 
   wm_detect_monitor();
-  setup_event_loop();
   wm_setup();
+  setup_event_loop();
 
   debug_show_monitor_list();
 
