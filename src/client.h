@@ -20,6 +20,8 @@ void client_resize(client_t *client, uint16_t width, uint16_t height);
 void client_change_border_color(client_t *client, color_t *color);
 void client_change_border_width(client_t *client, uint16_t border_width);
 
+void client_update_wm_hints(client_t *client);
+
 void client_set_floating(client_t *client, bool floating);
 void client_set_fullscreen(client_t *client, bool fullscreen);
 void client_set_maximize(client_t *client, bool maximize);
@@ -43,6 +45,7 @@ void client_set_leader_window(client_t *client, xcb_window_t leader_window);
 
 void client_kill(client_t *client);
 void client_unmanage(client_t *client);
+void client_apply_task_geometry(client_t *client, task_in_tag_t *task);
 
 void client_focus(client_t *client);
 void client_stack_raise(client_t *client);

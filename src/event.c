@@ -55,7 +55,23 @@ static void button_press(xcb_button_press_event_t *ev) {
 
 static void configure_request(xcb_configure_request_event_t *ev) {
   client_t *client = client_get_by_window(ev->window);
-  if (!client) {
+  if (client) {
+    if (ev->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
+      client_change_border_width(client, ev->border_width);
+    } else {
+      tag_t *tag = client->monitor->selected_tag;
+      task_in_tag_t *task = client_get_task_in_tag(client, tag);
+      if (!task || !(client->floating || !tag->layout->arrange)) return;
+
+      if (ev->value_mask & XCB_CONFIG_WINDOW_X) task->geometry.x = ev->x;
+      if (ev->value_mask & XCB_CONFIG_WINDOW_Y) task->geometry.y = ev->y;
+      if (ev->value_mask & XCB_CONFIG_WINDOW_WIDTH)
+        task->geometry.width = ev->width;
+      if (ev->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
+        task->geometry.height = ev->height;
+      client_apply_task_geometry(client, task);
+    }
+  } else {
     uint16_t value_mask = ev->value_mask;
     xcb_configure_window_value_list_t value_list = {
       .x = ev->x,
@@ -135,6 +151,9 @@ static void property_notify(xcb_property_notify_event_t *ev) {
     monitor_draw_bar(client->monitor);
   } else if (ev->atom == _NET_WM_ICON_NAME) {
     xwindow_get_text_property(ev->window, ev->atom, &client->net_icon_name);
+    monitor_draw_bar(client->monitor);
+  } else if (ev->atom == XCB_ATOM_WM_HINTS) {
+    client_update_wm_hints(client);
     monitor_draw_bar(client->monitor);
   }
 }

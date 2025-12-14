@@ -253,14 +253,7 @@ void monitor_arrange(monitor_t *monitor) {
   for (client_t *c = wm.client_list; c; c = c->next) {
     task_in_tag_t *task = client_get_task_in_tag(c, tag);
     if (task) {
-      if (task->geometry.x != c->geometry.x ||
-          task->geometry.y != c->geometry.y) {
-        client_move_to(c, task->geometry.x, task->geometry.y);
-      }
-      if (task->geometry.width != c->geometry.width ||
-          task->geometry.height != c->geometry.height) {
-        client_resize(c, task->geometry.width, task->geometry.height);
-      }
+      client_apply_task_geometry(c, task);
     } else {
       int16_t x = -c->geometry.width;
       int16_t y = -c->geometry.height;

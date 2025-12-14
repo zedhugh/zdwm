@@ -115,8 +115,24 @@ void client_manage(xcb_window_t window,
   client_t *c = p_new(client_t, 1);
   c->window = window;
 
-  client_attach_list(c);
-  client_attach_stack(c);
+  client_move_to(c, geometry_reply->x, geometry_reply->y);
+  client_resize(c, geometry_reply->width, geometry_reply->height);
+  client_change_border_width(c, geometry_reply->border_width);
+
+  {
+    const xcb_params_cw_t params = {
+      .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
+                    XCB_EVENT_MASK_PROPERTY_CHANGE |
+                    XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+    };
+    xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_EVENT_MASK,
+                                     &params);
+    xcb_map_window(wm.xcb_conn, window);
+  }
+  client_update_names(c);
+  xwindow_get_text_property(c->window, WM_WINDOW_ROLE, &c->role);
+  client_update_wm_hints(c);
 
   {
     xcb_icccm_get_wm_class_reply_t prop;
@@ -127,7 +143,6 @@ void client_manage(xcb_window_t window,
       c->instance = strdup(prop.instance_name);
       xcb_icccm_get_wm_class_reply_wipe(&prop);
     }
-    xwindow_get_text_property(c->window, WM_WINDOW_ROLE, &c->role);
   }
 
   {
@@ -149,20 +164,12 @@ void client_manage(xcb_window_t window,
     client_tags_apply(c);
   }
 
-  monitor_arrange(c->monitor);
-  {
-    const xcb_params_cw_t params = {
-      .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
-                    XCB_EVENT_MASK_PROPERTY_CHANGE |
-                    XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-    };
-    xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_EVENT_MASK,
-                                     &params);
-    xcb_map_window(wm.xcb_conn, window);
-  }
+  client_attach_list(c);
+  client_attach_stack(c);
 
-  client_update_names(c);
+  monitor_arrange(c->monitor);
   monitor_draw_bar(c->monitor);
+
   xcb_flush(wm.xcb_conn);
 }
 
@@ -204,6 +211,29 @@ void client_resize(client_t *client, uint16_t width, uint16_t height) {
          width, height);
 }
 
+void client_change_border_width(client_t *client, uint16_t border_width) {
+  if (client->border_width == border_width) return;
+  uint16_t mask = XCB_CONFIG_WINDOW_BORDER_WIDTH;
+  const xcb_params_configure_window_t params = {.border_width = border_width};
+  xcb_aux_configure_window(wm.xcb_conn, client->window, mask, &params);
+  client->border_width = border_width;
+}
+
+void client_update_wm_hints(client_t *client) {
+  xcb_get_property_cookie_t cookie =
+    xcb_icccm_get_wm_hints(wm.xcb_conn, client->window);
+  xcb_icccm_wm_hints_t hints;
+  if (xcb_icccm_get_wm_hints_reply(wm.xcb_conn, cookie, &hints, nullptr)) {
+    if (client == wm.client_focused &&
+        (hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY)) {
+      hints.flags &= ~XCB_ICCCM_WM_HINT_X_URGENCY;
+      xcb_icccm_set_wm_hints(wm.xcb_conn, client->window, &hints);
+    } else {
+      client->urgent = hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY;
+    }
+  }
+}
+
 void client_unmanage(client_t *client) {
   monitor_t *m = client->monitor;
 
@@ -219,6 +249,19 @@ void client_unmanage(client_t *client) {
   monitor_arrange(m);
   monitor_draw_bar(m);
   xcb_flush(wm.xcb_conn);
+}
+
+void client_apply_task_geometry(client_t *client, task_in_tag_t *task) {
+  if (!client || !task || client != task->client) return;
+
+  if (task->geometry.x != client->geometry.x ||
+      task->geometry.y != client->geometry.y) {
+    client_move_to(client, task->geometry.x, task->geometry.y);
+  }
+  if (task->geometry.width != client->geometry.width ||
+      task->geometry.height != client->geometry.height) {
+    client_resize(client, task->geometry.width, task->geometry.height);
+  }
 }
 
 bool client_is_visible(client_t *client) {
