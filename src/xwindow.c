@@ -184,7 +184,7 @@ void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
   if (out == nullptr) return;
 
   xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
-    wm.xcb_conn, false, window, property, XCB_ATOM_STRING, 0, UINT32_MAX);
+    wm.xcb_conn, false, window, property, XCB_ATOM_ANY, 0, UINT32_MAX);
   xcb_get_property_reply_t *reply =
     xcb_get_property_reply(wm.xcb_conn, cookie, nullptr);
   int length = xcb_get_property_value_length(reply);
