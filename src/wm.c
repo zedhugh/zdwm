@@ -295,13 +295,13 @@ static void wm_setup(void) {
     monitor_draw_bar(m);
   }
 
+  uint32_t mask = XCB_CW_EVENT_MASK | XCB_CW_CURSOR;
   xcb_params_cw_t params = {
     .cursor = xcursor_get_xcb_cursor(cursor_normal),
     .event_mask =
       XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_KEY_PRESS,
   };
-  xcb_aux_change_window_attributes(wm.xcb_conn, wm.screen->root, XCB_CW_CURSOR,
-                                   &params);
+  xcb_aux_change_window_attributes(wm.xcb_conn, wm.screen->root, mask, &params);
 
   wm_setup_keybindings();
   atoms_init(wm.xcb_conn);
