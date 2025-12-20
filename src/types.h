@@ -91,5 +91,6 @@ typedef struct color_set_t {
 } color_set_t;
 
 typedef struct padding_t {
+  uint16_t bar_y;
   uint16_t tag_x;
 } padding_t;

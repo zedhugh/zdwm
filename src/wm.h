@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <xcb/xcb_keysyms.h>
+#include <xcb/xcb_xrm.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "types.h"
@@ -22,8 +23,13 @@ typedef struct wm_t {
   monitor_t *current_monitor;
   const layout_t *layout_list;
 
+  char *font_family;
+  uint32_t font_size;
+  uint32_t dpi;
+
   xcb_connection_t *xcb_conn;
   xcb_screen_t *screen;
+  xcb_xrm_database_t *xrm;
   xcb_key_symbols_t *key_symbols;
   xcb_window_t wm_check_window;
   int default_screen;

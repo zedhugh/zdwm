@@ -40,6 +40,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/xkb.c
     ${SOURCE_DIR}/atoms.c
     ${SOURCE_DIR}/layout.c
+    ${SOURCE_DIR}/xres.c
 )
 
 find_package(PkgConfig REQUIRED)
@@ -57,6 +58,7 @@ pkg_check_modules(deps REQUIRED
     xcb-xfixes
     xcb-xinerama
     xcb-xkb
+    xcb-xrm
     xkbcommon-x11
 
     cairo

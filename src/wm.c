@@ -31,6 +31,7 @@
 #include "utils.h"
 #include "xcursor.h"
 #include "xkb.h"
+#include "xres.h"
 #include "xwindow.h"
 
 static void wm_setup_signal(void);
@@ -40,6 +41,7 @@ static void wm_detect_monitor(void);
 static void wm_scan_clients(void);
 static void wm_clean(void);
 static void wm_setup(void);
+static void wm_get_xres_config(void);
 static void wm_init_color_set(void);
 static void wm_setup_keybindings(void);
 
@@ -277,17 +279,18 @@ void wm_clean(void) {
 }
 
 static void wm_setup(void) {
-  wm.border_width = border_width;
-  wm.padding.tag_x = tag_x_padding;
   wm.layout_list = layout_list;
   wm.layout_count = (uint16_t)countof(layout_list);
 
+  wm_get_xres_config();
   wm_init_color_set();
 
-  int font_height = text_init_pango_layout(font_family, font_size, default_dpi);
-  wm.bar_height = (uint16_t)font_height + 2 * bar_y_padding;
-
-  logger("font height: %d, bar height: %u\n", font_height, wm.bar_height);
+  {
+    int font_height =
+      text_init_pango_layout(wm.font_family, wm.font_size, wm.dpi);
+    wm.bar_height = (uint16_t)font_height + 2 * wm.padding.bar_y;
+    logger("font height: %d, bar height: %u\n", font_height, wm.bar_height);
+  }
 
   uint32_t tag_count = 0;
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
@@ -329,6 +332,28 @@ static void wm_setup(void) {
 
   xkb_init();
   xcb_flush(wm.xcb_conn);
+}
+
+static void wm_get_xres_config(void) {
+  xres_init_xrm_db();
+
+  wm.dpi = default_dpi;
+  wm.font_size = font_size;
+  xres_get_uint32("Xft.dpi", (uint32_t *)&wm.dpi);
+  xres_get_uint32(APP_NAME ".font_size", (uint32_t *)&wm.font_size);
+  xres_get_string(APP_NAME ".font_family", &wm.font_family, font_family);
+
+  wm.border_width = border_width;
+  xres_get_uint32(APP_NAME ".border_width", (uint32_t *)&wm.border_width);
+
+  wm.padding.bar_y = bar_y_padding;
+  wm.padding.tag_x = tag_x_padding;
+#define NAME APP_NAME ".padding."
+  xres_get_uint32(NAME "bar_y", (uint32_t *)&wm.padding.bar_y);
+  xres_get_uint32(NAME "tag_x", (uint32_t *)&wm.padding.tag_x);
+#undef NAME
+
+  xres_clean();
 }
 
 void wm_init_color_set(void) {
