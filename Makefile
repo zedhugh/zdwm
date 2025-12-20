@@ -19,10 +19,10 @@ clean:
 	${RM} -r $(BUILD_DIR)
 
 run:
-	-$(shell Xephyr :3 -screen 1920x1080 &)
+	-$(shell Xephyr :3 -screen 1920x1080 -dpi `xrdb -get Xft.dpi` &)
 
 run_multiple_screen:
-	-$(shell Xephyr :3 -screen 1920x1080 -screen 1920x1080 +xinerama &)
+	-$(shell Xephyr :3 -screen 1920x1080 -screen 1920x1080 +xinerama -dpi `xrdb -get Xft.dpi` &)
 
 wm: $(TARGET_NAME)
 	DISPLAY=:3 $(TARGET)
