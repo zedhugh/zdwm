@@ -8,6 +8,7 @@
 #include <xcb/xproto.h>
 
 #include "atoms-extern.h"
+#include "base.h"
 #include "monitor.h"
 #include "types.h"
 #include "utils.h"
@@ -64,6 +65,7 @@ static void client_add_to_tag(client_t *client, tag_t *tag) {
   task->client = client;
   task->next = tag->task_list;
   tag->task_list = task;
+  task->geometry = client->geometry;
 }
 
 static void client_remove_from_tag(client_t *client, tag_t *tag) {
@@ -110,14 +112,32 @@ static inline void client_update_names(client_t *c) {
   xwindow_get_text_property(c->window, _NET_WM_ICON_NAME, &c->net_icon_name);
 }
 
+static inline void client_init_geometry(client_t *c) {
+  area_t workarea = c->monitor->workarea;
+  if (c->geometry.x + client_width(c) > workarea.x + workarea.width) {
+    c->geometry.x = workarea.x + workarea.width - client_width(c);
+  }
+  if (c->geometry.y + client_height(c) > workarea.y + workarea.height) {
+    c->geometry.y = workarea.y + workarea.height - client_height(c);
+  }
+  c->geometry.x = MAX(c->geometry.x, workarea.x);
+  c->geometry.y = MAX(c->geometry.y, workarea.y);
+
+  client_move_to(c, c->geometry.x, c->geometry.y);
+  client_resize(c, c->geometry.width, c->geometry.height);
+  client_change_border_color(c, &wm.color_set.active_border_color);
+  client_change_border_width(c, wm.border_width);
+}
+
 void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply) {
   client_t *c = p_new(client_t, 1);
   c->window = window;
-
-  client_move_to(c, geometry_reply->x, geometry_reply->y);
-  client_resize(c, geometry_reply->width, geometry_reply->height);
-  client_change_border_width(c, geometry_reply->border_width);
+  c->geometry.x = geometry_reply->x;
+  c->geometry.y = geometry_reply->y;
+  c->geometry.width = geometry_reply->width;
+  c->geometry.height = geometry_reply->height;
+  c->border_width = geometry_reply->border_width;
 
   {
     const xcb_params_cw_t params = {
@@ -161,6 +181,7 @@ void client_manage(xcb_window_t window,
       c->tags = c->monitor->selected_tag->mask;
     }
 
+    client_init_geometry(c);
     client_tags_apply(c);
   }
 
@@ -211,12 +232,22 @@ void client_resize(client_t *client, uint16_t width, uint16_t height) {
          width, height);
 }
 
+void client_change_border_color(client_t *client, color_t *color) {
+  uint16_t mask = XCB_CW_BORDER_PIXEL;
+  const xcb_params_cw_t params = {.border_pixel = color->argb};
+  xcb_aux_change_window_attributes(wm.xcb_conn, client->window, mask, &params);
+  client->border_color = color;
+  logger("== client 0x%x border color: RGBA(#%08x), ARGB(#%08x)\n",
+         client->window, color->rgba, color->argb);
+}
+
 void client_change_border_width(client_t *client, uint16_t border_width) {
   if (client->border_width == border_width) return;
   uint16_t mask = XCB_CONFIG_WINDOW_BORDER_WIDTH;
   const xcb_params_configure_window_t params = {.border_width = border_width};
   xcb_aux_configure_window(wm.xcb_conn, client->window, mask, &params);
   client->border_width = border_width;
+  logger("== client 0x%x border width: %u\n", client->window, border_width);
 }
 
 void client_update_wm_hints(client_t *client) {

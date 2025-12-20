@@ -51,3 +51,10 @@ void client_focus(client_t *client);
 void client_stack_raise(client_t *client);
 
 bool client_is_visible(client_t *client);
+
+static inline uint16_t client_width(client_t *c) {
+  return c->geometry.width + c->border_width * 2;
+}
+static inline uint16_t client_height(client_t *c) {
+  return c->geometry.height + c->border_width * 2;
+}

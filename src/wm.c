@@ -277,6 +277,7 @@ void wm_clean(void) {
 }
 
 static void wm_setup(void) {
+  wm.border_width = border_width;
   wm.padding.tag_x = tag_x_padding;
   wm.layout_list = layout_list;
   wm.layout_count = (uint16_t)countof(layout_list);
@@ -336,6 +337,8 @@ void wm_init_color_set(void) {
   color_parse(active_tag_bg, &wm.color_set.active_tag_bg);
   color_parse(tag_color, &wm.color_set.tag_color);
   color_parse(active_tag_color, &wm.color_set.active_tag_color);
+  color_parse(border_color, &wm.color_set.border_color);
+  color_parse(active_border_color, &wm.color_set.active_border_color);
 }
 
 void wm_setup_keybindings(void) {

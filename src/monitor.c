@@ -255,8 +255,8 @@ void monitor_arrange(monitor_t *monitor) {
     if (task) {
       client_apply_task_geometry(c, task);
     } else {
-      int16_t x = -c->geometry.width;
-      int16_t y = -c->geometry.height;
+      int16_t x = -client_width(c);
+      int16_t y = -client_height(c);
       if (x != c->geometry.x || y != c->geometry.y) {
         client_move_to(c, x, y);
       }

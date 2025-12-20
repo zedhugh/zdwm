@@ -14,6 +14,7 @@ static const int default_dpi = 144;
 static const char *const tags[] = {
   "1", "2", "3", "4", "5", "6", "7", "8", "9", nullptr,
 };
+static const uint16_t border_width = 1;
 static const uint16_t bar_y_padding = 1;
 static const uint16_t tag_x_padding = 10;
 
@@ -22,6 +23,8 @@ static const char *const tag_bg = "#222222";
 static const char *const active_tag_bg = "#005577";
 static const char *const tag_color = "#bbbbbb";
 static const char *const active_tag_color = "#eeeeee";
+static const char *const border_color = "#444444";
+static const char *const active_border_color = "#005577";
 
 static const button_t button_list[] = {
   {click_tag, modifier_none, button_left, select_tag_of_current_monitor, {0}},

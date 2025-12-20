@@ -87,3 +87,8 @@ static inline void logger(const char *format, ...) {
 #else
 #define logger(format, ...) printf(format, ##__VA_ARGS__)
 #endif
+
+#ifdef MAX
+#undef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif

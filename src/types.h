@@ -86,6 +86,8 @@ typedef struct color_set_t {
   color_t active_tag_bg;
   color_t tag_color;
   color_t active_tag_color;
+  color_t border_color;
+  color_t active_border_color;
 } color_set_t;
 
 typedef struct padding_t {

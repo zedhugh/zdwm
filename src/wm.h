@@ -8,6 +8,7 @@
 
 typedef struct wm_t {
   padding_t padding;
+  uint16_t border_width;
   uint16_t bar_height;
   uint16_t layout_count;
 
