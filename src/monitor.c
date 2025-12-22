@@ -54,6 +54,7 @@ void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask) {
   for (tag_t *tag = monitor->tag_list; tag; tag = tag->next) {
     if (tag->mask == tag_mask) {
       monitor->selected_tag = tag;
+      monitor_arrange(monitor);
       monitor_draw_bar(monitor);
       xcb_flush(wm.xcb_conn);
       break;
