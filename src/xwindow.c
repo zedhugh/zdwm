@@ -187,6 +187,8 @@ void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
     wm.xcb_conn, false, window, property, XCB_ATOM_ANY, 0, UINT32_MAX);
   xcb_get_property_reply_t *reply =
     xcb_get_property_reply(wm.xcb_conn, cookie, nullptr);
+  if (!reply) return;
+
   int length = xcb_get_property_value_length(reply);
   char *value = xcb_get_property_value(reply);
 
