@@ -36,6 +36,8 @@ static const keyboard_t key_list[] = {
   {modifier_alt, XK_p, spawn, {.ptr = launcher}},
   {modifier_alt, XK_q, quit, {.b = false}},
   {modifier_alt, XK_r, quit, {.b = true}},
+  {modifier_alt | modifier_shift, XK_j, focus_client_in_same_tag, {.b = true}},
+  {modifier_alt | modifier_shift, XK_k, focus_client_in_same_tag, {.b = false}},
 };
 
 static const layout_t layout_list[] = {

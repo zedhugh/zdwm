@@ -390,6 +390,25 @@ void wm_quit(void) {
   }
 }
 
+void wm_restack_clients(void) {
+  xcb_window_t sibling_window = XCB_WINDOW_NONE;
+  for (client_t *c = wm.client_stack_list; c; c = c->stack_next) {
+    uint16_t mask = XCB_CONFIG_WINDOW_STACK_MODE;
+    xcb_params_configure_window_t params = {};
+    if (sibling_window == XCB_WINDOW_NONE) {
+      mask = XCB_CONFIG_WINDOW_STACK_MODE;
+      params.stack_mode = XCB_STACK_MODE_ABOVE;
+    } else {
+      mask = XCB_CONFIG_WINDOW_STACK_MODE | XCB_CONFIG_WINDOW_SIBLING;
+      params.stack_mode = XCB_STACK_MODE_BELOW;
+      params.sibling = sibling_window;
+    }
+    sibling_window = c->window;
+    xcb_aux_configure_window(wm.xcb_conn, c->window, mask, &params);
+  }
+  xcb_flush(wm.xcb_conn);
+}
+
 static void debug_show_monitor_list(void) {
   logger("\n========================== monitors ==========================\n");
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {

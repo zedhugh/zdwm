@@ -58,6 +58,22 @@ task_in_tag_t *client_get_task_in_tag(client_t *client, tag_t *tag) {
   return nullptr;
 }
 
+task_in_tag_t *client_get_next_task_in_tag(client_t *client, tag_t *tag) {
+  if (!tag->task_list) return nullptr;
+
+  task_in_tag_t *task = tag->task_list;
+  for (; task && task->client != client; task = task->next);
+  return task && task->next ? task->next : tag->task_list;
+}
+
+task_in_tag_t *client_get_previous_task_in_tag(client_t *client, tag_t *tag) {
+  if (!tag->task_list) return nullptr;
+
+  task_in_tag_t *task = tag->task_list;
+  for (; task && task->next && task->next->client != client; task = task->next);
+  return task ? task : tag->task_list;
+}
+
 static void client_add_to_tag(client_t *client, tag_t *tag) {
   if (client_get_task_in_tag(client, tag)) return;
 
@@ -191,6 +207,7 @@ void client_manage(xcb_window_t window,
   monitor_arrange(c->monitor);
   monitor_draw_bar(c->monitor);
 
+  wm_restack_clients();
   if (c->tags & c->monitor->selected_tag->mask) client_focus(c);
 
   xcb_flush(wm.xcb_conn);
@@ -279,6 +296,7 @@ void client_unmanage(client_t *client) {
 
   client_wipe(client);
 
+  wm_restack_clients();
   monitor_deal_focus(m);
   monitor_arrange(m);
   monitor_draw_bar(m);
@@ -301,6 +319,12 @@ void client_apply_task_geometry(client_t *client, task_in_tag_t *task) {
 void client_focus(client_t *client) {
   wm.client_focused = client;
   xwindow_focus(client ? client->window : XCB_WINDOW_NONE);
+}
+
+void client_stack_raise(client_t *client) {
+  client_detach_stack(client);
+  client_attach_stack(client);
+  wm_restack_clients();
 }
 
 bool client_is_visible(client_t *client) {

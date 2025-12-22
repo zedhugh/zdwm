@@ -51,3 +51,4 @@ extern wm_t wm;
 
 void wm_restart(void);
 void wm_quit(void);
+void wm_restack_clients(void);

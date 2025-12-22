@@ -7,6 +7,8 @@
 
 client_t *client_get_by_window(xcb_window_t window);
 task_in_tag_t *client_get_task_in_tag(client_t *client, tag_t *tag);
+task_in_tag_t *client_get_next_task_in_tag(client_t *client, tag_t *tag);
+task_in_tag_t *client_get_previous_task_in_tag(client_t *client, tag_t *tag);
 void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply);
 char **client_get_task_title(client_t *client);
