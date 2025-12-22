@@ -191,6 +191,8 @@ void client_manage(xcb_window_t window,
   monitor_arrange(c->monitor);
   monitor_draw_bar(c->monitor);
 
+  if (c->tags & c->monitor->selected_tag->mask) client_focus(c);
+
   xcb_flush(wm.xcb_conn);
 }
 
@@ -277,6 +279,7 @@ void client_unmanage(client_t *client) {
 
   client_wipe(client);
 
+  monitor_deal_focus(m);
   monitor_arrange(m);
   monitor_draw_bar(m);
   xcb_flush(wm.xcb_conn);
@@ -293,6 +296,11 @@ void client_apply_task_geometry(client_t *client, task_in_tag_t *task) {
       task->geometry.height != client->geometry.height) {
     client_resize(client, task->geometry.width, task->geometry.height);
   }
+}
+
+void client_focus(client_t *client) {
+  wm.client_focused = client;
+  xwindow_focus(client ? client->window : XCB_WINDOW_NONE);
 }
 
 bool client_is_visible(client_t *client) {
