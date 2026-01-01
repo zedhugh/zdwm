@@ -6,6 +6,11 @@ IndentWidth: 2
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
 ---
+Language: C
+DerivePointerAlignment: false
+PointerAlignment: Right
+---
 Language: Cpp
+DerivePointerAlignment: false
 PointerAlignment: Right
 ---
