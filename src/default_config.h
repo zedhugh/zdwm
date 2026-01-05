@@ -41,6 +41,7 @@ static const keyboard_t key_list[] = {
 };
 
 static const layout_t layout_list[] = {
+  {.symbol = "[]=", .arrange = tile},
   {.symbol = "[M]", .arrange = monocle},
   {.symbol = "><=", .arrange = nullptr},
 };
