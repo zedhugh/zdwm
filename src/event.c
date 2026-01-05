@@ -135,6 +135,22 @@ static void map_request(xcb_map_request_event_t *ev) {
   p_delete(&wa_reply);
 }
 
+static void client_message(xcb_client_message_event_t *ev) {
+  client_t *c = client_get_by_window(ev->window);
+  if (c == nullptr) return;
+
+  if (ev->type == _NET_ACTIVE_WINDOW) {
+    for (tag_t *t = c->monitor->tag_list; t; t = t->next) {
+      if ((t->mask & c->tags) == 0) continue;
+
+      wm.current_monitor = c->monitor;
+      monitor_select_tag(c->monitor, t->mask);
+      client_focus(c);
+      return;
+    }
+  }
+}
+
 static void property_notify(xcb_property_notify_event_t *ev) {
   client_t *client = client_get_by_window(ev->window);
   if (client == nullptr) return;
@@ -185,6 +201,7 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_KEY_RELEASE, key_press);
     EVENT(XCB_CONFIGURE_REQUEST, configure_request);
     EVENT(XCB_MAP_REQUEST, map_request);
+    EVENT(XCB_CLIENT_MESSAGE, client_message);
     EVENT(XCB_PROPERTY_NOTIFY, property_notify);
     EVENT(XCB_UNMAP_NOTIFY, unmap_notify);
     EVENT(XCB_DESTROY_NOTIFY, destroy_notify);

@@ -204,6 +204,9 @@ void client_manage(xcb_window_t window,
   client_attach_list(c);
   client_attach_stack(c);
 
+  xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_APPEND, wm.screen->root,
+                      _NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, 1, &window);
+
   monitor_arrange(c->monitor);
   monitor_draw_bar(c->monitor);
 
@@ -284,6 +287,19 @@ void client_update_wm_hints(client_t *client) {
   }
 }
 
+static void update_client_list(void) {
+  xcb_connection_t *conn = wm.xcb_conn;
+  xcb_window_t root = wm.screen->root;
+  xcb_atom_t atom = _NET_CLIENT_LIST;
+  uint8_t mode = XCB_PROP_MODE_PREPEND;
+  xcb_atom_t type = XCB_ATOM_WINDOW;
+
+  xcb_delete_property(conn, root, atom);
+  for (client_t *c = wm.client_list; c; c = c->next) {
+    xcb_change_property(conn, mode, root, atom, type, 32, 1, &c->window);
+  }
+}
+
 void client_unmanage(client_t *client) {
   monitor_t *m = client->monitor;
 
@@ -295,6 +311,8 @@ void client_unmanage(client_t *client) {
   }
 
   client_wipe(client);
+
+  update_client_list();
 
   wm_restack_clients();
   monitor_deal_focus(m);
