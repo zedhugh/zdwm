@@ -49,7 +49,10 @@ uint32_t monitor_initialize_tag(monitor_t *monitor, const char **tags,
 }
 
 void monitor_deal_focus(monitor_t *monitor) {
-  if (!monitor->selected_tag->task_list) return;
+  if (!monitor->selected_tag->task_list) {
+    client_focus(nullptr);
+    return;
+  }
 
   client_t *client = nullptr;
   for (client_t *c = wm.client_stack_list; c; c = c->stack_next) {
@@ -69,12 +72,12 @@ void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask) {
       monitor->selected_tag = tag;
       monitor_arrange(monitor);
       monitor_draw_bar(monitor);
-      xcb_flush(wm.xcb_conn);
       break;
     }
   }
 
   monitor_deal_focus(monitor);
+  xcb_flush(wm.xcb_conn);
 }
 
 static void tag_clean(tag_t *tag) {
