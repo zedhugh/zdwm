@@ -232,6 +232,12 @@ bool client_need_layout(client_t *client) {
   return true;
 }
 
+void client_send_to_tag(client_t *client, uint32_t tag_mask) {
+  client->tags = tag_mask;
+  client_tags_apply(client);
+  monitor_select_tag(client->monitor, tag_mask);
+}
+
 void client_move_to(client_t *client, int16_t x, int16_t y) {
   client->geometry.x = x;
   client->geometry.y = y;

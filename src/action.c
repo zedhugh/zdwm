@@ -29,6 +29,10 @@ void select_tag_of_current_monitor(const user_action_arg_t *arg) {
   monitor_select_tag(wm.current_monitor, arg->ui);
 }
 
+void send_client_to_tag(const user_action_arg_t *arg) {
+  if (wm.client_focused) client_send_to_tag(wm.client_focused, arg->ui);
+}
+
 void spawn(const user_action_arg_t *arg) {
   const char *cmd = (const char *)arg->ptr;
   if (cmd == nullptr || strlen(cmd) == 0) return;
