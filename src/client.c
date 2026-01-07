@@ -238,6 +238,27 @@ void client_send_to_tag(client_t *client, uint32_t tag_mask) {
   monitor_select_tag(client->monitor, tag_mask);
 }
 
+void client_send_to_monitor(client_t *client, monitor_t *monitor) {
+  if (client->monitor == monitor) return;
+
+  for (tag_t *tag = client->monitor->tag_list; tag; tag = tag->next) {
+    client_remove_from_tag(client, tag);
+  }
+
+  monitor_t *m = client->monitor;
+
+  client->monitor = monitor;
+  client->tags = monitor->selected_tag->mask;
+  client_add_to_tag(client, monitor->selected_tag);
+
+  monitor_arrange(m);
+  monitor_arrange(monitor);
+  monitor_draw_bar(m);
+  monitor_draw_bar(monitor);
+
+  xcb_flush(wm.xcb_conn);
+}
+
 void client_move_to(client_t *client, int16_t x, int16_t y) {
   client->geometry.x = x;
   client->geometry.y = y;

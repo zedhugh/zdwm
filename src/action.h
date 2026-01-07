@@ -51,5 +51,6 @@ typedef struct keyboard_t {
 void focus_client_in_same_tag(const user_action_arg_t *arg);
 void select_tag_of_current_monitor(const user_action_arg_t *arg);
 void send_client_to_tag(const user_action_arg_t *arg);
+void send_client_to_next_monitor(const user_action_arg_t *arg);
 void spawn(const user_action_arg_t *arg);
 void quit(const user_action_arg_t *arg);

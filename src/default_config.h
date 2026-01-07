@@ -53,6 +53,8 @@ static const keyboard_t key_list[] = {
   TAGKEYS(XK_7, 1 << 6),
   TAGKEYS(XK_8, 1 << 7),
   TAGKEYS(XK_9, 1 << 8),
+
+  {modifier_alt, XK_o, send_client_to_next_monitor, {0}},
 };
 
 static const layout_t layout_list[] = {
