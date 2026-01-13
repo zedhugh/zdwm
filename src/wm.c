@@ -409,6 +409,16 @@ void wm_restack_clients(void) {
   xcb_flush(wm.xcb_conn);
 }
 
+monitor_t *wm_get_monitor_by_point(point_t point) {
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    if (m->geometry.x <= point.x &&
+        point.x < m->geometry.x + m->geometry.width) {
+      return m;
+    }
+  }
+  return wm.monitor_list;
+}
+
 static void debug_show_monitor_list(void) {
   logger("\n========================== monitors ==========================\n");
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {

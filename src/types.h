@@ -61,6 +61,9 @@ struct monitor_t {
   extent_in_bar_t layout_symbol_extent;
 
   xcb_window_t bar_window;
+
+  point_t cursor_position;
+  bool position_inited;
 };
 
 struct tag_t {

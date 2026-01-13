@@ -12,3 +12,5 @@ void monitor_clean(monitor_t *monitor);
 void monitor_init_bar(monitor_t *monitor);
 void monitor_draw_bar(monitor_t *monitor);
 void monitor_arrange(monitor_t *monitor);
+void monitor_save_cursor_point(monitor_t *monitor);
+void monitor_restore_cursor_point(monitor_t *monitor);

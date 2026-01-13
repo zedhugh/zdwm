@@ -5,6 +5,7 @@
 #include <xcb/xcb_xrm.h>
 #include <xkbcommon/xkbcommon.h>
 
+#include "base.h"
 #include "types.h"
 
 typedef struct wm_t {
@@ -52,3 +53,4 @@ extern wm_t wm;
 void wm_restart(void);
 void wm_quit(void);
 void wm_restack_clients(void);
+monitor_t *wm_get_monitor_by_point(point_t point);

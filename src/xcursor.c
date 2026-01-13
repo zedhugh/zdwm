@@ -2,7 +2,9 @@
 
 #include <stdint.h>
 #include <xcb/xcb_cursor.h>
+#include <xcb/xproto.h>
 
+#include "base.h"
 #include "utils.h"
 #include "wm.h"
 
@@ -125,4 +127,20 @@ void xcursor_clean(void) {
     if (cursor) xcb_free_cursor(wm.xcb_conn, cursor);
   }
   if (cursor_ctx) xcb_cursor_context_free(cursor_ctx);
+}
+
+point_t xcursor_query_pointer_position(void) {
+  xcb_query_pointer_cookie_t cookie =
+    xcb_query_pointer(wm.xcb_conn, wm.screen->root);
+  xcb_query_pointer_reply_t *reply =
+    xcb_query_pointer_reply(wm.xcb_conn, cookie, nullptr);
+  point_t pos = {.x = reply->root_x, .y = reply->root_y};
+  p_delete(&reply);
+  return pos;
+}
+
+void xcursor_set_pointer_position(point_t point) {
+  xcb_window_t window = XCB_WINDOW_NONE;
+  xcb_window_t root = wm.screen->root;
+  xcb_warp_pointer(wm.xcb_conn, window, root, 0, 0, 1, 1, point.x, point.y);
 }
