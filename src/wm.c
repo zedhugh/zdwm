@@ -419,6 +419,12 @@ monitor_t *wm_get_monitor_by_point(point_t point) {
   return wm.monitor_list;
 }
 
+monitor_t *wm_get_next_monitor(monitor_t *monitor) {
+  monitor_t *next_monitor = monitor->next;
+  if (next_monitor == nullptr) next_monitor = wm.monitor_list;
+  return next_monitor;
+}
+
 static void debug_show_monitor_list(void) {
   logger("\n========================== monitors ==========================\n");
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {

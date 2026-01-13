@@ -251,6 +251,7 @@ void client_send_to_monitor(client_t *client, monitor_t *monitor) {
   client->tags = monitor->selected_tag->mask;
   client_add_to_tag(client, monitor->selected_tag);
 
+  wm.current_monitor = monitor;
   monitor_arrange(m);
   monitor_arrange(monitor);
   monitor_draw_bar(m);
