@@ -270,6 +270,8 @@ void monitor_arrange(monitor_t *monitor) {
   if (tag->layout && tag->layout->arrange) tag->layout->arrange(tag);
 
   for (client_t *c = wm.client_list; c; c = c->next) {
+    if (c->monitor != monitor) continue;
+
     task_in_tag_t *task = client_get_task_in_tag(c, tag);
     if (task) {
       client_apply_task_geometry(c, task);
