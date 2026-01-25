@@ -21,7 +21,9 @@
 #include "atoms-extern.h"
 #include "atoms.h"
 #include "backtrace.h"
+#include "base.h"
 #include "buffer.h"
+#include "client.h"
 #include "color.h"
 #include "default_config.h"
 #include "event.h"
@@ -395,6 +397,26 @@ void wm_restack_clients(void) {
   xcb_flush(wm.xcb_conn);
 }
 
+static inline int intersect(area_t area, monitor_t *m) {
+  return MAX(0, MIN(area.x + area.width, m->geometry.x + m->geometry.width) -
+                  MAX(area.x, m->geometry.x)) *
+         MAX(0, MIN(area.y + area.height, m->geometry.y + m->geometry.height) -
+                  MAX(area.y, m->geometry.y));
+}
+
+monitor_t *wm_get_monitor_by_area(area_t area) {
+  monitor_t *monitor = wm.current_monitor;
+  int temp_area, max_area = 0;
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    if ((temp_area = intersect(area, m)) > max_area) {
+      max_area = temp_area;
+      monitor = m;
+    }
+  }
+
+  return monitor;
+}
+
 monitor_t *wm_get_monitor_by_point(point_t point) {
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
     if (m->geometry.x <= point.x &&
@@ -403,6 +425,28 @@ monitor_t *wm_get_monitor_by_point(point_t point) {
     }
   }
   return wm.monitor_list;
+}
+
+monitor_t *wm_get_monitor_by_window(xcb_window_t window) {
+  if (window == wm.screen->root) {
+    xcb_query_pointer_cookie_t cookie = xcb_query_pointer(wm.xcb_conn, window);
+    xcb_query_pointer_reply_t *reply =
+      xcb_query_pointer_reply(wm.xcb_conn, cookie, nullptr);
+    if (reply) {
+      area_t area = {reply->root_x, reply->root_y, 1, 1};
+      p_delete(&reply);
+      return wm_get_monitor_by_area(area);
+    }
+  }
+
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    if (window == m->bar_window) return m;
+  }
+
+  client_t *c = client_get_by_window(window);
+  if (c) return c->monitor;
+
+  return wm.current_monitor;
 }
 
 monitor_t *wm_get_next_monitor(monitor_t *monitor) {

@@ -185,6 +185,25 @@ static void unmap_notify(xcb_unmap_notify_event_t *ev) {
   if (client) client_unmanage(client);
 }
 
+static void map_notify(xcb_map_notify_event_t *ev) {
+  /* 锁屏重新进入桌面后绘制 bar 内容以免 bar 不显示内容 */
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    if (ev->window == m->bar_window) {
+      monitor_draw_bar(m);
+      xcb_flush(wm.xcb_conn);
+      return;
+    }
+  }
+}
+
+static void expose(xcb_expose_event_t *ev) {
+  if (ev->count > 0) return;
+
+  monitor_t *monitor = wm_get_monitor_by_window(ev->window);
+  monitor_draw_bar(monitor);
+  xcb_flush(wm.xcb_conn);
+}
+
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
@@ -202,6 +221,8 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_KEY_RELEASE, key_press);
     EVENT(XCB_CONFIGURE_REQUEST, configure_request);
     EVENT(XCB_MAP_REQUEST, map_request);
+    EVENT(XCB_MAP_NOTIFY, map_notify);
+    EVENT(XCB_EXPOSE, expose);
     EVENT(XCB_CLIENT_MESSAGE, client_message);
     EVENT(XCB_PROPERTY_NOTIFY, property_notify);
     EVENT(XCB_UNMAP_NOTIFY, unmap_notify);
