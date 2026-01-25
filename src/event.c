@@ -2,7 +2,6 @@
 
 #include <glib.h>
 #include <stdint.h>
-#include <string.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcb_keysyms.h>
@@ -107,10 +106,8 @@ static void key_press(xcb_key_press_event_t *ev) {
 }
 
 static void map_request(xcb_map_request_event_t *ev) {
-  xcb_get_window_attributes_cookie_t wa_cookie =
-    xcb_get_window_attributes_unchecked(wm.xcb_conn, ev->window);
   xcb_get_window_attributes_reply_t *wa_reply =
-    xcb_get_window_attributes_reply(wm.xcb_conn, wa_cookie, nullptr);
+    xwindow_get_attributes_reply(ev->window);
 
   if (!wa_reply) return;
   if (wa_reply->override_redirect) {
@@ -120,10 +117,8 @@ static void map_request(xcb_map_request_event_t *ev) {
 
   client_t *c = client_get_by_window(ev->window);
   if (!c) {
-    xcb_get_geometry_cookie_t geo_cookie =
-      xcb_get_geometry(wm.xcb_conn, ev->window);
     xcb_get_geometry_reply_t *geo_reply =
-      xcb_get_geometry_reply(wm.xcb_conn, geo_cookie, nullptr);
+      xwindow_get_geometry_reply(ev->window);
     if (!geo_reply) {
       p_delete(&wa_reply);
       return;

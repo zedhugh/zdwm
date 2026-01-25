@@ -20,6 +20,11 @@ bool xwindow_send_event(xcb_window_t window, xcb_atom_t atom);
 void xwindow_focus(xcb_window_t window);
 void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
                                char **out);
+xcb_window_t xwindow_get_transient_for(xcb_window_t window);
+int32_t xwindow_get_state(xcb_window_t window);
+xcb_get_geometry_reply_t *xwindow_get_geometry_reply(xcb_window_t window);
+xcb_get_window_attributes_reply_t *xwindow_get_attributes_reply(
+  xcb_window_t window);
 
 #define xwindow_set_name_static(window, name)                    \
   xcb_icccm_set_wm_name(wm.xcb_conn, window, XCB_ATOM_STRING, 8, \

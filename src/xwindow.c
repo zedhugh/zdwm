@@ -205,3 +205,37 @@ void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
 
   p_delete(&reply);
 }
+
+xcb_window_t xwindow_get_transient_for(xcb_window_t window) {
+  xcb_connection_t *conn = wm.xcb_conn;
+  xcb_window_t t_window = XCB_WINDOW_NONE;
+  xcb_get_property_cookie_t cookie =
+    xcb_icccm_get_wm_transient_for(conn, window);
+  xcb_icccm_get_wm_transient_for_reply(conn, cookie, &t_window, nullptr);
+  return t_window;
+}
+
+/**
+ * @brief 获取窗口的状态
+ * @param window 目标窗口
+ * @returns 成功返回 xcb_icccm_wm_state_t 枚举类型，失败返回 -1
+ */
+int32_t xwindow_get_state(xcb_window_t window) {
+  xcb_connection_t *conn = wm.xcb_conn;
+  xcb_icccm_wm_hints_t hints;
+  xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_hints(conn, window);
+  if (!xcb_icccm_get_wm_hints_reply(conn, cookie, &hints, nullptr)) return -1;
+  return hints.initial_state;
+}
+
+xcb_get_geometry_reply_t *xwindow_get_geometry_reply(xcb_window_t window) {
+  xcb_get_geometry_cookie_t cookie = xcb_get_geometry(wm.xcb_conn, window);
+  return xcb_get_geometry_reply(wm.xcb_conn, cookie, nullptr);
+}
+
+xcb_get_window_attributes_reply_t *xwindow_get_attributes_reply(
+  xcb_window_t window) {
+  xcb_get_window_attributes_cookie_t wa_cookie =
+    xcb_get_window_attributes(wm.xcb_conn, window);
+  return xcb_get_window_attributes_reply(wm.xcb_conn, wa_cookie, nullptr);
+}

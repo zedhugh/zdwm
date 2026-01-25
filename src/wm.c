@@ -243,7 +243,67 @@ void wm_detect_monitor(void) {
   wm.current_monitor = monitor;
 }
 
-void wm_scan_clients(void) {}
+typedef struct window_list_t {
+  xcb_window_t *normal_list;
+  xcb_window_t *transient_list;
+  uint32_t normal_count;
+  uint32_t transient_count;
+} window_list_t;
+void wm_scan_clients(void) {
+  xcb_query_tree_cookie_t cookie = xcb_query_tree(wm.xcb_conn, wm.screen->root);
+  xcb_query_tree_reply_t *tree_reply =
+    xcb_query_tree_reply(wm.xcb_conn, cookie, nullptr);
+  if (!tree_reply) return;
+
+  xcb_window_t *list = xcb_query_tree_children(tree_reply);
+  int len = xcb_query_tree_children_length(tree_reply);
+  if (!len) {
+    p_delete(&tree_reply);
+    return;
+  }
+
+  xcb_get_window_attributes_reply_t *wa_reply = nullptr;
+  xcb_get_geometry_reply_t *geo_reply = nullptr;
+  for (int i = 0; i < len; i++) {
+    xcb_window_t window = list[i];
+    wa_reply = xwindow_get_attributes_reply(window);
+    if (!wa_reply) continue;
+
+    uint8_t override_redirect = wa_reply->override_redirect;
+    uint8_t map_state = wa_reply->map_state;
+    p_delete(&wa_reply);
+
+    if (override_redirect || xwindow_get_transient_for(window)) continue;
+
+    geo_reply = xwindow_get_geometry_reply(window);
+    if (!geo_reply) continue;
+
+    if (map_state == XCB_MAP_STATE_VIEWABLE ||
+        xwindow_get_state(window) == XCB_ICCCM_WM_STATE_ICONIC) {
+      client_manage(window, geo_reply);
+    }
+    p_delete(&geo_reply);
+  }
+  for (int i = 0; i < len; i++) {
+    xcb_window_t window = list[i];
+    wa_reply = xwindow_get_attributes_reply(window);
+    if (!wa_reply) continue;
+
+    uint8_t map_state = wa_reply->map_state;
+    p_delete(&wa_reply);
+
+    geo_reply = xwindow_get_geometry_reply(window);
+    if (!geo_reply) continue;
+
+    if (xwindow_get_transient_for(window) &&
+        (map_state == XCB_MAP_STATE_VIEWABLE ||
+         xwindow_get_state(window) == XCB_ICCCM_WM_STATE_ICONIC)) {
+      client_manage(window, geo_reply);
+    }
+    p_delete(&geo_reply);
+  }
+  p_delete(&tree_reply);
+}
 
 void wm_clean(void) {
   text_clean_pango_layout();
@@ -483,6 +543,7 @@ int main(int argc, char *argv[]) {
   wm_detect_monitor();
   wm_setup();
   setup_event_loop();
+  wm_scan_clients();
 
   debug_show_monitor_list();
 
