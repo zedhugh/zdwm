@@ -284,8 +284,9 @@ static void wm_setup(void) {
     monitor_draw_bar(m);
   }
 
-  uint32_t mask = XCB_CW_EVENT_MASK | XCB_CW_CURSOR;
+  uint32_t mask = XCB_CW_EVENT_MASK | XCB_CW_CURSOR | XCB_CW_BACK_PIXEL;
   xcb_params_cw_t params = {
+    .back_pixel = wm.screen->black_pixel,
     .cursor = xcursor_get_xcb_cursor(cursor_normal),
     .event_mask =
       XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_KEY_PRESS,
