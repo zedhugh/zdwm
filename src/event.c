@@ -83,6 +83,7 @@ static void configure_request(xcb_configure_request_event_t *ev) {
       .stack_mode = ev->stack_mode,
     };
     xcb_configure_window_aux(wm.xcb_conn, ev->window, value_mask, &value_list);
+    xcb_flush(wm.xcb_conn);
   }
 }
 
