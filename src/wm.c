@@ -50,9 +50,6 @@ wm_t wm;
 /** argv used to run wm */
 static char **cmd_argv;
 
-/** A pipe that is used to asynchronously handle SIGCHLD */
-static int sigchld_pipe[2];
-
 static gboolean restart_on_signal(gpointer data) {
   wm_restart();
   return TRUE;
@@ -67,14 +64,6 @@ static void signal_fatal(int signal_number) {
   buffer_t buffer;
   backtrace_get(&buffer);
   fatal("signal %d, dumping backtrace\n%s", signal_number, buffer.s);
-}
-
-/* Signal handler for SIGCHLD. Causes reap_children() to be called. */
-static void signal_child(int signum) {
-  assert(signum == SIGCHLD);
-  int res = write(sigchld_pipe[1], " ", 1);
-  (void)res;
-  assert(res == 1);
 }
 
 static guint sources[3] = {0};
@@ -92,10 +81,6 @@ void wm_setup_signal(void) {
   sigaction(SIGILL, &sa, 0);
   sigaction(SIGSEGV, &sa, 0);
   signal(SIGPIPE, SIG_IGN);
-
-  sa.sa_handler = signal_child;
-  sa.sa_flags = SA_NOCLDSTOP | SA_RESTART;
-  sigaction(SIGCHLD, &sa, 0);
 }
 
 void wm_check_other_wm(void) {
