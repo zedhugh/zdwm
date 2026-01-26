@@ -30,19 +30,25 @@ static const button_t button_list[] = {
   {click_tag, modifier_none, button_left, select_tag_of_current_monitor, {0}},
 };
 
-#define TAGKEYS(KEY, TAG)                                                \
-  {modifier_alt, KEY, select_tag_of_current_monitor, {.ui = TAG}}, {     \
-    modifier_alt | modifier_shift, KEY, send_client_to_tag, {.ui = TAG}, \
+#define TAGKEYS(KEY, TAG)                                                  \
+  {modifier_super, KEY, select_tag_of_current_monitor, {.ui = TAG}}, {     \
+    modifier_super | modifier_shift, KEY, send_client_to_tag, {.ui = TAG}, \
   }
 
 static const char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
 static const keyboard_t key_list[] = {
-  {modifier_alt, XK_p, spawn, {.ptr = launcher}},
-  {modifier_alt, XK_q, quit, {.b = false}},
-  {modifier_alt, XK_r, quit, {.b = true}},
-  {modifier_alt | modifier_shift, XK_j, focus_client_in_same_tag, {.b = true}},
-  {modifier_alt | modifier_shift, XK_k, focus_client_in_same_tag, {.b = false}},
+  {modifier_super, XK_p, spawn, {.ptr = launcher}},
+  {modifier_super, XK_q, quit, {.b = false}},
+  {modifier_super, XK_r, quit, {.b = true}},
+  {modifier_super | modifier_shift,
+   XK_j,
+   focus_client_in_same_tag,
+   {.b = true}},
+  {modifier_super | modifier_shift,
+   XK_k,
+   focus_client_in_same_tag,
+   {.b = false}},
 
   TAGKEYS(XK_1, 1 << 0),
   TAGKEYS(XK_2, 1 << 1),
@@ -54,7 +60,7 @@ static const keyboard_t key_list[] = {
   TAGKEYS(XK_8, 1 << 7),
   TAGKEYS(XK_9, 1 << 8),
 
-  {modifier_alt, XK_o, send_client_to_next_monitor, {0}},
+  {modifier_super, XK_o, send_client_to_next_monitor, {0}},
 };
 
 static const layout_t layout_list[] = {
