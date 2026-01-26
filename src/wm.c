@@ -314,6 +314,11 @@ void wm_clean(void) {
     if (source_id) g_source_remove(source_id);
   }
 
+  xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_CLIENT_LIST);
+  xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_ACTIVE_WINDOW);
+  xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_SUPPORTING_WM_CHECK);
+  xcb_aux_sync(wm.xcb_conn);
+
   xcb_destroy_window(wm.xcb_conn, wm.wm_check_window);
   wm.wm_check_window = XCB_WINDOW_NONE;
 
