@@ -88,6 +88,7 @@ static const keyboard_t key_list[] = {
   {modifier_super, XK_o, send_client_to_next_monitor, {0}},
 
   {modifier_super | modifier_control, XK_space, toggle_client_floating, {0}},
+  {modifier_super, XK_f, toggle_client_fullscreen, {0}},
 };
 
 static const layout_t layout_list[] = {

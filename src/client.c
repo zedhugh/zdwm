@@ -362,6 +362,28 @@ void client_set_floating(client_t *client, bool floating) {
   monitor_arrange(client->monitor);
 }
 
+void client_set_fullscreen(client_t *client, bool fullscreen) {
+  if (client->fullscreen == fullscreen) return;
+
+  client->fullscreen = fullscreen;
+  if (fullscreen) {
+    xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, client->window,
+                        _NET_WM_STATE, XCB_ATOM_ATOM, 32, 1,
+                        &_NET_WM_STATE_FULLSCREEN);
+    client->old_border_width = client->border_width;
+    client_change_border_width(client, 0);
+    client_apply_geometry(client, client->monitor->geometry);
+    client_stack_raise(client);
+  } else {
+    xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, client->window,
+                        _NET_WM_STATE, XCB_ATOM_ATOM, 32, 0, 0);
+    client_change_border_width(client, client->old_border_width);
+    client_apply_geometry(client, client->old_geometry);
+    monitor_arrange(client->monitor);
+  }
+  client_focus(client);
+}
+
 static void update_client_list(void) {
   xcb_connection_t *conn = wm.xcb_conn;
   xcb_window_t root = wm.screen->root;

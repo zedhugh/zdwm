@@ -144,6 +144,27 @@ static void client_message(xcb_client_message_event_t *ev) {
       client_focus(c);
       return;
     }
+  } else if (ev->type == _NET_WM_STATE) {
+    /**
+     * _NET_WM_STATE 协议数据格式为
+     * data.data32 = {
+     *   action,         // 操作类型（添加/移除/切换）
+     *   property1,      // 第一个状态原子（如_NET_WM_STATE_FULLSCREEN）
+     *   property2,      // 第二个状态原子（可选，通常为0）
+     *   0,              // 预留字段（固定为0）
+     *   0               // 预留字段（固定为0）
+     * };
+     * action 值可能为
+     *   _NET_WM_STATE_ADD（1）​​：添加全屏状态，窗口进入全屏模式
+     *   _NET_WM_STATE_REMOVE（0）：移除全屏状态，窗口退出全屏模式
+     *   _NET_WM_STATE_TOGGLE（2）：切换全屏状态（若当前全屏则退出，反之进入）
+     */
+    if (ev->data.data32[1] == _NET_WM_STATE_FULLSCREEN ||
+        ev->data.data32[2] == _NET_WM_STATE_FULLSCREEN) {
+      bool fullscreen = ev->data.data32[0];
+      if (ev->data.data32[0] == 2) fullscreen = !c->fullscreen;
+      client_set_fullscreen(c, fullscreen);
+    }
   }
 }
 
