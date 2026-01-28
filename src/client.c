@@ -77,6 +77,8 @@ task_in_tag_t *client_get_previous_task_in_tag(client_t *client, tag_t *tag) {
 static void client_add_to_tag(client_t *client, tag_t *tag) {
   if (client_get_task_in_tag(client, tag)) return;
 
+  xwindow_set_wm_desktop(client->window, tag->index);
+
   task_in_tag_t *task = p_new(task_in_tag_t, 1);
   task->client = client;
   task->next = tag->task_list;
@@ -145,6 +147,20 @@ static inline void client_init_geometry(client_t *c) {
   client_change_border_width(c, wm.border_width);
 }
 
+static void client_init_tag_by_wm_desktop(client_t *client) {
+  uint32_t tag_index = 0;
+  if (!xwindow_get_wm_desktop(client->window, &tag_index)) return;
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+    for (tag_t *tag = m->tag_list; tag; tag = tag->next) {
+      if (tag->index == tag_index) {
+        client->monitor = m;
+        client->tags = tag->mask;
+        return;
+      }
+    }
+  }
+}
+
 void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply) {
   client_t *c = p_new(client_t, 1);
@@ -198,6 +214,7 @@ void client_manage(xcb_window_t window,
     }
 
     client_init_geometry(c);
+    client_init_tag_by_wm_desktop(c);
     client_tags_apply(c);
   }
 

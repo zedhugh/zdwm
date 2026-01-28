@@ -206,6 +206,25 @@ void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
   p_delete(&reply);
 }
 
+void xwindow_set_wm_desktop(xcb_window_t window, uint32_t desktop) {
+  xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, window,
+                      _NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 32, 1, &desktop);
+}
+
+bool xwindow_get_wm_desktop(xcb_window_t window, uint32_t *desktop) {
+  xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
+    wm.xcb_conn, false, window, _NET_WM_DESKTOP, XCB_ATOM_CARDINAL, 0, 1);
+  xcb_get_property_reply_t *reply =
+    xcb_get_property_reply(wm.xcb_conn, cookie, nullptr);
+  if (!reply) return false;
+
+  bool success = reply->type == XCB_ATOM_CARDINAL && reply->format == 32;
+  if (success) *desktop = *(uint32_t *)xcb_get_property_value(reply);
+
+  p_delete(&reply);
+  return success;
+}
+
 xcb_window_t xwindow_get_transient_for(xcb_window_t window) {
   xcb_connection_t *conn = wm.xcb_conn;
   xcb_window_t t_window = XCB_WINDOW_NONE;

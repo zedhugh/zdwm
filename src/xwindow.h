@@ -20,6 +20,9 @@ bool xwindow_send_event(xcb_window_t window, xcb_atom_t atom);
 void xwindow_focus(xcb_window_t window);
 void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
                                char **out);
+void xwindow_set_wm_desktop(xcb_window_t window, uint32_t desktop);
+bool xwindow_get_wm_desktop(xcb_window_t window, uint32_t *desktop);
+
 xcb_window_t xwindow_get_transient_for(xcb_window_t window);
 int32_t xwindow_get_state(xcb_window_t window);
 xcb_get_geometry_reply_t *xwindow_get_geometry_reply(xcb_window_t window);
