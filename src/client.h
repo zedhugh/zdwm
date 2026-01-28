@@ -6,7 +6,7 @@
 #include "types.h"
 
 client_t *client_get_by_window(xcb_window_t window);
-client_t *client_get_next_by_class(client_t *current,const char *class);
+client_t *client_get_next_by_class(client_t *current, const char *class);
 task_in_tag_t *client_get_task_in_tag(client_t *client, tag_t *tag);
 task_in_tag_t *client_get_next_task_in_tag(client_t *client, tag_t *tag);
 task_in_tag_t *client_get_previous_task_in_tag(client_t *client, tag_t *tag);
@@ -48,7 +48,8 @@ void client_set_leader_window(client_t *client, xcb_window_t leader_window);
 
 void client_kill(client_t *client);
 void client_unmanage(client_t *client);
-void client_apply_task_geometry(client_t *client, task_in_tag_t *task);
+void client_apply_geometry(client_t *client, area_t geometry);
+void client_apply_workarea_geometry(client_t *client, area_t geometry);
 
 void client_focus(client_t *client);
 void client_stack_raise(client_t *client);

@@ -68,7 +68,7 @@ static void configure_request(xcb_configure_request_event_t *ev) {
         task->geometry.width = ev->width;
       if (ev->value_mask & XCB_CONFIG_WINDOW_HEIGHT)
         task->geometry.height = ev->height;
-      client_apply_task_geometry(client, task);
+      client_apply_geometry(client, task->geometry);
     }
   } else {
     uint16_t value_mask = ev->value_mask;

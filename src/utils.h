@@ -88,6 +88,11 @@ static inline void logger(const char *format, ...) {
 #define logger(format, ...) printf(format, ##__VA_ARGS__)
 #endif
 
+#ifdef MIN
+#undef MIN
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 #ifdef MAX
 #undef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))

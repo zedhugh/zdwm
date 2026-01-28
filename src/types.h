@@ -26,9 +26,11 @@ struct client_t {
   monitor_t *monitor;
   uint32_t tags;
 
+  area_t old_geometry;
   area_t geometry;
-  color_t *border_color;
   uint16_t border_width;
+  uint16_t old_border_width;
+  color_t *border_color;
 
   bool floating;
   bool fullscreen;

@@ -55,3 +55,4 @@ void send_client_to_next_monitor(const user_action_arg_t *arg);
 void spawn(const user_action_arg_t *arg);
 void quit(const user_action_arg_t *arg);
 void raise_or_run(const user_action_arg_t *arg);
+void toggle_client_floating(const user_action_arg_t *arg);

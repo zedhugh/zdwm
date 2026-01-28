@@ -75,3 +75,9 @@ void raise_or_run(const user_action_arg_t *arg) {
   user_action_arg_t arguments = {.ptr = command};
   spawn(&arguments);
 }
+
+void toggle_client_floating(const user_action_arg_t *arg) {
+  if (!wm.client_focused) return;
+
+  client_set_floating(wm.client_focused, !wm.client_focused->floating);
+}

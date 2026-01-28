@@ -178,11 +178,12 @@ void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply) {
   client_t *c = p_new(client_t, 1);
   c->window = window;
-  c->geometry.x = geometry_reply->x;
-  c->geometry.y = geometry_reply->y;
-  c->geometry.width = geometry_reply->width;
-  c->geometry.height = geometry_reply->height;
-  c->border_width = geometry_reply->border_width;
+  c->old_geometry.x = geometry_reply->x;
+  c->old_geometry.y = geometry_reply->y;
+  c->old_geometry.width = geometry_reply->width;
+  c->old_geometry.height = geometry_reply->height;
+  c->geometry = c->old_geometry;
+  c->old_border_width = geometry_reply->border_width;
 
   {
     const xcb_params_cw_t params = {
@@ -345,6 +346,22 @@ void client_update_wm_hints(client_t *client) {
   }
 }
 
+void client_set_floating(client_t *client, bool floating) {
+  if (client->floating == floating || client->fullscreen) return;
+
+  logger("== client set floating: %s\n", floating ? "true" : "false");
+  logger("== old geometry: x -> %d, y -> %d, width -> %u, height -> %u\n",
+         client->old_geometry.x, client->old_geometry.y,
+         client->old_geometry.width, client->old_geometry.height);
+  client->floating = floating;
+  if (floating) {
+    client_apply_workarea_geometry(client, client->old_geometry);
+    client->old_geometry = client->geometry;
+  }
+
+  monitor_arrange(client->monitor);
+}
+
 static void update_client_list(void) {
   xcb_connection_t *conn = wm.xcb_conn;
   xcb_window_t root = wm.screen->root;
@@ -379,17 +396,36 @@ void client_unmanage(client_t *client) {
   xcb_flush(wm.xcb_conn);
 }
 
-void client_apply_task_geometry(client_t *client, task_in_tag_t *task) {
-  if (!client || !task || client != task->client) return;
+void client_apply_geometry(client_t *client, area_t geometry) {
+  if (client->geometry.x != geometry.x || client->geometry.y != geometry.y) {
+    client_move_to(client, geometry.x, geometry.y);
+  }
+  if (client->geometry.width != geometry.width ||
+      client->geometry.height != geometry.height) {
+    client_resize(client, geometry.width, geometry.height);
+  }
+}
 
-  if (task->geometry.x != client->geometry.x ||
-      task->geometry.y != client->geometry.y) {
-    client_move_to(client, task->geometry.x, task->geometry.y);
+/**
+ * @brief 调整 client 的几何信息但需让 client 任在其 monitor 的 workarea 中
+ * @param client 要调整几何信息的 client
+ * @param geometry 目标几何信息
+ */
+void client_apply_workarea_geometry(client_t *client, area_t geometry) {
+  area_t workarea = client->monitor->workarea;
+  uint16_t width = MIN(geometry.width, workarea.width);
+  uint16_t height = MIN(geometry.height, workarea.height);
+  int16_t x = MAX(geometry.x, workarea.x);
+  int16_t y = MAX(geometry.y, workarea.y);
+  if (x + width + client->border_width * 2 > workarea.x + workarea.width) {
+    x = workarea.x + workarea.width - width - client->border_width * 2;
   }
-  if (task->geometry.width != client->geometry.width ||
-      task->geometry.height != client->geometry.height) {
-    client_resize(client, task->geometry.width, task->geometry.height);
+  if (y + height + client->border_width * 2 > workarea.y + workarea.height) {
+    y = workarea.y + workarea.width - height - client->border_width * 2;
   }
+
+  area_t rect = {.x = x, .y = y, .width = width, .height = height};
+  client_apply_geometry(client, rect);
 }
 
 void client_focus(client_t *client) {

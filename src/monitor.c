@@ -274,7 +274,11 @@ void monitor_arrange(monitor_t *monitor) {
 
     task_in_tag_t *task = client_get_task_in_tag(c, tag);
     if (task) {
-      client_apply_task_geometry(c, task);
+      if (client_need_layout(c)) {
+        client_apply_geometry(c, task->geometry);
+      } else {
+        client_apply_geometry(c, c->geometry);
+      }
     } else {
       int16_t x = -client_width(c);
       int16_t y = -client_height(c);
