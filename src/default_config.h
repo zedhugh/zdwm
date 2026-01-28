@@ -37,10 +37,35 @@ static const button_t button_list[] = {
 
 static const char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
+static const char terminal[] = "xterm";
+static const char terminal_class[] = "XTerm";
+static const char editor[] = "emacsclient -a '' -r";
+static const char editor_class[] = "Emacs";
+static const char browser[] = "firefox-bin";
+static const char browser_class[] = "firefox";
 static const keyboard_t key_list[] = {
-  {modifier_super, XK_p, spawn, {.ptr = launcher}},
-  {modifier_super, XK_q, quit, {.b = false}},
-  {modifier_super, XK_r, quit, {.b = true}},
+  {modifier_super, XK_r, spawn, {.ptr = launcher}},
+  {modifier_super, XK_Return, spawn, {.ptr = terminal}},
+  {
+    modifier_control | modifier_alt,
+    XK_r,
+    raise_or_run,
+    {.ptr = (const char *[]){terminal_class, terminal}},
+  },
+  {
+    modifier_super,
+    XK_e,
+    raise_or_run,
+    {.ptr = (const char *[]){editor_class, editor}},
+  },
+  {
+    modifier_super,
+    XK_q,
+    raise_or_run,
+    {.ptr = (const char *[]){browser_class, browser}},
+  },
+  {modifier_super | modifier_shift, XK_q, quit, {.b = false}},
+  {modifier_super | modifier_control, XK_r, quit, {.b = true}},
   {modifier_super | modifier_shift,
    XK_j,
    focus_client_in_same_tag,

@@ -57,3 +57,21 @@ void quit(const user_action_arg_t *arg) {
     wm_quit();
   }
 }
+
+void raise_or_run(const user_action_arg_t *arg) {
+  const char *class = ((const char **)arg->ptr)[0];
+  client_t *client = client_get_next_by_class(wm.client_focused, class);
+  if (client && client == wm.client_focused) return;
+
+  if (client) {
+    wm.current_monitor = client->monitor;
+    monitor_select_tag(client->monitor, client->tags);
+    client_stack_raise(client);
+    client_focus(client);
+    return;
+  }
+
+  const char *command = ((const char **)arg->ptr)[1];
+  user_action_arg_t arguments = {.ptr = command};
+  spawn(&arguments);
+}

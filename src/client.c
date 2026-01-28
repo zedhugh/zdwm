@@ -23,6 +23,19 @@ client_t *client_get_by_window(xcb_window_t window) {
   return nullptr;
 }
 
+client_t *client_get_next_by_class(client_t *current, const char *class) {
+  client_t *start = current ? current->next : wm.client_list;
+  for (client_t *c = start; c; c = c->next) {
+    if (strcmp(class, c->class) == 0) return c;
+  }
+
+  for (client_t *c = wm.client_list; c && c != start; c = c->next) {
+    if (strcmp(class, c->class) == 0) return c;
+  }
+
+  return nullptr;
+}
+
 static void client_attach_list(client_t *client) {
   client->next = wm.client_list;
   wm.client_list = client;
