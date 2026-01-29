@@ -175,15 +175,8 @@ static void property_notify(xcb_property_notify_event_t *ev) {
   if (ev->atom == WM_NAME) {
     xwindow_get_text_property(ev->window, ev->atom, &client->name);
     monitor_draw_bar(client->monitor);
-  } else if (ev->atom == WM_ICON_NAME) {
-    if (client->icon_name) p_delete(&client->icon_name);
-    xwindow_get_text_property(ev->window, ev->atom, &client->icon_name);
-    monitor_draw_bar(client->monitor);
   } else if (ev->atom == _NET_WM_NAME) {
     xwindow_get_text_property(ev->window, ev->atom, &client->net_name);
-    monitor_draw_bar(client->monitor);
-  } else if (ev->atom == _NET_WM_ICON_NAME) {
-    xwindow_get_text_property(ev->window, ev->atom, &client->net_icon_name);
     monitor_draw_bar(client->monitor);
   } else if (ev->atom == XCB_ATOM_WM_HINTS) {
     client_update_wm_hints(client);

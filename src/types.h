@@ -41,7 +41,7 @@ struct client_t {
   bool size_freeze; /* 尺寸冻结窗口一定是浮动窗口 */
 
   char *class, *instance;
-  char *name, *icon_name, *net_name, *net_icon_name;
+  char *name, *net_name;
   char *role;
 
   xcb_window_t transient_for_window;

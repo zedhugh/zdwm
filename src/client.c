@@ -117,9 +117,7 @@ static inline void client_wipe(client_t *client) {
   p_delete(&client->class);
   p_delete(&client->instance);
   p_delete(&client->name);
-  p_delete(&client->icon_name);
   p_delete(&client->net_name);
-  p_delete(&client->net_icon_name);
   p_delete(&client->role);
   p_delete(&client);
 }
@@ -138,9 +136,7 @@ static inline void client_tags_apply(client_t *client) {
 
 static inline void client_update_names(client_t *c) {
   xwindow_get_text_property(c->window, WM_NAME, &c->name);
-  xwindow_get_text_property(c->window, WM_ICON_NAME, &c->icon_name);
   xwindow_get_text_property(c->window, _NET_WM_NAME, &c->net_name);
-  xwindow_get_text_property(c->window, _NET_WM_ICON_NAME, &c->net_icon_name);
 }
 
 static inline void client_init_geometry(client_t *c) {
@@ -250,9 +246,7 @@ void client_manage(xcb_window_t window,
 }
 
 char **client_get_task_title(client_t *client) {
-  if (client->net_icon_name) return &client->net_icon_name;
   if (client->net_name) return &client->net_name;
-  if (client->icon_name) return &client->icon_name;
   if (client->name) return &client->name;
   return nullptr;
 }
