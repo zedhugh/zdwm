@@ -234,6 +234,8 @@ void client_manage(xcb_window_t window,
 
   client_attach_list(c);
   client_attach_stack(c);
+  client_update_window_type(c);
+  client_update_size_hints(c);
 
   xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_APPEND, wm.screen->root,
                       _NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, 1, &window);
@@ -257,7 +259,7 @@ char **client_get_task_title(client_t *client) {
 
 bool client_need_layout(client_t *client) {
   if (client->floating || client->fullscreen || client->maximize ||
-      client->minimize) {
+      client->minimize || client->size_freeze) {
     return false;
   }
   return true;
@@ -331,6 +333,35 @@ void client_change_border_width(client_t *client, uint16_t border_width) {
   logger("== client 0x%x border width: %u\n", client->window, border_width);
 }
 
+void client_update_window_type(client_t *client) {
+  xcb_window_t window = client->window;
+  xcb_get_property_cookie_t state_cookie = xcb_get_property_unchecked(
+    wm.xcb_conn, false, window, _NET_WM_STATE, XCB_ATOM_ATOM, 0, 1);
+  xcb_get_property_cookie_t window_type_cookie = xcb_get_property_unchecked(
+    wm.xcb_conn, false, window, _NET_WM_WINDOW_TYPE, XCB_ATOM_ATOM, 0, 1);
+  xcb_get_property_reply_t *state_reply =
+    xcb_get_property_reply(wm.xcb_conn, state_cookie, nullptr);
+  xcb_get_property_reply_t *window_type_reply =
+    xcb_get_property_reply(wm.xcb_conn, window_type_cookie, nullptr);
+
+  if (state_reply) {
+    xcb_atom_t state = *(xcb_atom_t *)xcb_get_property_value(state_reply);
+    if (state == _NET_WM_STATE_FULLSCREEN) {
+      client_set_fullscreen(client, true);
+    }
+    p_delete(&state_reply);
+  }
+
+  if (window_type_reply) {
+    xcb_atom_t window_type =
+      *(xcb_atom_t *)xcb_get_property_value(window_type_reply);
+    if (window_type == _NET_WM_WINDOW_TYPE_DIALOG) {
+      client_set_floating(client, true);
+    }
+    p_delete(&window_type_reply);
+  }
+}
+
 void client_update_wm_hints(client_t *client) {
   xcb_get_property_cookie_t cookie =
     xcb_icccm_get_wm_hints(wm.xcb_conn, client->window);
@@ -343,6 +374,30 @@ void client_update_wm_hints(client_t *client) {
     } else {
       client->urgent = hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY;
     }
+  }
+}
+
+void client_update_size_hints(client_t *client) {
+  xcb_connection_t *conn = wm.xcb_conn;
+  xcb_size_hints_t hints;
+  xcb_get_property_cookie_t cookie =
+    xcb_icccm_get_wm_normal_hints_unchecked(conn, client->window);
+  if (!xcb_icccm_get_wm_normal_hints_reply(conn, cookie, &hints, nullptr)) {
+    return;
+  }
+
+  int32_t min_width = 0, min_height = 0, max_width = 0, max_height = 0;
+  if (hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+    min_width = hints.min_width;
+    min_height = hints.min_height;
+  }
+  if (hints.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) {
+    max_width = hints.max_width;
+    max_height = hints.max_height;
+  }
+  if (min_width == max_width && min_height == max_height) {
+    client->size_freeze = true;
+    client_set_floating(client, true);
   }
 }
 
@@ -371,6 +426,7 @@ void client_set_fullscreen(client_t *client, bool fullscreen) {
                         _NET_WM_STATE, XCB_ATOM_ATOM, 32, 1,
                         &_NET_WM_STATE_FULLSCREEN);
     client->old_border_width = client->border_width;
+    if (client->floating) client->old_geometry = client->geometry;
     client_change_border_width(client, 0);
     client_apply_geometry(client, client->monitor->geometry);
     client_stack_raise(client);

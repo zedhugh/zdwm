@@ -23,7 +23,9 @@ void client_resize(client_t *client, uint16_t width, uint16_t height);
 void client_change_border_color(client_t *client, color_t *color);
 void client_change_border_width(client_t *client, uint16_t border_width);
 
+void client_update_window_type(client_t *client);
 void client_update_wm_hints(client_t *client);
+void client_update_size_hints(client_t *client);
 
 void client_set_floating(client_t *client, bool floating);
 void client_set_fullscreen(client_t *client, bool fullscreen);

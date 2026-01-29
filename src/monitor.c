@@ -67,6 +67,17 @@ void monitor_deal_focus(monitor_t *monitor) {
 void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask) {
   if (monitor->selected_tag->mask == tag_mask) return;
 
+  for (task_in_tag_t *task = monitor->selected_tag->task_list; task;
+       task = task->next) {
+    if (task->client->floating || task->client->size_freeze) {
+      task->geometry = task->client->geometry;
+    }
+    if (task->client->fullscreen || task->client->maximize ||
+        task->client->minimize) {
+      task->geometry = task->client->old_geometry;
+    }
+  }
+
   for (tag_t *tag = monitor->tag_list; tag; tag = tag->next) {
     if (tag->mask == tag_mask) {
       monitor->selected_tag = tag;
@@ -274,10 +285,13 @@ void monitor_arrange(monitor_t *monitor) {
 
     task_in_tag_t *task = client_get_task_in_tag(c, tag);
     if (task) {
-      if (client_need_layout(c)) {
-        client_apply_geometry(c, task->geometry);
+      if (c->minimize) continue;
+      if (c->fullscreen) {
+        client_apply_geometry(c, c->monitor->geometry);
+      } else if (c->maximize) {
+        client_apply_geometry(c, c->monitor->workarea);
       } else {
-        client_apply_geometry(c, c->geometry);
+        client_apply_geometry(c, task->geometry);
       }
     } else {
       int16_t x = -client_width(c);
