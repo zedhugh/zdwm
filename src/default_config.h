@@ -96,3 +96,10 @@ static const layout_t layout_list[] = {
   {.symbol = "[M]", .arrange = monocle},
   {.symbol = "><=", .arrange = nullptr},
 };
+
+static const char *const autostart_list[] = {
+  "gentoo-pipewire-launcher restart",
+  "picom -b --backend xrender",
+  "fcitx5 -d",
+  nullptr,
+};

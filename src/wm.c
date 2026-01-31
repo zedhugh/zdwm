@@ -5,6 +5,7 @@
 #include <glibconfig.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -46,6 +47,9 @@ static void wm_setup(void);
 static void wm_get_xres_config(void);
 static void wm_init_color_set(void);
 static void wm_setup_keybindings(void);
+static void wm_run_autostart(const char *const commands[]);
+static void run_once(const char *command);
+static bool command_already_running(const char *command);
 
 wm_t wm;
 
@@ -429,6 +433,36 @@ void wm_setup_keybindings(void) {
   xwindow_grab_keys(wm.screen->root, key_list, countof(key_list));
 }
 
+/**
+ * @brief 允许自启动程序
+ * @param commands 命令字符串数组(以 nullptr 结尾)
+ */
+void wm_run_autostart(const char *const commands[]) {
+  for (int i = 0; commands[i]; i++) run_once(commands[i]);
+}
+
+void run_once(const char *command) {
+  if (command_already_running(command)) return;
+  g_spawn_command_line_async(command, nullptr);
+}
+
+bool command_already_running(const char *command) {
+  char shell_cmd[1024];
+  const char *user = getenv("USER");
+  snprintf(shell_cmd, sizeof(shell_cmd), "pgrep -u %s -fx '%s'", user, command);
+
+  char *output = nullptr;
+  char *error = nullptr;
+  g_spawn_command_line_sync(shell_cmd, &output, &error, nullptr, nullptr);
+
+  bool result =
+    (error == nullptr || !strlen(error)) && (output && strlen(output));
+  p_delete(&output);
+  p_delete(&error);
+
+  return result;
+}
+
 void wm_restart(void) {
   wm.need_restart = true;
   if (g_main_loop_is_running(wm.loop)) {
@@ -551,6 +585,8 @@ int main(int argc, char *argv[]) {
   wm_scan_clients();
 
   debug_show_monitor_list();
+
+  wm_run_autostart(autostart_list);
 
   if (wm.loop == nullptr) {
     wm.loop = g_main_loop_new(nullptr, FALSE);
