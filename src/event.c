@@ -175,12 +175,15 @@ static void property_notify(xcb_property_notify_event_t *ev) {
   if (ev->atom == WM_NAME) {
     xwindow_get_text_property(ev->window, ev->atom, &client->name);
     monitor_draw_bar(client->monitor);
+    xcb_flush(wm.xcb_conn);
   } else if (ev->atom == _NET_WM_NAME) {
     xwindow_get_text_property(ev->window, ev->atom, &client->net_name);
     monitor_draw_bar(client->monitor);
+    xcb_flush(wm.xcb_conn);
   } else if (ev->atom == XCB_ATOM_WM_HINTS) {
     client_update_wm_hints(client);
     monitor_draw_bar(client->monitor);
+    xcb_flush(wm.xcb_conn);
   }
 }
 
