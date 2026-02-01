@@ -429,8 +429,8 @@ void client_set_fullscreen(client_t *client, bool fullscreen) {
                         _NET_WM_STATE, XCB_ATOM_ATOM, 32, 0, 0);
     client_change_border_width(client, client->old_border_width);
     client_apply_geometry(client, client->old_geometry);
-    monitor_arrange(client->monitor);
   }
+  monitor_arrange(client->monitor);
   client_focus(client);
 }
 
