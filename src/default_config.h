@@ -39,10 +39,12 @@ static const char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
 static const char terminal[] = "xterm";
 static const char terminal_class[] = "XTerm";
-static const char editor[] = "emacsclient -a '' -r";
+static const char editor[] = "emacsclient -a '' -r -n";
 static const char editor_class[] = "Emacs";
 static const char browser[] = "firefox-bin";
 static const char browser_class[] = "firefox";
+static const char chrome[] = "google-chrome-stable";
+static const char chrome_class[] = "Google-chrome";
 static const keyboard_t key_list[] = {
   {modifier_super, XK_r, spawn, {.ptr = launcher}},
   {modifier_super, XK_Return, spawn, {.ptr = terminal}},
@@ -63,6 +65,12 @@ static const keyboard_t key_list[] = {
     XK_q,
     raise_or_run,
     {.ptr = (const char *[]){browser_class, browser}},
+  },
+  {
+    modifier_super,
+    XK_a,
+    raise_or_run,
+    {.ptr = (const char *[]){chrome_class, chrome}},
   },
   {modifier_super | modifier_shift, XK_q, quit, {.b = false}},
   {modifier_super | modifier_control, XK_r, quit, {.b = true}},
