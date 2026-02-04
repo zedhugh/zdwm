@@ -29,6 +29,7 @@
 #include "default_config.h"
 #include "event.h"
 #include "monitor.h"
+#include "status.h"
 #include "text.h"
 #include "types.h"
 #include "utils.h"
@@ -47,6 +48,7 @@ static void wm_setup(void);
 static void wm_get_xres_config(void);
 static void wm_init_color_set(void);
 static void wm_setup_keybindings(void);
+static void wm_update_status(status_t *status);
 static void wm_run_autostart(const char *const commands[]);
 static void run_once(const char *command);
 static bool command_already_running(const char *command);
@@ -310,6 +312,7 @@ void wm_scan_clients(void) {
 }
 
 void wm_clean(void) {
+  clean_status();
   text_clean_pango_layout();
   monitor_clean(wm.monitor_list);
 
@@ -434,6 +437,12 @@ void wm_setup_keybindings(void) {
 
   wm.key_symbols = xcb_key_symbols_alloc(wm.xcb_conn);
   xwindow_grab_keys(wm.screen->root, key_list, countof(key_list));
+}
+
+void wm_update_status(status_t *status) {
+  wm.status = status;
+  for (monitor_t *m = wm.monitor_list; m; m = m->next) monitor_draw_bar(m);
+  xcb_flush(wm.xcb_conn);
 }
 
 /**
@@ -593,6 +602,7 @@ int main(int argc, char *argv[]) {
 
   if (wm.loop == nullptr) {
     wm.loop = g_main_loop_new(nullptr, FALSE);
+    init_status(g_main_loop_get_context(wm.loop), wm_update_status);
     g_main_loop_run(wm.loop);
   }
   g_main_loop_unref(wm.loop);

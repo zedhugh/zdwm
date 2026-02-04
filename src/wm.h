@@ -6,6 +6,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 #include "base.h"
+#include "status.h"
 #include "types.h"
 
 typedef struct wm_t {
@@ -16,6 +17,7 @@ typedef struct wm_t {
 
   bool need_restart;
   GMainLoop *loop;
+  status_t *status;
 
   client_t *client_list;
   client_t *client_stack_list;

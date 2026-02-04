@@ -3,6 +3,7 @@
 #include <cairo-xcb.h>
 #include <cairo.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_icccm.h>
@@ -11,6 +12,7 @@
 #include "base.h"
 #include "client.h"
 #include "color.h"
+#include "status.h"
 #include "text.h"
 #include "types.h"
 #include "utils.h"
@@ -234,6 +236,41 @@ static void monitor_draw_layout_symbol(monitor_t *monitor) {
   }
 }
 
+static void monitor_draw_status(monitor_t *monitor, status_t *status) {
+  monitor->status_extent.end = monitor->geometry.width;
+  monitor->status_extent.start = monitor->geometry.width;
+  int16_t end = monitor->layout_symbol_extent.end;
+
+  if (status == nullptr) return;
+
+  char cpu[16], mem[64];
+  snprintf(cpu, sizeof(cpu), "%.1lf", status->cpu_usage_percent);
+  snprintf(mem, sizeof(mem), "%s(%.1f%%)", status->mem_usage.mem_used_text,
+           status->mem_usage.mem_percent);
+  char *status_items[] = {
+    status->net_speed.down, status->net_speed.up, mem, cpu, status->time,
+  };
+  int16_t start = monitor->status_extent.start;
+  for (int i = countof(status_items) - 1; i >= 0; i--) {
+    const char *text = status_items[i];
+    if (!text || !strlen(text)) continue;
+
+    int width = 0;
+    text_get_size(text, &width, nullptr);
+    if (!width) continue;
+
+    start -= width;
+    if (start <= end) return;
+    color_t *color = &wm.color_set.tag_color;
+    area_t rect = {.x = start, .y = 0, .width = width, .height = wm.bar_height};
+    draw_text(monitor->bar_cr, text, color, rect, true);
+    monitor->status_extent.start = start;
+
+    start -= wm.padding.tag_x;
+    if (start < end) return;
+  }
+}
+
 static void monitor_draw_tasks(monitor_t *monitor) {
   task_in_tag_t *task_list = monitor->selected_tag->task_list;
   if (!task_list) return;
@@ -243,7 +280,9 @@ static void monitor_draw_tasks(monitor_t *monitor) {
   if (task_count == 0) return;
 
   int16_t x = monitor->layout_symbol_extent.end;
-  uint16_t task_width = (monitor->geometry.width - x) / task_count;
+  uint16_t task_width = (monitor->status_extent.start - x) / task_count;
+  if (task_width < wm.font_size) return;
+
   for (task_in_tag_t *task = task_list; task; task = task->next) {
     task->bar_extent.start = x;
     task->bar_extent.end = x + task_width;
@@ -275,6 +314,7 @@ void monitor_draw_bar(monitor_t *monitor) {
 
   monitor_draw_tags(monitor);
   monitor_draw_layout_symbol(monitor);
+  monitor_draw_status(monitor, wm.status);
   monitor_draw_tasks(monitor);
 }
 

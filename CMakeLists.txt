@@ -41,6 +41,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/atoms.c
     ${SOURCE_DIR}/layout.c
     ${SOURCE_DIR}/xres.c
+    ${SOURCE_DIR}/status.c
 )
 
 find_package(PkgConfig REQUIRED)

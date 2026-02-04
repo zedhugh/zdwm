@@ -62,6 +62,7 @@ struct monitor_t {
 
   extent_in_bar_t tag_extent;
   extent_in_bar_t layout_symbol_extent;
+  extent_in_bar_t status_extent;
 
   xcb_window_t bar_window;
 
