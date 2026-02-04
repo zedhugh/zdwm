@@ -57,3 +57,4 @@ void quit(const user_action_arg_t *arg);
 void raise_or_run(const user_action_arg_t *arg);
 void toggle_client_floating(const user_action_arg_t *arg);
 void toggle_client_fullscreen(const user_action_arg_t *arg);
+void toggle_client_maximize(const user_action_arg_t *arg);

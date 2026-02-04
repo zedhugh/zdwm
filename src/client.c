@@ -434,6 +434,33 @@ void client_set_fullscreen(client_t *client, bool fullscreen) {
   client_focus(client);
 }
 
+void client_set_maximize(client_t *client, bool maximize) {
+  if (client->maximize == maximize) return;
+
+  client->maximize = maximize;
+  if (maximize) {
+    xcb_atom_t max_atoms[] = {
+      _NET_WM_STATE_MAXIMIZED_HORZ,
+      _NET_WM_STATE_MAXIMIZED_VERT,
+    };
+    xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, client->window,
+                        _NET_WM_STATE, XCB_ATOM_ATOM, 32, countof(max_atoms),
+                        max_atoms);
+    client->old_border_width = client->border_width;
+    if (client->floating) client->old_geometry = client->geometry;
+    client_change_border_width(client, 0);
+    client_apply_geometry(client, client->monitor->workarea);
+    client_stack_raise(client);
+  } else {
+    xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, client->window,
+                        _NET_WM_STATE, XCB_ATOM_ATOM, 32, 0, 0);
+    client_change_border_width(client, client->old_border_width);
+    client_apply_geometry(client, client->old_geometry);
+  }
+  monitor_arrange(client->monitor);
+  client_focus(client);
+}
+
 static void update_client_list(void) {
   xcb_connection_t *conn = wm.xcb_conn;
   xcb_window_t root = wm.screen->root;
