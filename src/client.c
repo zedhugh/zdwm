@@ -140,6 +140,8 @@ static inline void client_update_names(client_t *c) {
 }
 
 static inline void client_init_geometry(client_t *c) {
+  if (c->maximize || c->fullscreen) return;
+
   area_t workarea = c->monitor->workarea;
   if (c->geometry.x + client_width(c) > workarea.x + workarea.width) {
     c->geometry.x = workarea.x + workarea.width - client_width(c);
@@ -221,6 +223,7 @@ void client_manage(xcb_window_t window,
     } else {
       c->monitor = wm.current_monitor;
       c->tags = c->monitor->selected_tag->mask;
+      client_apply_rules(c, wm.rules, wm.rules_count);
     }
 
     client_init_geometry(c);
@@ -496,13 +499,22 @@ void client_unmanage(client_t *client) {
 }
 
 void client_apply_geometry(client_t *client, area_t geometry) {
-  if (client->geometry.x != geometry.x || client->geometry.y != geometry.y) {
-    client_move_to(client, geometry.x, geometry.y);
+  uint16_t mask = 0;
+  const xcb_params_configure_window_t params = {
+    .x = geometry.x,
+    .y = geometry.y,
+    .width = geometry.width,
+    .height = geometry.height,
+  };
+  if (client->geometry.x != geometry.x) mask |= XCB_CONFIG_WINDOW_X;
+  if (client->geometry.y != geometry.y) mask |= XCB_CONFIG_WINDOW_Y;
+  if (client->geometry.width != geometry.width) mask |= XCB_CONFIG_WINDOW_WIDTH;
+  if (client->geometry.height != geometry.height) {
+    mask |= XCB_CONFIG_WINDOW_HEIGHT;
   }
-  if (client->geometry.width != geometry.width ||
-      client->geometry.height != geometry.height) {
-    client_resize(client, geometry.width, geometry.height);
-  }
+
+  client->geometry = geometry;
+  xcb_aux_configure_window(wm.xcb_conn, client->window, mask, &params);
 }
 
 /**
@@ -525,6 +537,51 @@ void client_apply_workarea_geometry(client_t *client, area_t geometry) {
 
   area_t rect = {.x = x, .y = y, .width = width, .height = height};
   client_apply_geometry(client, rect);
+}
+
+void client_apply_rules(client_t *client, const rule_t rules[],
+                        size_t rules_count) {
+  for (size_t i = 0; i < rules_count; i++) {
+    const rule_t *r = &rules[i];
+    if (!((!r->role || (client->role && strstr(client->role, r->role))) &&
+          (!r->class || (client->class && strstr(client->class, r->class))))) {
+      continue;
+    }
+
+    client->fullscreen = r->fullscreen;
+    client->maximize = r->maximize;
+    client->floating = r->floating;
+
+    for (monitor_t *m = wm.monitor_list; m; m = m->next) {
+      for (tag_t *t = m->tag_list; t; t = t->next) {
+        if (t->index != r->tag_index) continue;
+
+        client->monitor = m;
+        client->tags = t->mask;
+
+        if (r->switch_to_tag) {
+          wm.current_monitor = m;
+          m->selected_tag = t;
+
+          logger("++ switch to tag: %u\n", t->index);
+        }
+      }
+    }
+  }
+
+  if (client->fullscreen) {
+    xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, client->window,
+                        _NET_WM_STATE, XCB_ATOM_ATOM, 32, 1,
+                        &_NET_WM_STATE_FULLSCREEN);
+  } else if (client->maximize) {
+    xcb_atom_t max_atoms[] = {
+      _NET_WM_STATE_MAXIMIZED_HORZ,
+      _NET_WM_STATE_MAXIMIZED_VERT,
+    };
+    xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, client->window,
+                        _NET_WM_STATE, XCB_ATOM_ATOM, 32, countof(max_atoms),
+                        max_atoms);
+  }
 }
 
 void client_focus(client_t *client) {

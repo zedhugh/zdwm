@@ -27,6 +27,8 @@ typedef struct wm_t {
   char *font_family;
   uint32_t font_size;
   uint32_t dpi;
+  const rule_t *rules;
+  uint32_t rules_count;
 
   xcb_connection_t *xcb_conn;
   xcb_screen_t *screen;

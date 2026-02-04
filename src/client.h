@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "color.h"
@@ -52,6 +53,8 @@ void client_kill(client_t *client);
 void client_unmanage(client_t *client);
 void client_apply_geometry(client_t *client, area_t geometry);
 void client_apply_workarea_geometry(client_t *client, area_t geometry);
+void client_apply_rules(client_t *client, const rule_t rules[],
+                        size_t rules_count);
 
 void client_focus(client_t *client);
 void client_stack_raise(client_t *client);

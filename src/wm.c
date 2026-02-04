@@ -338,6 +338,9 @@ static void wm_setup(void) {
   wm.layout_list = layout_list;
   wm.layout_count = (uint16_t)countof(layout_list);
 
+  wm.rules = rules;
+  wm.rules_count = countof(rules);
+
   wm_get_xres_config();
   wm_init_color_set();
 

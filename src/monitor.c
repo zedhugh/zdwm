@@ -69,12 +69,14 @@ void monitor_select_tag(monitor_t *monitor, uint32_t tag_mask) {
 
   for (task_in_tag_t *task = monitor->selected_tag->task_list; task;
        task = task->next) {
-    if (task->client->floating || task->client->size_freeze) {
+    if (task->client->floating || task->client->size_freeze ||
+        !monitor->selected_tag->layout->arrange) {
       task->geometry = task->client->geometry;
+      task->client->old_geometry = task->client->geometry;
     }
     if (task->client->fullscreen || task->client->maximize ||
         task->client->minimize) {
-      task->geometry = task->client->old_geometry;
+      task->geometry = task->client->geometry;
     }
   }
 
@@ -280,25 +282,24 @@ void monitor_arrange(monitor_t *monitor) {
   tag_t *tag = monitor->selected_tag;
   if (tag->layout && tag->layout->arrange) tag->layout->arrange(tag);
 
-  for (client_t *c = wm.client_list; c; c = c->next) {
-    if (c->monitor != monitor) continue;
+  for (client_t *c = wm.client_stack_list; c; c = c->stack_next) {
+    if (c->monitor != monitor || c->minimize) continue;
 
     task_in_tag_t *task = client_get_task_in_tag(c, tag);
     if (task) {
-      if (c->minimize) continue;
-      if (c->fullscreen) {
+      if (client_need_layout(c)) {
+        client_apply_geometry(c, task->geometry);
+      } else if (c->fullscreen) {
         client_apply_geometry(c, c->monitor->geometry);
       } else if (c->maximize) {
         client_apply_geometry(c, c->monitor->workarea);
       } else {
-        client_apply_geometry(c, task->geometry);
+        client_move_to(c, task->geometry.x, task->geometry.y);
       }
     } else {
       int16_t x = -client_width(c);
       int16_t y = -client_height(c);
-      if (x != c->geometry.x || y != c->geometry.y) {
-        client_move_to(c, x, y);
-      }
+      client_move_to(c, x, y);
     }
   }
   xcb_flush(wm.xcb_conn);

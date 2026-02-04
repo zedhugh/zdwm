@@ -139,10 +139,22 @@ static void client_message(xcb_client_message_event_t *ev) {
     for (tag_t *t = c->monitor->tag_list; t; t = t->next) {
       if ((t->mask & c->tags) == 0) continue;
 
-      wm.current_monitor = c->monitor;
-      monitor_select_tag(c->monitor, t->mask);
-      client_focus(c);
-      return;
+      logger("== _NET_ACTIVE_WINDOW: %s[%u]\n", c->class, ev->data.data32[0]);
+
+      switch (ev->data.data32[0]) {
+        case 2: /* 来自 pager */
+          wm.current_monitor = c->monitor;
+          monitor_select_tag(c->monitor, t->mask);
+          client_focus(c);
+          break;
+        case 1: /* 来自应用程序 */
+          c->urgent = true;
+          monitor_draw_bar(c->monitor);
+          break;
+        case 0: /* 来自老版本标志 */
+        default:
+          break;
+      }
     }
   } else if (ev->type == _NET_WM_STATE) {
     /**

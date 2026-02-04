@@ -100,3 +100,13 @@ typedef struct padding_t {
   uint16_t bar_y;
   uint16_t tag_x;
 } padding_t;
+
+typedef struct rule_t {
+  const char *role;
+  const char *class;
+  uint32_t tag_index;
+  bool switch_to_tag;
+  bool fullscreen;
+  bool maximize;
+  bool floating;
+} rule_t;
