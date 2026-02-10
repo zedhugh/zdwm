@@ -1,5 +1,6 @@
 #pragma once
 
+#include <X11/XF86keysym.h>
 #include <X11/keysym.h>
 #include <stdint.h>
 
@@ -98,6 +99,14 @@ static const keyboard_t key_list[] = {
   {modifier_super | modifier_control, XK_space, toggle_client_floating, {0}},
   {modifier_super, XK_f, toggle_client_fullscreen, {0}},
   {modifier_super, XK_m, toggle_client_maximize, {0}},
+
+  {modifier_super, XK_Up, change_volume, {.i = 1}},
+  {modifier_super, XK_Down, change_volume, {.i = -1}},
+  {modifier_super | modifier_shift, XK_m, toggle_mute, {0}},
+  {modifier_none, XF86XK_AudioRaiseVolume, change_volume, {.i = 1}},
+  {modifier_none, XF86XK_AudioLowerVolume, change_volume, {.i = -1}},
+  {modifier_none, XF86XK_AudioMute, toggle_mute, {0}},
+
 };
 
 static const layout_t layout_list[] = {

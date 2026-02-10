@@ -3,6 +3,7 @@
 #include <glib.h>
 #include <string.h>
 
+#include "audio.h"
 #include "client.h"
 #include "monitor.h"
 #include "types.h"
@@ -74,6 +75,16 @@ void raise_or_run(const user_action_arg_t *arg) {
   const char *command = ((const char **)arg->ptr)[1];
   user_action_arg_t arguments = {.ptr = command};
   spawn(&arguments);
+}
+
+void toggle_mute(const user_action_arg_t *arg) {
+  if (wm.status->pulse_context) toggle_pulse_mute(wm.status->pulse_context);
+}
+
+void change_volume(const user_action_arg_t *arg) {
+  if (wm.status->pulse_context) {
+    change_pulse_volume(wm.status->pulse_context, arg->i);
+  }
 }
 
 void toggle_client_floating(const user_action_arg_t *arg) {

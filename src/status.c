@@ -8,6 +8,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "audio.h"
+
 static constexpr char CPU_FILE[] = "/proc/stat";
 static constexpr char MEM_FILE[] = "/proc/meminfo";
 static constexpr char NET_FILE[] = "/proc/net/dev";
@@ -228,13 +230,21 @@ static gboolean update_status(gpointer data) {
   return true;
 }
 
+void notify_pulse_change(pulse_t *pulse) {
+  status.pulse = pulse;
+  notify_status_change();
+}
+
 void init_status(GMainContext *context, status_changed_notify callback) {
   listener = callback;
+  status.pulse_context = init_pulse(context, notify_pulse_change);
   update_status(nullptr);
   timer = g_timeout_add_seconds(INTERVAL, update_status, nullptr);
 }
 
 void clean_status(void) {
+  clean_pulse(status.pulse_context);
   g_source_remove(timer);
+  status.pulse_context = nullptr;
   listener = nullptr;
 }

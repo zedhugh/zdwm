@@ -42,6 +42,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/layout.c
     ${SOURCE_DIR}/xres.c
     ${SOURCE_DIR}/status.c
+    ${SOURCE_DIR}/audio.c
 )
 
 find_package(PkgConfig REQUIRED)
@@ -66,6 +67,8 @@ pkg_check_modules(deps REQUIRED
     cairo-xcb
     pango
     pangocairo
+
+    libpulse-mainloop-glib
 )
 
 target_include_directories(${APP_NAME} SYSTEM

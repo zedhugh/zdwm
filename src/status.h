@@ -3,6 +3,8 @@
 #include <glib.h>
 #include <stdint.h>
 
+#include "audio.h"
+
 typedef struct memory_usage_t {
   char mem_used_text[32];
   char swap_used_text[32];
@@ -33,6 +35,8 @@ typedef struct status_t {
   memory_usage_t mem_usage;
   double cpu_usage_percent;
   char time[64];
+  pulse_t *pulse;
+  pulse_context_t *pulse_context;
 } status_t;
 
 typedef void (*status_changed_notify)(status_t *status);

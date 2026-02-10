@@ -243,12 +243,22 @@ static void monitor_draw_status(monitor_t *monitor, status_t *status) {
 
   if (status == nullptr) return;
 
-  char cpu[16], mem[64];
+  char cpu[16], mem[64], volume[300];
   snprintf(cpu, sizeof(cpu), "%.1lf", status->cpu_usage_percent);
   snprintf(mem, sizeof(mem), "%s(%.1f%%)", status->mem_usage.mem_used_text,
            status->mem_usage.mem_percent);
+  if (status->pulse) {
+    snprintf(volume, sizeof(volume), "%d%%%s%s%s",
+             status->pulse->volume_percent, status->pulse->mute ? "M" : "",
+             strlen(status->pulse->device_name) ? "|" : "",
+             status->pulse->device_name);
+  } else {
+    snprintf(volume, sizeof(volume), "0%%");
+  }
+
   char *status_items[] = {
-    status->net_speed.down, status->net_speed.up, mem, cpu, status->time,
+    status->net_speed.down, status->net_speed.up, volume, mem, cpu,
+    status->time,
   };
   int16_t start = monitor->status_extent.start;
   for (int i = countof(status_items) - 1; i >= 0; i--) {
