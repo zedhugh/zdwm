@@ -101,8 +101,11 @@ static void bytes_to_readable_size(uint64_t bytes, char *str) {
     size /= 1024.0;
     ++i;
   }
-
-  sprintf(str, "%.1lf%s", size, uints[i]);
+  if (i == 0) {
+    sprintf(str, "%ld%s", bytes, uints[i]);
+  } else {
+    sprintf(str, "%.1lf%s", size, uints[i]);
+  }
 }
 
 static void calc_mem_usage(memory_usage_t *usage) {
