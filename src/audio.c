@@ -27,8 +27,8 @@ struct pulse_context_t {
   uint32_t index;
 };
 
-static void clean_pulse_context(pulse_context_t *context);
-static void init_pulse_context(pulse_context_t *context);
+static void clean_pulse_context(pulse_context_t *context, bool full_cleanup);
+static void init_pulse_context(pulse_context_t *context, bool create_loop);
 static void state_callback(pa_context *context, void *userdata);
 static void subscribe_callback(pa_context *context,
                                pa_subscription_event_type_t t, uint32_t index,
@@ -43,7 +43,7 @@ pulse_context_t *init_pulse(GMainContext *context, pulse_notify_t callback) {
   pulse_context_t *ctx = p_new(pulse_context_t, 1);
   ctx->g_context = context;
   ctx->callback = callback;
-  init_pulse_context(ctx);
+  init_pulse_context(ctx, true);
 
   return ctx;
 }
@@ -78,26 +78,32 @@ void toggle_pulse_mute(pulse_context_t *context) {
 }
 
 void clean_pulse(pulse_context_t *context) {
-  clean_pulse_context(context);
+  clean_pulse_context(context, true);
   p_delete(&context);
 }
 
-void clean_pulse_context(pulse_context_t *context) {
+void clean_pulse_context(pulse_context_t *context, bool full_cleanup) {
   memset(&context->pulse, 0, sizeof(context->pulse));
   if (context->callback) context->callback(&context->pulse);
   if (context->context) {
+    pa_context_set_state_callback(context->context, nullptr, nullptr);
+    pa_context_set_subscribe_callback(context->context, nullptr, nullptr);
     pa_context_disconnect(context->context);
     pa_context_unref(context->context);
     context->context = nullptr;
   }
-  if (context->loop) pa_glib_mainloop_free(context->loop);
   context->pulse.inited = false;
-  context->loop = nullptr;
+  if (full_cleanup && context->loop) {
+    pa_glib_mainloop_free(context->loop);
+    context->loop = nullptr;
+  }
 }
 
-void init_pulse_context(pulse_context_t *context) {
-  if (context->loop) pa_glib_mainloop_free(context->loop);
-  context->loop = pa_glib_mainloop_new(context->g_context);
+void init_pulse_context(pulse_context_t *context, bool create_loop) {
+  if (create_loop) {
+    if (context->loop) pa_glib_mainloop_free(context->loop);
+    context->loop = pa_glib_mainloop_new(context->g_context);
+  }
   pa_mainloop_api *api = pa_glib_mainloop_get_api(context->loop);
   context->context = pa_context_new(api, APP_NAME "-audio-status");
   pa_context_connect(context->context, nullptr, PA_CONTEXT_NOFAIL, nullptr);
@@ -113,8 +119,8 @@ void state_callback(pa_context *context, void *userdata) {
     pa_context_subscribe(context, PA_SUBSCRIPTION_MASK_SINK, nullptr, nullptr);
     pa_context_get_server_info(context, server_info_callback, ctx);
   } else if (state == PA_CONTEXT_FAILED) {
-    clean_pulse_context(ctx);
-    init_pulse_context(ctx);
+    clean_pulse_context(ctx, false);
+    init_pulse_context(ctx, false);
   }
 }
 
