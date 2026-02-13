@@ -34,16 +34,16 @@ typedef struct cpu_stat_t {
   uint64_t guest_nice;
 } cpu_stat_t;
 
-static double calc_cpu_usage(cpu_stat_t curr, cpu_stat_t prev) {
-  uint64_t curr_idle = curr.idle + curr.iowait;
-  uint64_t curr_total = curr.user + curr.nice + curr.system + curr.idle +
-                        curr.iowait + curr.irq + curr.softirq + curr.steal +
-                        curr.guest + curr.guest_nice;
+static double calc_cpu_usage(cpu_stat_t *curr, cpu_stat_t *prev) {
+  uint64_t curr_idle = curr->idle + curr->iowait;
+  uint64_t curr_total = curr->user + curr->nice + curr->system + curr->idle +
+                        curr->iowait + curr->irq + curr->softirq + curr->steal +
+                        curr->guest + curr->guest_nice;
 
-  uint64_t prev_idle = prev.idle + prev.iowait;
-  uint64_t prev_total = prev.user + prev.nice + prev.system + prev.idle +
-                        prev.iowait + prev.irq + prev.softirq + prev.steal +
-                        prev.guest + prev.guest_nice;
+  uint64_t prev_idle = prev->idle + prev->iowait;
+  uint64_t prev_total = prev->user + prev->nice + prev->system + prev->idle +
+                        prev->iowait + prev->irq + prev->softirq + prev->steal +
+                        prev->guest + prev->guest_nice;
 
   uint64_t total = curr_total - prev_total;
   uint64_t idle = curr_idle - prev_idle;
@@ -68,7 +68,7 @@ static bool get_cpu_usage(double *usage, GError *error) {
 
   char cpu_line[256];
   for (gchar **line = lines; *line != nullptr; ++line) {
-    if (strncmp(cpu_line, "cpu", 4) == 0) {
+    if (strncmp(*line, "cpu ", 4) == 0) {
       strncpy(cpu_line, *line, sizeof(cpu_line));
       break;
     }
@@ -84,7 +84,7 @@ static bool get_cpu_usage(double *usage, GError *error) {
     inited = true;
   }
 
-  double percent = calc_cpu_usage(stat, prev_cpu_stat);
+  double percent = calc_cpu_usage(&stat, &prev_cpu_stat);
   prev_cpu_stat = stat;
   *usage = percent;
 
