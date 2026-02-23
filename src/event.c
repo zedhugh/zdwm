@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 #include <xkbcommon/xkbcommon.h>
@@ -201,12 +202,18 @@ static void property_notify(xcb_property_notify_event_t *ev) {
 
 static void destroy_notify(xcb_destroy_notify_event_t *ev) {
   client_t *client = client_get_by_window(ev->window);
-  if (client) client_unmanage(client);
+  if (client) client_unmanage(client, true);
 }
 
 static void unmap_notify(xcb_unmap_notify_event_t *ev) {
   client_t *client = client_get_by_window(ev->window);
-  if (client) client_unmanage(client);
+  if (client) {
+    if (XCB_EVENT_SENT(ev)) {
+      xwindow_set_state(ev->window, XCB_ICCCM_WM_STATE_WITHDRAWN);
+    } else {
+      client_unmanage(client, false);
+    }
+  }
 }
 
 static void map_notify(xcb_map_notify_event_t *ev) {

@@ -50,7 +50,7 @@ void client_set_transient_for_window(client_t *client,
 void client_set_leader_window(client_t *client, xcb_window_t leader_window);
 
 void client_kill(client_t *client);
-void client_unmanage(client_t *client);
+void client_unmanage(client_t *client, bool destroyed);
 void client_apply_geometry(client_t *client, area_t geometry);
 void client_apply_workarea_geometry(client_t *client, area_t geometry);
 void client_apply_rules(client_t *client, const rule_t rules[],

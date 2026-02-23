@@ -314,6 +314,16 @@ void wm_scan_clients(void) {
 void wm_clean(void) {
   clean_status();
   text_clean_pango_layout();
+
+  {
+    client_t *c = wm.client_stack_list;
+    while (c) {
+      client_t *next_client = c->stack_next;
+      client_unmanage(c, false);
+      c = next_client;
+    }
+  }
+
   monitor_clean(wm.monitor_list);
 
   for (int i = 0; i < countof(sources); i++) {
@@ -321,7 +331,6 @@ void wm_clean(void) {
     if (source_id) g_source_remove(source_id);
   }
 
-  xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_CLIENT_LIST);
   xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_ACTIVE_WINDOW);
   xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_SUPPORTING_WM_CHECK);
   xcb_aux_sync(wm.xcb_conn);

@@ -172,6 +172,17 @@ static void client_init_tag_by_wm_desktop(client_t *client) {
   }
 }
 
+static void set_window_event_mask(xcb_window_t window, bool clean) {
+  xcb_cw_t change_mask = XCB_CW_EVENT_MASK;
+  uint32_t init_event_mask =
+    XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
+    XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY;
+  uint32_t event_mask = clean ? XCB_EVENT_MASK_NO_EVENT : init_event_mask;
+  xcb_params_cw_t params = {.event_mask = event_mask};
+  xcb_aux_change_window_attributes(wm.xcb_conn, window, change_mask, &params);
+}
+
 void client_manage(xcb_window_t window,
                    xcb_get_geometry_reply_t *geometry_reply) {
   client_t *c = p_new(client_t, 1);
@@ -184,14 +195,7 @@ void client_manage(xcb_window_t window,
   c->old_border_width = geometry_reply->border_width;
 
   {
-    const xcb_params_cw_t params = {
-      .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
-                    XCB_EVENT_MASK_PROPERTY_CHANGE |
-                    XCB_EVENT_MASK_STRUCTURE_NOTIFY |
-                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
-    };
-    xcb_aux_change_window_attributes(wm.xcb_conn, window, XCB_CW_EVENT_MASK,
-                                     &params);
+    set_window_event_mask(window, false);
     xcb_map_window(wm.xcb_conn, window);
   }
   client_update_names(c);
@@ -238,6 +242,7 @@ void client_manage(xcb_window_t window,
 
   xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_APPEND, wm.screen->root,
                       _NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, 1, &window);
+  xwindow_set_state(window, XCB_ICCCM_WM_STATE_NORMAL);
 
   monitor_arrange(c->monitor);
   monitor_draw_bar(c->monitor);
@@ -477,7 +482,13 @@ static void update_client_list(void) {
   }
 }
 
-void client_unmanage(client_t *client) {
+void client_kill(client_t *client) {
+  if (!xwindow_send_event(client->window, WM_DELETE_WINDOW)) {
+    xwindow_kill_window(client->window);
+  }
+}
+
+void client_unmanage(client_t *client, bool destroyed) {
   monitor_t *m = client->monitor;
 
   client_detach_list(client);
@@ -485,6 +496,13 @@ void client_unmanage(client_t *client) {
 
   for (tag_t *tag = m->tag_list; tag; tag = tag->next) {
     if (tag->mask & client->tags) client_remove_from_tag(client, tag);
+  }
+
+  if (!destroyed) {
+    set_window_event_mask(client->window, true);
+    client_change_border_width(client, client->old_border_width);
+    xwindow_set_state(client->window, XCB_ICCCM_WM_STATE_WITHDRAWN);
+    xcb_flush(wm.xcb_conn);
   }
 
   client_wipe(client);

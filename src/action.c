@@ -104,3 +104,9 @@ void toggle_client_maximize(const user_action_arg_t *arg) {
 
   client_set_maximize(wm.client_focused, !wm.client_focused->maximize);
 }
+
+void kill_client(const user_action_arg_t *arg) {
+  if (wm.client_focused) {
+    client_kill(wm.client_focused);
+  }
+}

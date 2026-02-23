@@ -228,6 +228,14 @@ bool xwindow_get_wm_desktop(xcb_window_t window, uint32_t *desktop) {
   return success;
 }
 
+void xwindow_kill_window(xcb_window_t window) {
+  xcb_grab_server(wm.xcb_conn);
+  xcb_set_close_down_mode(wm.xcb_conn, XCB_CLOSE_DOWN_DESTROY_ALL);
+  xcb_kill_client(wm.xcb_conn, window);
+  xcb_flush(wm.xcb_conn);
+  xcb_ungrab_server(wm.xcb_conn);
+}
+
 xcb_window_t xwindow_get_transient_for(xcb_window_t window) {
   xcb_connection_t *conn = wm.xcb_conn;
   xcb_window_t t_window = XCB_WINDOW_NONE;
@@ -248,6 +256,23 @@ int32_t xwindow_get_state(xcb_window_t window) {
   xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_hints(conn, window);
   if (!xcb_icccm_get_wm_hints_reply(conn, cookie, &hints, nullptr)) return -1;
   return hints.initial_state;
+}
+
+void xwindow_set_state(xcb_window_t window, xcb_icccm_wm_state_t state) {
+  xcb_icccm_wm_hints_t hints;
+  xcb_icccm_wm_hints_set_none(&hints);
+  switch (state) {
+    case XCB_ICCCM_WM_STATE_WITHDRAWN:
+      xcb_icccm_wm_hints_set_withdrawn(&hints);
+      break;
+    case XCB_ICCCM_WM_STATE_NORMAL:
+      xcb_icccm_wm_hints_set_normal(&hints);
+      break;
+    case XCB_ICCCM_WM_STATE_ICONIC:
+      xcb_icccm_wm_hints_set_iconic(&hints);
+      break;
+  }
+  xcb_icccm_set_wm_hints(wm.xcb_conn, window, &hints);
 }
 
 xcb_get_geometry_reply_t *xwindow_get_geometry_reply(xcb_window_t window) {

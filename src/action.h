@@ -60,3 +60,4 @@ void change_volume(const user_action_arg_t *arg);
 void toggle_client_floating(const user_action_arg_t *arg);
 void toggle_client_fullscreen(const user_action_arg_t *arg);
 void toggle_client_maximize(const user_action_arg_t *arg);
+void kill_client(const user_action_arg_t *arg);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xproto.h>
 
 #include "action.h"
@@ -22,9 +23,11 @@ void xwindow_get_text_property(xcb_window_t window, xcb_atom_t property,
                                char **out);
 void xwindow_set_wm_desktop(xcb_window_t window, uint32_t desktop);
 bool xwindow_get_wm_desktop(xcb_window_t window, uint32_t *desktop);
+void xwindow_kill_window(xcb_window_t window);
 
 xcb_window_t xwindow_get_transient_for(xcb_window_t window);
 int32_t xwindow_get_state(xcb_window_t window);
+void xwindow_set_state(xcb_window_t window, xcb_icccm_wm_state_t state);
 xcb_get_geometry_reply_t *xwindow_get_geometry_reply(xcb_window_t window);
 xcb_get_window_attributes_reply_t *xwindow_get_attributes_reply(
   xcb_window_t window);

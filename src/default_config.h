@@ -99,6 +99,7 @@ static const keyboard_t key_list[] = {
   {modifier_super | modifier_control, XK_space, toggle_client_floating, {0}},
   {modifier_super, XK_f, toggle_client_fullscreen, {0}},
   {modifier_super, XK_m, toggle_client_maximize, {0}},
+  {modifier_super | modifier_shift, XK_c, kill_client, {0}},
 
   {modifier_super, XK_Up, change_volume, {.i = 1}},
   {modifier_super, XK_Down, change_volume, {.i = -1}},
