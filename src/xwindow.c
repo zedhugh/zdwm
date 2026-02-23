@@ -136,7 +136,7 @@ bool xwindow_send_event(xcb_window_t window, xcb_atom_t atom) {
   bool exist = false;
 
   xcb_get_property_cookie_t cookie =
-    xcb_icccm_get_wm_protocols(wm.xcb_conn, window, atom);
+    xcb_icccm_get_wm_protocols(wm.xcb_conn, window, WM_PROTOCOLS);
   xcb_icccm_get_wm_protocols_reply_t reply;
   if (xcb_icccm_get_wm_protocols_reply(wm.xcb_conn, cookie, &reply, nullptr)) {
     for (uint32_t i = 0; !exist && i < reply.atoms_len; i++) {
@@ -154,6 +154,9 @@ bool xwindow_send_event(xcb_window_t window, xcb_atom_t atom) {
     ev.type = WM_PROTOCOLS;
     ev.data.data32[0] = atom;
     ev.data.data32[1] = XCB_CURRENT_TIME;
+
+    xcb_connection_t *conn = wm.xcb_conn;
+    xcb_send_event(conn, false, window, XCB_EVENT_MASK_NO_EVENT, (char *)&ev);
   }
 
   return exist;
