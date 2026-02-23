@@ -125,8 +125,9 @@ static const char *const autostart_list[] = {
 
 static const rule_t rules[] = {
   {.role = "dialog", .tag_index = -1, .floating = true},
-  {.class = "firefox", .tag_index = 1, .maximize = true},
+  {.class = "firefox", .role = "About", .tag_index = 1, .floating = true},
+  {.class = "firefox", .role = "browser", .tag_index = 1, .maximize = true},
   {.class = "Google-chrome", .tag_index = 1, .maximize = true},
-  {.class = "mpv", .tag_index = 3, .switch_to_tag = true, .fullscreen = true},
+  {.class = "mpv", .tag_index = 11, .switch_to_tag = true, .fullscreen = true},
   {.class = "Emacs", .tag_index = 10, .switch_to_tag = true, .maximize = true},
 };
