@@ -132,6 +132,32 @@ static void map_request(xcb_map_request_event_t *ev) {
   p_delete(&wa_reply);
 }
 
+typedef enum _NET_WM_STATE_ACTION : uint32_t {
+  _NET_WM_STATE_ADD = 1,
+  _NET_WM_STATE_REMOVE = 0,
+  _NET_WM_STATE_TOGGLE = 2,
+} _NET_WM_STATE_ACTION;
+
+static inline bool get_bool_property(bool init_property,
+                                     _NET_WM_STATE_ACTION action) {
+  switch (action) {
+    case _NET_WM_STATE_ADD:
+      return true;
+    case _NET_WM_STATE_REMOVE:
+      return false;
+    case _NET_WM_STATE_TOGGLE:
+      return !init_property;
+    default:
+      fatal(
+        "Invalid _NET_WM_STATE_ACTION: %u\n"
+        "Only supported:"
+        "_NET_WM_STATE_ADD: %u"
+        "_NET_WM_STATE_REMOVE: %u"
+        "_NET_WM_STATE_TOGGLE: %u",
+        action, _NET_WM_STATE_ADD, _NET_WM_STATE_REMOVE, _NET_WM_STATE_TOGGLE);
+  }
+}
+
 static void client_message(xcb_client_message_event_t *ev) {
   client_t *c = client_get_by_window(ev->window);
   if (c == nullptr) return;
@@ -172,11 +198,16 @@ static void client_message(xcb_client_message_event_t *ev) {
      *   _NET_WM_STATE_REMOVE（0）：移除全屏状态，窗口退出全屏模式
      *   _NET_WM_STATE_TOGGLE（2）：切换全屏状态（若当前全屏则退出，反之进入）
      */
+    _NET_WM_STATE_ACTION action = ev->data.data32[0];
+
     if (ev->data.data32[1] == _NET_WM_STATE_FULLSCREEN ||
         ev->data.data32[2] == _NET_WM_STATE_FULLSCREEN) {
-      bool fullscreen = ev->data.data32[0];
-      if (ev->data.data32[0] == 2) fullscreen = !c->fullscreen;
-      client_set_fullscreen(c, fullscreen);
+      client_set_fullscreen(c, get_bool_property(c->fullscreen, action));
+    } else if (ev->data.data32[1] == _NET_WM_STATE_MAXIMIZED_HORZ ||
+               ev->data.data32[1] == _NET_WM_STATE_MAXIMIZED_VERT ||
+               ev->data.data32[2] == _NET_WM_STATE_MAXIMIZED_HORZ ||
+               ev->data.data32[2] == _NET_WM_STATE_MAXIMIZED_VERT) {
+      client_set_maximize(c, get_bool_property(c->maximize, action));
     }
   }
 }
