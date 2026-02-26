@@ -24,25 +24,43 @@ static void button_press(xcb_button_press_event_t *ev) {
   click_area_t click_area = click_none;
   user_action_arg_t arg = {0};
 
+  monitor_t *monitor = nullptr;
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
     if (ev->event == m->bar_window) {
-      if (wm.current_monitor != m) wm.current_monitor = m;
-
-      if (ev->event_x >= m->tag_extent.start &&
-          ev->event_x <= m->tag_extent.end) {
-        click_area = click_tag;
-
-        for (tag_t *tag = m->tag_list; tag; tag = tag->next) {
-          if (ev->event_x >= tag->bar_extent.start &&
-              ev->event_x <= tag->bar_extent.end) {
-            arg.ui = tag->mask;
-            break;
-          }
-        }
-      }
+      monitor = m;
       break;
     }
   }
+
+  if (!monitor) return;
+
+  wm.current_monitor = monitor;
+  if (ev->event_x >= monitor->tag_extent.start &&
+      ev->event_x <= monitor->tag_extent.end) {
+    click_area = click_tag;
+
+    for (tag_t *tag = monitor->tag_list; tag; tag = tag->next) {
+      if (ev->event_x >= tag->bar_extent.start &&
+          ev->event_x <= tag->bar_extent.end) {
+        arg.ui = tag->mask;
+        break;
+      }
+    }
+  }
+
+  if (click_area == click_none) {
+    for (task_in_tag_t *task = monitor->selected_tag->task_list; task;
+         task = task->next) {
+      if (ev->event_x >= task->bar_extent.start &&
+          ev->event_x <= task->bar_extent.end) {
+        click_area = click_client_name;
+        arg.ptr = task->client;
+        break;
+      }
+    }
+  }
+
+  if (click_area == click_none) return;
 
   for (int i = 0; i < countof(button_list); i++) {
     if (click_area == button_list[i].click_area &&
@@ -209,6 +227,15 @@ static void client_message(xcb_client_message_event_t *ev) {
                ev->data.data32[2] == _NET_WM_STATE_MAXIMIZED_VERT) {
       client_set_maximize(c, get_bool_property(c->maximize, action));
     }
+  } else if (ev->type == WM_CHANGE_STATE) {
+    switch (ev->data.data32[0]) {
+      case XCB_ICCCM_WM_STATE_ICONIC:
+        client_set_minimize(c, true);
+        break;
+      case XCB_ICCCM_WM_STATE_NORMAL:
+        client_set_minimize(c, false);
+        break;
+    }
   }
 }
 
@@ -238,12 +265,12 @@ static void destroy_notify(xcb_destroy_notify_event_t *ev) {
 
 static void unmap_notify(xcb_unmap_notify_event_t *ev) {
   client_t *client = client_get_by_window(ev->window);
-  if (client) {
-    if (XCB_EVENT_SENT(ev)) {
-      xwindow_set_state(ev->window, XCB_ICCCM_WM_STATE_WITHDRAWN);
-    } else {
-      client_unmanage(client, false);
-    }
+  if (!client || client->minimize) return;
+
+  if (XCB_EVENT_SENT(ev)) {
+    xwindow_set_state(ev->window, XCB_ICCCM_WM_STATE_WITHDRAWN);
+  } else {
+    client_unmanage(client, false);
   }
 }
 

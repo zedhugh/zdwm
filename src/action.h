@@ -13,6 +13,7 @@ typedef union user_action_arg_t {
 typedef enum click_area_t {
   click_none,
   click_tag,
+  click_client_name,
 } click_area_t;
 
 typedef enum modifier_t {
@@ -60,4 +61,5 @@ void change_volume(const user_action_arg_t *arg);
 void toggle_client_floating(const user_action_arg_t *arg);
 void toggle_client_fullscreen(const user_action_arg_t *arg);
 void toggle_client_maximize(const user_action_arg_t *arg);
+void toggle_client_minimize(const user_action_arg_t *arg);
 void kill_client(const user_action_arg_t *arg);

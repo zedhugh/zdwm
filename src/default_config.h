@@ -29,6 +29,7 @@ static const char *const active_border_color = "#005577";
 
 static const button_t button_list[] = {
   {click_tag, modifier_none, button_left, select_tag_of_current_monitor, {0}},
+  {click_client_name, modifier_none, button_left, toggle_client_minimize, {0}},
 };
 
 #define TAGKEYS(KEY, TAG)                                                  \

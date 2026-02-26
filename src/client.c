@@ -140,7 +140,7 @@ static inline void client_update_names(client_t *c) {
 }
 
 static inline void client_init_geometry(client_t *c) {
-  if (c->maximize || c->fullscreen) return;
+  if (c->maximize || c->fullscreen || c->minimize) return;
 
   area_t workarea = c->monitor->workarea;
   if (c->geometry.x + client_width(c) > workarea.x + workarea.width) {
@@ -194,10 +194,10 @@ void client_manage(xcb_window_t window,
   c->geometry = c->old_geometry;
   c->old_border_width = geometry_reply->border_width;
 
-  {
-    set_window_event_mask(window, false);
-    xcb_map_window(wm.xcb_conn, window);
-  }
+  c->minimize = xwindow_get_state(window) == XCB_ICCCM_WM_STATE_ICONIC;
+
+  set_window_event_mask(window, false);
+
   client_update_names(c);
   xwindow_get_text_property(c->window, WM_WINDOW_ROLE, &c->role);
   client_update_wm_hints(c);
@@ -242,7 +242,13 @@ void client_manage(xcb_window_t window,
 
   xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_APPEND, wm.screen->root,
                       _NET_CLIENT_LIST, XCB_ATOM_WINDOW, 32, 1, &window);
-  xwindow_set_state(window, XCB_ICCCM_WM_STATE_NORMAL);
+
+  if (c->minimize) {
+    xwindow_set_state(window, XCB_ICCCM_WM_STATE_ICONIC);
+  } else {
+    xwindow_set_state(window, XCB_ICCCM_WM_STATE_NORMAL);
+    xcb_map_window(wm.xcb_conn, window);
+  }
 
   monitor_arrange(c->monitor);
   monitor_draw_bar(c->monitor);
@@ -464,6 +470,26 @@ void client_set_maximize(client_t *client, bool maximize) {
                         _NET_WM_STATE, XCB_ATOM_ATOM, 32, 0, 0);
     client_change_border_width(client, client->old_border_width);
     client_apply_geometry(client, client->old_geometry);
+  }
+  monitor_arrange(client->monitor);
+  client_focus(client);
+}
+
+void client_set_minimize(client_t *client, bool minimize) {
+  if (client->minimize == minimize) return;
+
+  client->minimize = minimize;
+  if (minimize) {
+    xwindow_set_state(client->window, XCB_ICCCM_WM_STATE_ICONIC);
+
+    xcb_grab_server(wm.xcb_conn);
+    set_window_event_mask(client->window, true);
+    xcb_unmap_window(wm.xcb_conn, client->window);
+    set_window_event_mask(client->window, false);
+    xcb_ungrab_server(wm.xcb_conn);
+  } else {
+    xwindow_set_state(client->window, XCB_ICCCM_WM_STATE_NORMAL);
+    xcb_map_window(wm.xcb_conn, client->window);
   }
   monitor_arrange(client->monitor);
   client_focus(client);
