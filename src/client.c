@@ -277,9 +277,11 @@ bool client_need_layout(client_t *client) {
 }
 
 void client_send_to_tag(client_t *client, uint32_t tag_mask) {
+  if (client->tags == tag_mask) return;
   client->tags = tag_mask;
   client_tags_apply(client);
-  monitor_select_tag(client->monitor, tag_mask);
+  monitor_arrange(client->monitor);
+  monitor_draw_bar(client->monitor);
 }
 
 void client_send_to_monitor(client_t *client, monitor_t *monitor) {
