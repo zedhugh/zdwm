@@ -517,6 +517,20 @@ void wm_restack_clients(void) {
   xcb_flush(wm.xcb_conn);
 }
 
+void wm_set_current_monitor(monitor_t *monitor) {
+  if (!monitor || wm.current_monitor == monitor) return;
+
+  point_t point = xcursor_query_pointer_position();
+  monitor_t *point_monitor = wm_get_monitor_by_point(point);
+  point_monitor->cursor_position = point;
+  point_monitor->position_inited = true;
+
+  wm.current_monitor = monitor;
+  if (point_monitor != monitor) {
+    monitor_restore_cursor_point(monitor);
+  }
+}
+
 static inline int intersect(area_t area, monitor_t *m) {
   return MAX(0, MIN(area.x + area.width, m->geometry.x + m->geometry.width) -
                   MAX(area.x, m->geometry.x)) *
@@ -524,7 +538,11 @@ static inline int intersect(area_t area, monitor_t *m) {
                   MAX(area.y, m->geometry.y));
 }
 
-monitor_t *wm_get_monitor_by_area(area_t area) {
+monitor_t *__attribute__((returns_nonnull)) wm_get_monitor_by_area(area_t area) {
+  if (wm.current_monitor == nullptr) {
+    fatal("wm_get_monitor_by_area: current monitor is nullptr");
+  }
+
   monitor_t *monitor = wm.current_monitor;
   int temp_area, max_area = 0;
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
@@ -537,14 +555,10 @@ monitor_t *wm_get_monitor_by_area(area_t area) {
   return monitor;
 }
 
-monitor_t *wm_get_monitor_by_point(point_t point) {
-  for (monitor_t *m = wm.monitor_list; m; m = m->next) {
-    if (m->geometry.x <= point.x &&
-        point.x < m->geometry.x + m->geometry.width) {
-      return m;
-    }
-  }
-  return wm.monitor_list;
+monitor_t *__attribute__((returns_nonnull)) wm_get_monitor_by_point(
+  point_t point) {
+  area_t area = {.x = point.x, .y = point.y, .width = 1, .height = 1};
+  return wm_get_monitor_by_area(area);
 }
 
 monitor_t *wm_get_monitor_by_window(xcb_window_t window) {

@@ -361,14 +361,13 @@ void monitor_save_cursor_point(monitor_t *monitor) {
 }
 
 void monitor_restore_cursor_point(monitor_t *monitor) {
-  if (monitor->position_inited) {
-    xcursor_set_pointer_position(monitor->cursor_position);
-    return;
+  if (!monitor->position_inited) {
+    point_t point = xcursor_query_pointer_position();
+    monitor_t *m = wm_get_monitor_by_point(point);
+    monitor->cursor_position.x = point.x - m->geometry.x + monitor->geometry.x;
+    monitor->cursor_position.y = point.y - m->geometry.y + monitor->geometry.y;
+    monitor->position_inited = true;
   }
 
-  point_t point = xcursor_query_pointer_position();
-  monitor_t *m = wm_get_monitor_by_point(point);
-  monitor->cursor_position.x = point.x - m->geometry.x + monitor->geometry.x;
-  monitor->cursor_position.y = point.y - m->geometry.y + monitor->geometry.y;
-  monitor->position_inited = true;
+  xcursor_set_pointer_position(monitor->cursor_position);
 }

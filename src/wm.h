@@ -57,7 +57,9 @@ extern wm_t wm;
 void wm_restart(void);
 void wm_quit(void);
 void wm_restack_clients(void);
-monitor_t *wm_get_monitor_by_area(area_t area);
-monitor_t *wm_get_monitor_by_point(point_t point);
+void wm_set_current_monitor(monitor_t *monitor);
+monitor_t *__attribute__((returns_nonnull)) wm_get_monitor_by_area(area_t area);
+monitor_t *__attribute__((returns_nonnull)) wm_get_monitor_by_point(
+  point_t point);
 monitor_t *wm_get_monitor_by_window(xcb_window_t window);
 monitor_t *wm_get_next_monitor(monitor_t *monitor);

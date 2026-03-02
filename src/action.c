@@ -65,7 +65,7 @@ void raise_or_run(const user_action_arg_t *arg) {
   if (client && client == wm.client_focused) return;
 
   if (client) {
-    wm.current_monitor = client->monitor;
+    wm_set_current_monitor(client->monitor);
     monitor_select_tag(client->monitor, client->tags);
     client_stack_raise(client);
     client_focus(client);

@@ -34,7 +34,7 @@ static void button_press(xcb_button_press_event_t *ev) {
 
   if (!monitor) return;
 
-  wm.current_monitor = monitor;
+  wm_set_current_monitor(monitor);
   if (ev->event_x >= monitor->tag_extent.start &&
       ev->event_x <= monitor->tag_extent.end) {
     click_area = click_tag;
@@ -188,7 +188,7 @@ static void client_message(xcb_client_message_event_t *ev) {
 
       switch (ev->data.data32[0]) {
         case 2: /* 来自 pager */
-          wm.current_monitor = c->monitor;
+          wm_set_current_monitor(c->monitor);
           monitor_select_tag(c->monitor, t->mask);
           client_focus(c);
           break;
