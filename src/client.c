@@ -295,7 +295,7 @@ void client_send_to_monitor(client_t *client, monitor_t *monitor) {
   client->tags = monitor->selected_tag->mask;
   client_add_to_tag(client, monitor->selected_tag);
 
-  wm_set_current_monitor(monitor);
+  wm_set_current_monitor(monitor, true);
   monitor_arrange(m);
   monitor_arrange(monitor);
   monitor_draw_bar(m);
@@ -607,7 +607,7 @@ void client_apply_rules(client_t *client, const rule_t rules[],
         client->tags = t->mask;
 
         if (r->switch_to_tag) {
-          wm_set_current_monitor(m);
+          wm_set_current_monitor(m, true);
           m->selected_tag = t;
 
           logger("++ switch to tag: %u\n", t->index);
