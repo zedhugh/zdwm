@@ -11,6 +11,7 @@
 
 #include "action.h"
 #include "atoms-extern.h"
+#include "base.h"
 #include "client.h"
 #include "default_config.h"
 #include "monitor.h"
@@ -118,6 +119,11 @@ static void key_press(xcb_key_press_event_t *ev) {
   for (int i = 0; i < countof(key_list); i++) {
     keyboard_t key = key_list[i];
     if (keysym == key.keysym && ev->state == key.modifiers && key.func) {
+      /* 查询光标所在屏幕并将其设置为当前屏幕 */
+      point_t point = {.x = ev->root_x, .y = ev->root_y};
+      monitor_t *monitor = wm_get_monitor_by_point(point);
+      wm_set_current_monitor(monitor, false);
+
       key.func(&key.arg);
       return;
     }
@@ -293,6 +299,19 @@ static void expose(xcb_expose_event_t *ev) {
   xcb_flush(wm.xcb_conn);
 }
 
+static void enter_notify(xcb_enter_notify_event_t *ev) {
+  client_t *client = client_get_by_window(ev->event);
+  if (!client || wm.client_focused == client) return;
+
+  client_focus(client);
+}
+
+static void focus_in(xcb_focus_in_event_t *ev) {
+  client_t *client = client_get_by_window(ev->event);
+  if (!client) return;
+  wm_set_current_monitor(client->monitor, ev->mode != XCB_NOTIFY_MODE_NORMAL);
+}
+
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
@@ -316,6 +335,8 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_PROPERTY_NOTIFY, property_notify);
     EVENT(XCB_UNMAP_NOTIFY, unmap_notify);
     EVENT(XCB_DESTROY_NOTIFY, destroy_notify);
+    EVENT(XCB_ENTER_NOTIFY, enter_notify);
+    EVENT(XCB_FOCUS_IN, focus_in);
 
 #undef EVENT
   }
