@@ -636,6 +636,8 @@ void client_focus(client_t *client) {
 }
 
 void client_stack_raise(client_t *client) {
+  if (wm.client_stack_list == client) return;
+
   client_detach_stack(client);
   client_attach_stack(client);
   wm_restack_clients();
