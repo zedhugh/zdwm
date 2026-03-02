@@ -10,6 +10,7 @@
 #include "atoms-extern.h"
 #include "base.h"
 #include "monitor.h"
+#include "rect.h"
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
@@ -645,4 +646,51 @@ void client_stack_raise(client_t *client) {
 
 bool client_is_visible(client_t *client) {
   return client->tags & client->monitor->selected_tag->mask;
+}
+
+static inline rect_t client_to_rect(client_t *client) {
+  return (rect_t){
+    .x1 = client->geometry.x,
+    .y1 = client->geometry.y,
+    .x2 = client->geometry.x + (int32_t)client_width(client),
+    .y2 = client->geometry.y + (int32_t)client_height(client),
+  };
+}
+
+obscured_t client_get_obscured_state(client_t *client, client_t *client_stack) {
+  if (!client || !client_stack) return obscured_none;
+
+  rect_t source = client_to_rect(client);
+  size_t clip_count = 0;
+  size_t clip_capacity = 0;
+  rect_t *clips = nullptr;
+
+  bool has_overlap = false;
+  for (client_t *c = client_stack; c; c = c->stack_next) {
+    if (c == client) break;
+    if (c->minimize || !client_is_visible(c)) continue;
+
+    rect_t clip = client_to_rect(c);
+    if (!rect_intersection(source, clip, nullptr)) continue;
+
+    has_overlap = true;
+    if (clip_count == clip_capacity) {
+      clip_capacity = clip_capacity ? clip_capacity * 2 : 4;
+      p_realloc(&clips, clip_capacity);
+    }
+    clips[clip_count++] = clip;
+  }
+
+  if (!has_overlap) {
+    p_delete(&clips);
+    return obscured_none;
+  }
+
+  rect_t *remaining = nullptr;
+  size_t remaining_count =
+    rect_subtract_many(source, clips, clip_count, &remaining);
+
+  p_delete(&clips);
+  p_delete(&remaining);
+  return remaining_count == 0 ? obscured_fully : obscured_partially;
 }

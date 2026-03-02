@@ -63,3 +63,4 @@ void toggle_client_fullscreen(const user_action_arg_t *arg);
 void toggle_client_maximize(const user_action_arg_t *arg);
 void toggle_client_minimize(const user_action_arg_t *arg);
 void kill_client(const user_action_arg_t *arg);
+void change_client_state_dwim(const user_action_arg_t *arg);

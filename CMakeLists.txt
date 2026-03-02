@@ -43,6 +43,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/xres.c
     ${SOURCE_DIR}/status.c
     ${SOURCE_DIR}/audio.c
+    ${SOURCE_DIR}/rect.c
 )
 
 find_package(PkgConfig REQUIRED)

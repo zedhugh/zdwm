@@ -118,3 +118,23 @@ void kill_client(const user_action_arg_t *arg) {
     client_kill(wm.client_focused);
   }
 }
+
+/**
+ * @brief 根据 client 的当前状态切换 client 下一状态
+ * @description 如果当前 client 被遮挡了或者最小化了，则显示出来，否则最小化
+ */
+void change_client_state_dwim(const user_action_arg_t *arg) {
+  client_t *client = (client_t *)arg->ptr;
+  if (!client) return;
+
+  if (client != wm.client_stack_list &&
+      client_get_obscured_state(client, wm.client_stack_list) !=
+        obscured_none) {
+    client_stack_raise(client);
+    client_focus(client);
+    return;
+  }
+
+  client_set_minimize(client, !client->minimize);
+  if (!client->minimize) client_stack_raise(client);
+}

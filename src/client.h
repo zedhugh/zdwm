@@ -61,6 +61,13 @@ void client_stack_raise(client_t *client);
 
 bool client_is_visible(client_t *client);
 
+typedef enum obscured_t {
+  obscured_none,
+  obscured_partially,
+  obscured_fully,
+} obscured_t;
+obscured_t client_get_obscured_state(client_t *client, client_t *client_stack);
+
 static inline uint16_t client_width(client_t *c) {
   return c->geometry.width + c->border_width * 2;
 }
