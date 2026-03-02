@@ -262,6 +262,8 @@ void client_manage(xcb_window_t window,
 char **client_get_task_title(client_t *client) {
   if (client->net_name) return &client->net_name;
   if (client->name) return &client->name;
+  if (client->instance) return &client->instance;
+  if (client->class) return &client->class;
   return nullptr;
 }
 
