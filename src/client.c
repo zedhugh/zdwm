@@ -159,9 +159,12 @@ static inline void client_init_geometry(client_t *c) {
   client_change_border_width(c, wm.border_width);
 }
 
-static void client_init_tag_by_wm_desktop(client_t *client) {
+static void client_init_tag_by_wm_desktop(client_t *client, uint32_t tag_mask) {
   uint32_t tag_index = 0;
-  if (!xwindow_get_wm_desktop(client->window, &tag_index)) return;
+  if (!xwindow_get_wm_desktop(client->window, &tag_index)) {
+    goto tag_fallback;
+  }
+
   for (monitor_t *m = wm.monitor_list; m; m = m->next) {
     for (tag_t *tag = m->tag_list; tag; tag = tag->next) {
       if (tag->index == tag_index) {
@@ -171,6 +174,9 @@ static void client_init_tag_by_wm_desktop(client_t *client) {
       }
     }
   }
+
+tag_fallback:
+  client->tags = tag_mask;
 }
 
 static void set_window_event_mask(xcb_window_t window, bool clean) {
@@ -224,15 +230,14 @@ void client_manage(xcb_window_t window,
     if (c->transient_for_window && (transient_for_client = client_get_by_window(
                                       c->transient_for_window))) {
       c->monitor = transient_for_client->monitor;
-      c->tags = transient_for_client->tags;
+      client_init_tag_by_wm_desktop(c, transient_for_client->tags);
     } else {
       c->monitor = wm.current_monitor;
-      c->tags = c->monitor->selected_tag->mask;
+      client_init_tag_by_wm_desktop(c, c->monitor->selected_tag->mask);
       client_apply_rules(c, wm.rules, wm.rules_count);
     }
 
     client_init_geometry(c);
-    client_init_tag_by_wm_desktop(c);
     client_tags_apply(c);
   }
 
