@@ -586,7 +586,7 @@ void client_apply_workarea_geometry(client_t *client, area_t geometry) {
     x = workarea.x + workarea.width - width - client->border_width * 2;
   }
   if (y + height + client->border_width * 2 > workarea.y + workarea.height) {
-    y = workarea.y + workarea.width - height - client->border_width * 2;
+    y = workarea.y + workarea.height - height - client->border_width * 2;
   }
 
   area_t rect = {.x = x, .y = y, .width = width, .height = height};
