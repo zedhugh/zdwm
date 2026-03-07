@@ -287,6 +287,8 @@ void client_send_to_tag(client_t *client, uint32_t tag_mask) {
   client_tags_apply(client);
   monitor_arrange(client->monitor);
   monitor_draw_bar(client->monitor);
+  monitor_deal_focus(client->monitor);
+  xcb_flush(wm.xcb_conn);
 }
 
 void client_send_to_monitor(client_t *client, monitor_t *monitor) {
