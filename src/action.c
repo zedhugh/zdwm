@@ -43,6 +43,16 @@ void send_client_to_next_monitor(const user_action_arg_t *arg) {
   client_send_to_monitor(wm.client_focused, next_monitor);
 }
 
+void focus_next_monitor(const user_action_arg_t *arg) {
+  monitor_t *next_monitor = wm_get_next_monitor(wm.current_monitor);
+  if (next_monitor == wm.current_monitor) return;
+
+  wm_set_current_monitor(next_monitor, true);
+  if (wm.current_monitor->selected_tag->task_list) {
+    monitor_deal_focus(wm.current_monitor);
+  }
+}
+
 void spawn(const user_action_arg_t *arg) {
   const char *cmd = (const char *)arg->ptr;
   if (cmd == nullptr || strlen(cmd) == 0) return;
