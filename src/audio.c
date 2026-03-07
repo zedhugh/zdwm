@@ -25,6 +25,7 @@ struct pulse_context_t {
   pa_cvolume volume;
   pulse_t pulse;
   uint32_t index;
+  bool inited;
 };
 
 static void clean_pulse_context(pulse_context_t *context, bool full_cleanup);
@@ -49,7 +50,7 @@ pulse_context_t *init_pulse(GMainContext *context, pulse_notify_t callback) {
 }
 
 void change_pulse_volume(pulse_context_t *context, int step) {
-  if (!context->pulse.inited || !step || step > 100 || step < -100) return;
+  if (!context->inited || !step || step > 100 || step < -100) return;
 
   pa_cvolume vol = context->volume;
   if (step > 0) {
@@ -69,7 +70,7 @@ void change_pulse_volume(pulse_context_t *context, int step) {
 }
 
 void toggle_pulse_mute(pulse_context_t *context) {
-  if (!context->pulse.inited) return;
+  if (!context->inited) return;
 
   pa_context *ctx = context->context;
   uint32_t index = context->index;
@@ -92,7 +93,7 @@ void clean_pulse_context(pulse_context_t *context, bool full_cleanup) {
     pa_context_unref(context->context);
     context->context = nullptr;
   }
-  context->pulse.inited = false;
+  context->inited = false;
   if (full_cleanup && context->loop) {
     pa_glib_mainloop_free(context->loop);
     context->loop = nullptr;
@@ -146,7 +147,7 @@ void sink_info_callback(pa_context *context, const pa_sink_info *info, int eol,
   if (eol != 0 || !info) return;
 
   pulse_context_t *ctx = userdata;
-  ctx->pulse.inited = true;
+  ctx->inited = true;
   ctx->volume = info->volume;
   ctx->index = info->index;
   parse_sink(info, &ctx->pulse);

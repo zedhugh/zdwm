@@ -8,8 +8,7 @@ typedef struct pulse_context_t pulse_context_t;
 typedef struct pulse_t {
   int volume_percent;
   bool mute;
-  bool inited;
-  char device_name[254];
+  char device_name[255];
 } pulse_t;
 
 typedef void (*pulse_notify_t)(pulse_t *pulse);
