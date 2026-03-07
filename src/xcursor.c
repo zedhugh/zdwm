@@ -1,6 +1,7 @@
 #include "xcursor.h"
 
 #include <stdint.h>
+#include <xcb/xcb.h>
 #include <xcb/xcb_cursor.h>
 #include <xcb/xproto.h>
 
@@ -143,4 +144,5 @@ void xcursor_set_pointer_position(point_t point) {
   xcb_window_t window = XCB_WINDOW_NONE;
   xcb_window_t root = wm.screen->root;
   xcb_warp_pointer(wm.xcb_conn, window, root, 0, 0, 1, 1, point.x, point.y);
+  xcb_flush(wm.xcb_conn);
 }
