@@ -135,6 +135,67 @@ void wm_check_xcb_extensions(void) {
   wm.have_randr = query && query->present;
 }
 
+static inline int32_t right(area_t a) {
+  return (int32_t)a.x + (int32_t)a.width;
+}
+static inline int32_t bottom(area_t a) {
+  return (int32_t)a.y + (int32_t)a.height;
+}
+static inline bool fully_contains(area_t outer, area_t inner) {
+  return inner.x >= outer.x && inner.y >= outer.y &&
+         right(inner) <= right(outer) && bottom(inner) <= bottom(outer);
+}
+static inline void monitor_remove_duplication(monitor_t **monitor_list) {
+  if (!monitor_list || !*monitor_list) return;
+
+  int32_t count = 0;
+  for (monitor_t *m = *monitor_list; m; m = m->next) count++;
+  if (count <= 1) return;
+
+  monitor_t **nodes = p_new(monitor_t *, count);
+  bool *remove = p_new(bool, count);
+
+  size_t index = 0;
+  for (monitor_t *m = *monitor_list; m; m = m->next) nodes[index++] = m;
+
+  for (int32_t i = count - 1; i >= 0; i--) {
+    if (remove[i]) continue;
+    for (int32_t j = i - 1; j >= 0; j--) {
+      if (remove[j]) continue;
+      if (fully_contains(nodes[j]->geometry, nodes[i]->geometry)) {
+        remove[i] = true;
+      } else if (fully_contains(nodes[i]->geometry, nodes[j]->geometry)) {
+        remove[j] = true;
+      }
+    }
+  }
+
+  monitor_t *head = nullptr;
+  monitor_t *tail = nullptr;
+  for (int32_t i = 0; i < count; i++) {
+    monitor_t *node = nodes[i];
+    if (remove[i]) {
+      p_delete(&node->name);
+      p_delete(&node);
+      continue;
+    }
+
+    if (tail) {
+      tail->next = node;
+    } else {
+      head = node;
+    }
+    node->next = nullptr;
+    tail = node;
+  }
+
+  if (tail) tail->next = nullptr;
+  *monitor_list = head;
+
+  p_delete(&nodes);
+  p_delete(&remove);
+}
+
 static bool wm_detect_monitor_by_randr(void) {
   xcb_randr_get_monitors_cookie_t monitors_cookie =
     xcb_randr_get_monitors(wm.xcb_conn, wm.screen->root, 1);
@@ -181,6 +242,8 @@ static bool wm_detect_monitor_by_randr(void) {
   }
 
   p_delete(&monitors_reply);
+
+  monitor_remove_duplication(&wm.monitor_list);
 
   return true;
 }
@@ -229,6 +292,8 @@ static bool wm_detect_monitor_by_xinerama(void) {
     prev_monitor = monitor;
   }
   p_delete(&screens_reply);
+
+  monitor_remove_duplication(&wm.monitor_list);
 
   return true;
 }
