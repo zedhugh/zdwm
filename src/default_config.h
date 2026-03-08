@@ -139,3 +139,7 @@ static const rule_t rules[] = {
   {.class = "mpv", .tag_index = 11, .switch_to_tag = true, .fullscreen = true},
   {.class = "Emacs", .tag_index = 10, .switch_to_tag = true, .maximize = true},
 };
+
+/* static const char *const wallpapers[] = {"~/bg/\*", "~/Downloads/bg/\*"}; */
+static const char *const wallpapers[] = {};
+static const uint32_t wallpaper_interval = 10;

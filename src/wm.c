@@ -33,6 +33,7 @@
 #include "text.h"
 #include "types.h"
 #include "utils.h"
+#include "wallpaper.h"
 #include "xcursor.h"
 #include "xkb.h"
 #include "xres.h"
@@ -45,6 +46,7 @@ static void wm_detect_monitor(void);
 static void wm_scan_clients(void);
 static void wm_clean(void);
 static void wm_setup(void);
+static void wm_init_wallpaper(void);
 static void wm_get_xres_config(void);
 static void wm_init_color_set(void);
 static void wm_setup_keybindings(void);
@@ -377,6 +379,9 @@ void wm_scan_clients(void) {
 }
 
 void wm_clean(void) {
+  wallpaper_clean(wm.wallpaper);
+  wm.wallpaper = nullptr;
+
   clean_status();
   text_clean_pango_layout();
 
@@ -469,6 +474,18 @@ static void wm_setup(void) {
 
   xkb_init();
   xcb_flush(wm.xcb_conn);
+}
+
+static void wm_init_wallpaper(void) {
+  wallpaper_config_t config = {
+    .interval = wallpaper_interval,
+    .path_count = countof(wallpapers),
+    .paths = (char **)wallpapers,
+    .screen = wm.screen,
+    .conn = wm.xcb_conn,
+    .monitors = wm.monitor_list,
+  };
+  wm.wallpaper = wallpaper_init(config);
 }
 
 static void wm_get_xres_config(void) {
@@ -682,6 +699,7 @@ int main(int argc, char *argv[]) {
 
   wm_detect_monitor();
   wm_setup();
+  wm_init_wallpaper();
   setup_event_loop();
   wm_scan_clients();
 

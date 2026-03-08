@@ -8,6 +8,7 @@
 #include "base.h"
 #include "status.h"
 #include "types.h"
+#include "wallpaper.h"
 
 typedef struct wm_t {
   padding_t padding;
@@ -48,6 +49,8 @@ typedef struct wm_t {
   bool xkb_update_pending;
   struct xkb_context *xkb_ctx;
   struct xkb_state *xkb_state;
+
+  wallpaper_context_t *wallpaper;
 
   color_set_t color_set;
 } wm_t;

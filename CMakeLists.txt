@@ -44,6 +44,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/status.c
     ${SOURCE_DIR}/audio.c
     ${SOURCE_DIR}/rect.c
+    ${SOURCE_DIR}/wallpaper.c
 )
 
 find_package(PkgConfig REQUIRED)
@@ -68,6 +69,7 @@ pkg_check_modules(deps REQUIRED
     cairo-xcb
     pango
     pangocairo
+    imlib2
 
     libpulse-mainloop-glib
 )
