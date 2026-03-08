@@ -45,6 +45,9 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/audio.c
     ${SOURCE_DIR}/rect.c
     ${SOURCE_DIR}/wallpaper.c
+    ${SOURCE_DIR}/config.c
+    ${SOURCE_DIR}/renderer.c
+    ${SOURCE_DIR}/image.c
 )
 
 find_package(PkgConfig REQUIRED)

@@ -26,8 +26,10 @@
 #include "buffer.h"
 #include "client.h"
 #include "color.h"
+#include "config.h"
 #include "default_config.h"
 #include "event.h"
+#include "image.h"
 #include "monitor.h"
 #include "status.h"
 #include "text.h"
@@ -384,6 +386,7 @@ void wm_clean(void) {
 
   clean_status();
   text_clean_pango_layout();
+  image_cache_clean();
 
   {
     client_t *c = wm.client_stack_list;
@@ -417,6 +420,9 @@ void wm_clean(void) {
 }
 
 static void wm_setup(void) {
+  wm.config = init_config();
+  if (!wm.config) fatal("cannot init config");
+
   wm.layout_list = layout_list;
   wm.layout_count = (uint16_t)countof(layout_list);
 

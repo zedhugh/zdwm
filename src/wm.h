@@ -10,6 +10,8 @@
 #include "types.h"
 #include "wallpaper.h"
 
+typedef struct config_t config_t;
+
 typedef struct wm_t {
   padding_t padding;
   uint16_t border_width;
@@ -19,6 +21,7 @@ typedef struct wm_t {
   bool need_restart;
   GMainLoop *loop;
   status_t *status;
+  const config_t *config;
 
   client_t *client_list;
   client_t *client_stack_list;

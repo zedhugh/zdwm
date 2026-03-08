@@ -12,6 +12,9 @@
 #include "base.h"
 #include "client.h"
 #include "color.h"
+#include "config.h"
+#include "image.h"
+#include "renderer.h"
 #include "status.h"
 #include "text.h"
 #include "types.h"
@@ -237,47 +240,106 @@ static void monitor_draw_layout_symbol(monitor_t *monitor) {
 }
 
 static void monitor_draw_status(monitor_t *monitor, status_t *status) {
+  static renderer_status_t *rendered_status = nullptr;
+  static size_t rendered_status_capacity = 0;
+
   monitor->status_extent.end = monitor->geometry.width;
   monitor->status_extent.start = monitor->geometry.width;
-  int16_t end = monitor->layout_symbol_extent.end;
+  int32_t end = monitor->layout_symbol_extent.end;
 
-  if (status == nullptr) return;
+  if (status == nullptr || !wm.config || !wm.config->status) return;
 
-  char cpu[16], mem[64], volume[300];
-  snprintf(cpu, sizeof(cpu), "%.1lf", status->cpu_usage_percent);
-  snprintf(mem, sizeof(mem), "%s(%.1f%%)", status->mem_usage.mem_used_text,
-           status->mem_usage.mem_percent);
-  if (status->pulse) {
-    snprintf(volume, sizeof(volume), "%d%%%s%s%s",
-             status->pulse->volume_percent, status->pulse->mute ? "M" : "",
-             strlen(status->pulse->device_name) ? "|" : "",
-             status->pulse->device_name);
-  } else {
-    snprintf(volume, sizeof(volume), "0%%");
+  config_status_t *status_config = wm.config->status;
+  size_t item_count = status_config->status_count;
+  if (item_count == 0) return;
+
+  if (rendered_status_capacity < item_count) {
+    size_t size =
+      sizeof(renderer_status_t) + item_count * sizeof(renderer_status_item_t);
+    xrealloc((void **)&rendered_status, (ssize_t)size);
+    rendered_status_capacity = item_count;
   }
 
-  char *status_items[] = {
-    status->net_speed.down, status->net_speed.up, volume, mem, cpu,
-    status->time,
-  };
-  int16_t start = monitor->status_extent.start;
-  for (int i = countof(status_items) - 1; i >= 0; i--) {
-    const char *text = status_items[i];
-    if (!text || !strlen(text)) continue;
+  status_renderer_t renderer = wm.config->status_renderer;
+  if (!renderer) renderer = renderer_render_status;
+
+  renderer(status_config, item_count, status, rendered_status);
+  item_count = MIN(item_count, rendered_status->item_count);
+
+  int32_t start = monitor->status_extent.start;
+  int32_t icon_target_height =
+    (int32_t)wm.bar_height - (int32_t)wm.padding.bar_y * 2;
+  if (icon_target_height <= 0) icon_target_height = wm.bar_height;
+
+  for (size_t ri = item_count; ri > 0; ri--) {
+    size_t i = ri - 1;
+    renderer_status_item_t *item = &rendered_status->item_list[i];
+    bool has_text = item->text[0] != '\0';
+    int text_width = 0;
+    if (has_text) text_get_size(item->text, &text_width, nullptr);
+
+    bool has_text_icon = false;
+    int icon_text_width = 0;
+    if (item->icon_type == icon_type_text && item->icon_text &&
+        item->icon_text[0]) {
+      has_text_icon = true;
+      text_get_size(item->icon_text, &icon_text_width, nullptr);
+    }
+
+    bool has_image_icon = false;
+    int icon_width = 0;
+    int icon_height = 0;
+    if (item->icon_type == icon_type_image && item->icon_path &&
+        item->icon_path[0]) {
+      has_image_icon = image_get_scaled_size(
+        item->icon_path, icon_target_height, &icon_width, &icon_height);
+    }
+    bool has_icon = has_text_icon || has_image_icon;
 
     int width = 0;
-    text_get_size(text, &width, nullptr);
+    if (has_text_icon) width += icon_text_width;
+    if (has_image_icon) width += icon_width;
+    if (has_text) width += text_width;
+    if (has_icon && has_text) width += (int)rendered_status->item_gap;
     if (!width) continue;
 
     start -= width;
     if (start <= end) return;
-    color_t *color = &wm.color_set.tag_color;
-    area_t rect = {.x = start, .y = 0, .width = width, .height = wm.bar_height};
-    draw_text(monitor->bar_cr, text, color, rect, true);
-    monitor->status_extent.start = start;
 
-    start -= wm.padding.tag_x;
-    if (start < end) return;
+    color_t *color = item->color ? item->color : &wm.color_set.tag_color;
+    int32_t draw_x = start;
+    if (has_text_icon && icon_text_width > 0) {
+      area_t icon_rect = {
+        .x = (int16_t)draw_x,
+        .y = 0,
+        .width = (uint16_t)icon_text_width,
+        .height = wm.bar_height,
+      };
+      draw_text(monitor->bar_cr, item->icon_text, color, icon_rect, true);
+      draw_x += icon_text_width;
+    } else if (has_image_icon) {
+      int32_t icon_y = ((int32_t)wm.bar_height - icon_height) / 2;
+      image_draw(monitor->bar_cr, item->icon_path, draw_x, icon_y, icon_width,
+                 icon_height);
+      draw_x += icon_width;
+    }
+    if (has_icon && has_text) draw_x += (int32_t)rendered_status->item_gap;
+
+    if (has_text && text_width > 0) {
+      area_t rect = {
+        .x = (int16_t)draw_x,
+        .y = 0,
+        .width = (uint16_t)text_width,
+        .height = wm.bar_height,
+      };
+      draw_text(monitor->bar_cr, item->text, color, rect, true);
+    }
+    monitor->status_extent.start = (int16_t)start;
+
+    if (ri > 1) {
+      start -= (int32_t)rendered_status->gap;
+      if (start < end) return;
+    }
   }
 }
 

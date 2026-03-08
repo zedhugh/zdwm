@@ -5,7 +5,10 @@
 #include <stdint.h>
 
 #include "action.h"
+#include "config.h"
 #include "layout.h"
+#include "renderer.h"
+#include "status.h"
 #include "types.h"
 
 static const char *const font_family = "monospace";
@@ -27,6 +30,55 @@ static const char *const active_tag_color = "#eeeeee";
 static const char *const border_color = "#444444";
 static const char *const active_border_color = "#005577";
 
+static const config_status_item_t status_list[] = {
+  {
+    .type = status_net_down,
+    .icon_type = icon_type_image,
+    .icon = "/home/zedhugh/develop/zswm/src/resources/icons/"
+      "corner-left-down-line.png",
+    .color = "#87af5f",
+  },
+  {
+    .type = status_net_up,
+    .icon_type = icon_type_image,
+    .icon =
+      "/home/zedhugh/develop/zswm/src/resources/icons/corner-right-up-line.png",
+    .color = "#e54c62",
+  },
+  {
+    .type = status_audio,
+    .icon_type = icon_type_image,
+    .icon = "/home/zedhugh/develop/zswm/src/resources/icons/volume-up-fill.png",
+    .color = "#7493d2",
+  },
+  {
+    .type = status_memory,
+    .icon_type = icon_type_image,
+    .icon = "/home/zedhugh/develop/zswm/src/resources/icons/ram-line.png",
+    .color = "#e0da37",
+  },
+  {
+    .type = status_cpu,
+    .icon_type = icon_type_image,
+    .icon = "/home/zedhugh/develop/zswm/src/resources/icons/cpu-line.png",
+    .color = "#e33a6e",
+  },
+  {
+    .type = status_time,
+    .icon_type = icon_type_image,
+    .icon = "/home/zedhugh/develop/zswm/src/resources/icons/time-line.png",
+    .color = "#7788af",
+  },
+};
+static const config_status_t status_config = {
+  .status_gap = 10,
+  .status_item_gap = 5,
+};
+
+static const config_t config = {
+  .status = (config_status_t *)&status_config,
+};
+
 static const button_t button_list[] = {
   {click_tag, modifier_none, button_left, select_tag_of_current_monitor, {0}},
   {
@@ -39,9 +91,9 @@ static const button_t button_list[] = {
 };
 
 #define TAGKEYS(KEY, TAG)                                                  \
-  {modifier_super, KEY, select_tag_of_current_monitor, {.ui = TAG}}, {     \
-    modifier_super | modifier_shift, KEY, send_client_to_tag, {.ui = TAG}, \
-  }
+{modifier_super, KEY, select_tag_of_current_monitor, {.ui = TAG}}, {     \
+modifier_super | modifier_shift, KEY, send_client_to_tag, {.ui = TAG}, \
+}
 
 static const char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
@@ -140,6 +192,6 @@ static const rule_t rules[] = {
   {.class = "Emacs", .tag_index = 10, .switch_to_tag = true, .maximize = true},
 };
 
-/* static const char *const wallpapers[] = {"~/bg/\*", "~/Downloads/bg/\*"}; */
-static const char *const wallpapers[] = {};
-static const uint32_t wallpaper_interval = 10;
+static const char *const wallpapers[] = {"~/bg/*", "~/Downloads/bg/*"};
+/* static const char *const wallpapers[] = {}; */
+static const uint32_t wallpaper_interval = 0;

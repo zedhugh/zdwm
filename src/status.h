@@ -30,6 +30,15 @@ typedef struct net_speed_t {
   char down[64];
 } net_speed_t;
 
+typedef enum status_type_t {
+  status_net_down,
+  status_net_up,
+  status_audio,
+  status_memory,
+  status_cpu,
+  status_time,
+} status_type_t;
+
 typedef struct status_t {
   net_speed_t net_speed;
   memory_usage_t mem_usage;
