@@ -33,6 +33,7 @@
 #include "monitor.h"
 #include "status.h"
 #include "text.h"
+#include "tray.h"
 #include "types.h"
 #include "utils.h"
 #include "wallpaper.h"
@@ -387,6 +388,7 @@ void wm_clean(void) {
   clean_status();
   text_clean_pango_layout();
   image_cache_clean();
+  tray_cleanup();
 
   {
     client_t *c = wm.client_stack_list;
@@ -457,6 +459,7 @@ static void wm_setup(void) {
 
   wm_setup_keybindings();
   atoms_init(wm.xcb_conn);
+  tray_init();
 
   {
     wm.wm_check_window = xcb_generate_id(wm.xcb_conn);

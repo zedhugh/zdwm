@@ -17,6 +17,7 @@
 #include "renderer.h"
 #include "status.h"
 #include "text.h"
+#include "tray.h"
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
@@ -239,13 +240,14 @@ static void monitor_draw_layout_symbol(monitor_t *monitor) {
   }
 }
 
-static void monitor_draw_status(monitor_t *monitor, status_t *status) {
+static void monitor_draw_status(monitor_t *monitor, status_t *status,
+                                int16_t right_edge, int16_t left_edge) {
   static renderer_status_t *rendered_status = nullptr;
   static size_t rendered_status_capacity = 0;
 
-  monitor->status_extent.end = monitor->geometry.width;
-  monitor->status_extent.start = monitor->geometry.width;
-  int32_t end = monitor->layout_symbol_extent.end;
+  monitor->status_extent.end = right_edge;
+  monitor->status_extent.start = right_edge;
+  int32_t end = left_edge;
 
   if (status == nullptr || !wm.config || !wm.config->status) return;
 
@@ -343,7 +345,7 @@ static void monitor_draw_status(monitor_t *monitor, status_t *status) {
   }
 }
 
-static void monitor_draw_tasks(monitor_t *monitor) {
+static void monitor_draw_tasks(monitor_t *monitor, int16_t right_edge) {
   task_in_tag_t *task_list = monitor->selected_tag->task_list;
   if (!task_list) return;
 
@@ -352,7 +354,10 @@ static void monitor_draw_tasks(monitor_t *monitor) {
   if (task_count == 0) return;
 
   int16_t x = monitor->layout_symbol_extent.end;
-  uint16_t task_width = (monitor->status_extent.start - x) / task_count;
+  int32_t available_width = (int32_t)right_edge - x;
+  if (available_width <= 0) return;
+
+  uint16_t task_width = (uint16_t)(available_width / task_count);
   if (task_width < wm.font_size) return;
 
   for (task_in_tag_t *task = task_list; task; task = task->next) {
@@ -376,6 +381,9 @@ static void monitor_draw_tasks(monitor_t *monitor) {
 void monitor_draw_bar(monitor_t *monitor) {
   cairo_t *cr = monitor->bar_cr;
   uint16_t height = wm.bar_height;
+  uint16_t tray_width = tray_get_width(monitor);
+  int16_t status_right = (int16_t)monitor->geometry.width - tray_width;
+  if (status_right < 0) status_right = 0;
   area_t bar_area = {
     .x = 0,
     .y = 0,
@@ -386,8 +394,10 @@ void monitor_draw_bar(monitor_t *monitor) {
 
   monitor_draw_tags(monitor);
   monitor_draw_layout_symbol(monitor);
-  monitor_draw_status(monitor, wm.status);
-  monitor_draw_tasks(monitor);
+  monitor_draw_status(monitor, wm.status, status_right,
+                      monitor->layout_symbol_extent.end);
+  monitor_draw_tasks(monitor, monitor->status_extent.start);
+  tray_place(monitor, monitor->geometry.width);
 }
 
 void monitor_arrange(monitor_t *monitor) {

@@ -15,6 +15,7 @@
 #include "client.h"
 #include "default_config.h"
 #include "monitor.h"
+#include "tray.h"
 #include "types.h"
 #include "utils.h"
 #include "wm.h"
@@ -73,6 +74,8 @@ static void button_press(xcb_button_press_event_t *ev) {
 }
 
 static void configure_request(xcb_configure_request_event_t *ev) {
+  if (tray_handle_configure_request(ev)) return;
+
   client_t *client = client_get_by_window(ev->window);
   if (client) {
     if (ev->value_mask & XCB_CONFIG_WINDOW_BORDER_WIDTH) {
@@ -131,6 +134,8 @@ static void key_press(xcb_key_press_event_t *ev) {
 }
 
 static void map_request(xcb_map_request_event_t *ev) {
+  if (tray_handle_map_request(ev)) return;
+
   xcb_get_window_attributes_reply_t *wa_reply =
     xwindow_get_attributes_reply(ev->window);
 
@@ -183,6 +188,8 @@ static inline bool get_bool_property(bool init_property,
 }
 
 static void client_message(xcb_client_message_event_t *ev) {
+  if (tray_handle_client_message(ev)) return;
+
   client_t *c = client_get_by_window(ev->window);
   if (c == nullptr) return;
 
@@ -246,6 +253,8 @@ static void client_message(xcb_client_message_event_t *ev) {
 }
 
 static void property_notify(xcb_property_notify_event_t *ev) {
+  if (tray_handle_property_notify(ev)) return;
+
   client_t *client = client_get_by_window(ev->window);
   if (client == nullptr) return;
 
@@ -265,11 +274,15 @@ static void property_notify(xcb_property_notify_event_t *ev) {
 }
 
 static void destroy_notify(xcb_destroy_notify_event_t *ev) {
+  if (tray_handle_destroy_notify(ev)) return;
+
   client_t *client = client_get_by_window(ev->window);
   if (client) client_unmanage(client, true);
 }
 
 static void unmap_notify(xcb_unmap_notify_event_t *ev) {
+  if (tray_handle_unmap_notify(ev)) return;
+
   client_t *client = client_get_by_window(ev->window);
   if (!client || client->minimize) return;
 
@@ -312,6 +325,10 @@ static void focus_in(xcb_focus_in_event_t *ev) {
   wm_set_current_monitor(client->monitor, ev->mode != XCB_NOTIFY_MODE_NORMAL);
 }
 
+static void selection_clear(xcb_selection_clear_event_t *ev) {
+  tray_handle_selection_clear(ev);
+}
+
 static void handle_xcb_event(xcb_generic_event_t *event) {
   uint8_t event_type = XCB_EVENT_RESPONSE_TYPE(event);
   const char *label = xcb_event_get_label(event_type);
@@ -337,6 +354,7 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_DESTROY_NOTIFY, destroy_notify);
     EVENT(XCB_ENTER_NOTIFY, enter_notify);
     EVENT(XCB_FOCUS_IN, focus_in);
+    EVENT(XCB_SELECTION_CLEAR, selection_clear);
 
 #undef EVENT
   }

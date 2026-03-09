@@ -48,6 +48,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/config.c
     ${SOURCE_DIR}/renderer.c
     ${SOURCE_DIR}/image.c
+    ${SOURCE_DIR}/tray.c
 )
 
 find_package(PkgConfig REQUIRED)
