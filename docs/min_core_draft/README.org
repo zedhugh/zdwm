@@ -1,0 +1,171 @@
+* ZDWM 最小核心草案
+
+这个目录放的是一套头文件级别的最小核心 API 草案，目标是先把窗口管理器最核心的对象关系、子系统边界和主执行流程固定下来，再决定具体实现。
+
+* 目标
+
+1. 保持核心技术栈简洁，不引入脚本运行时、序列化协议和多进程插件宿主。
+2. 先把最小核心收敛到可以管理窗口、计算布局、处理输入、提交后端副作用。
+3. 将渲染、状态栏、配置、插件都放在核心之外，作为后续服务挂接。
+
+* 最小核心子系统
+
+1. =runtime=
+负责主循环、模块装配和固定执行顺序。
+
+2. =backend=
+负责平台交互。它把平台原始事件转成 =wm_event_t= ，并执行 =wm_effect_t= 。
+
+3. =state=
+负责保存窗口、工作区、输出和全局堆叠顺序，是唯一真状态。
+
+4. =policy=
+负责把事件路由为命令，并把命令应用到状态。
+
+5. =layout=
+负责为某个输出上当前显示的工作区中的平铺窗口计算几何。
+
+6. =window metadata=
+负责窗口标题、类名、实例名、app id 这类展示和匹配信息。
+
+7. =workspace descriptor=
+负责 workspace 在 bar 中显示时使用的名字和文本或图标符号。
+
+* 非核心但常见的服务
+
+这些服务故意不放进最小核心：
+
+1. =render=
+状态栏、边框、标题、装饰绘制。
+
+2. =status=
+网速、内存、CPU、音量、时间等信息采集与聚合。
+
+3. =config=
+默认配置和用户覆盖。
+
+4. =plugin=
+动态扩展加载。
+
+* 对象关系
+
+这套草案里的关系固定为：
+
+1. =window -> workspace=
+每个窗口只属于一个工作区。
+
+2. =output -> current_workspace=
+每个输出同一时刻只显示一个当前工作区。
+
+3. =window visible on output=
+这是派生结果，不是独立存储的真相。
+
+4. =stack_order[]=
+这是全局 z-order 的唯一真相，从下到上排列。
+
+5. =window metadata=
+窗口标题等字符串信息不放进最小控制状态，而是作为独立元数据表存在。
+
+6. =workspace descriptor=
+workspace 在 bar 中显示时使用的名字和符号不放进运行时控制状态，而是作为独立描述表存在。
+
+* 核心不变量
+
+1. 每个窗口必须且只能属于一个工作区。
+2. 每个输出必须且只能显示一个当前工作区。
+3. 可见性由窗口归属、输出当前工作区和最小化状态共同推导。
+4. =geometry_mode= 只负责几何模式，不负责 z-order。
+5. =stack_order[]= 只负责 z-order，不负责几何模式。
+6. =floating= 是二值状态：窗口要么由 layout 决定基础几何，要么由 =float_rect= 决定基础几何。
+7. =sticky= 只影响可见性，不改变窗口归属工作区。
+8. floating 窗口可以跨多个输出显示，但归属工作区仍然只有一个。
+9. 多输出下 floating 窗口是否迁移工作区，由锚点和跨输出策略决定，不由覆盖面积决定。
+10. layout 的名字和 bar 符号属于布局注册表描述信息，不属于工作区运行状态。
+11. 窗口标题和类名属于窗口元数据，不属于窗口控制状态。
+12. workspace 的显示名称和 bar 符号属于 workspace 描述信息，不属于工作区运行状态。
+
+* Generation 字段
+
+=generation= 是版本号，不是业务关系字段。
+
+当前草案只建议保留：
+
+1. =wm_state_t.generation=
+每次成功提交状态变更后递增，用于缓存失效、增量重算和调试。
+
+以后如果有必要，再给渲染缓存或状态服务增加更细粒度的版本号。
+
+* 主执行流程
+
+=runtime= 负责固定主循环顺序：
+
+1. =backend.next_event()=
+2. =policy.route_event()=
+3. =policy.apply_command()=
+4. 根据 =dirty_flags= 决定是否重新运行 =layout=
+5. 逐条执行 =wm_effect_t=
+6. 可选的渲染刷新
+
+* 文件说明
+
+1. =wm_types.h=
+通用标量类型、矩形、窗口几何模式和策略枚举。
+
+2. =wm_state.h=
+窗口、工作区、输出和全局状态结构，以及查询接口。
+
+3. =wm_event.h=
+统一后的运行时事件。
+
+4. =wm_command.h=
+强类型语义命令。
+命令语义补充见 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] 。
+
+5. =wm_plan.h=
+脏标记和后端副作用。
+
+6. =wm_layout.h=
+布局注册表、布局输入和布局输出。
+
+7. =wm_window_meta.h=
+窗口标题、类名、实例名和 app id 的元数据表。
+
+8. =wm_workspace_desc.h=
+workspace 的显示名称、文本符号和图标符号描述表。
+
+9. =wm_backend.h=
+后端子系统接口。
+
+10. =wm_policy.h=
+事件路由和命令应用接口。
+
+11. =wm_runtime.h=
+运行时上下文和生命周期接口。
+
+12. [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]]
+关键命令的前置条件、状态转移、可见性和副作用规则。
+
+13. [[file:WM_POLICY_APPLY_COMMAND_SKELETON.org][WM_POLICY_APPLY_COMMAND_SKELETON.org]]
+=wm_policy_apply_command()= 的伪代码骨架和实现顺序建议。
+
+* 下一步实施顺序
+
+当前阶段不建议继续扩展抽象，应该开始把最小核心草案落成可运行骨架。推荐顺序如下：
+
+1. 在 =src/core/= 下建立最小骨架，只放 =wm_types/state/plan/layout/policy/runtime= 的头文件和空实现，先不要替换现有 =src/= 逻辑。
+
+2. 优先实现 =state + query + plan= 这一层，把动态数组管理、=find_*= 查询函数和 =stack_order[]= 操作补齐。
+
+3. 再实现 =wm_policy_apply_command()= 的一小批核心命令：
+   =MANAGE_WINDOW=
+   =UNMANAGE_WINDOW=
+   =SWITCH_WORKSPACE=
+   =TOGGLE_FLOATING=
+   =TOGGLE_MAXIMIZE=
+   =MOVE_FLOATING_WINDOW=
+
+4. 给上述命令建立一个无 X11 依赖的测试入口，直接构造 =wm_command_t= ，检查 =wm_state_t= 和 =wm_plan_t= 的变化是否符合文档规则。
+
+5. 等 =event -> command -> state -> plan/effect= 这条链路跑通后，再编写一层很薄的 adapter，把现有事件翻译为 =wm_event_t= ，并把 effect 翻译回当前 X11 操作。
+
+6. =status/render/bar= 暂时不要先动。它们属于核心外服务，应在最小核心链路稳定后再迁移。

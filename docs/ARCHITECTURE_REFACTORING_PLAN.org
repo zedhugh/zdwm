@@ -1,0 +1,1230 @@
+* ZDWM 窗口管理器完整抽象层设计方案
+
+** 设计目标
+
+创建一个清晰、实用、可落地的抽象层体系，解决当前项目的架构问题，提升可维护性和可扩展性，同时保持项目的简洁性和高性能。
+
+** 当前架构优势保留
+
+ZDWM 现有的优秀设计基础：
+- ✅ 清晰的四层架构（UI/业务/数据/基础设施）
+- ✅ 优秀的观察者模式（状态栏更新）
+- ✅ 灵活的策略模式（布局系统）
+- ✅ 高效的事件驱动模型
+- ✅ 良好的资源管理
+
+** 核心抽象层设计
+
+*** 第一层：基础设施抽象层 (Infrastructure Layer)
+
+**** 1.1 上下文管理器
+*问题*: 当前全局 =wm= 对象导致所有模块紧密耦合
+
+*解决方案*: 引入上下文对象，实现依赖注入
+
+#+BEGIN_SRC c
+// src/core/context.h
+// 前向声明
+typedef struct display_backend_t display_backend_t;
+
+typedef struct wm_context_t {
+    // 显示后端（X11 或 Wayland）
+    display_backend_t *display_backend;
+
+    // 核心状态
+    monitor_t *monitor_list;
+    client_t *client_list;
+    tag_t *tag_list;
+
+    // 配置和状态
+    config_t *config;
+    status_t *status;
+
+    // 事件循环
+    GMainContext *main_context;
+
+    // 引用计数
+    atomic_int ref_count;
+} wm_context_t;
+
+// 上下文生命周期管理
+wm_context_t *wm_context_create(display_backend_type_t backend_type);
+wm_context_t *wm_context_ref(wm_context_t *ctx);
+void wm_context_unref(wm_context_t *ctx);
+
+// 获取全局上下文（向后兼容）
+wm_context_t *wm_context_get_default(void);
+
+// 显示后端访问（向后兼容）
+static inline xcb_connection_t* context_get_xcb_conn(wm_context_t *ctx) {
+    return ctx->display_backend ?
+           (xcb_connection_t*)ctx->display_backend->get_platform_handle() : NULL;
+}
+#+END_SRC
+
+*优势*:
+- 支持多实例（测试环境）
+- 清晰的生命周期管理
+- 便于依赖注入
+- 保持向后兼容
+
+**** 1.2 日志系统
+*问题*: 当前 =logger()= 输出简单，=fatal()= 直接退出
+
+*解决方案*: 分级日志系统
+
+#+BEGIN_SRC c
+// src/core/log.h
+typedef enum log_level_t {
+    LOG_LEVEL_DEBUG = 0,
+    LOG_LEVEL_INFO,
+    LOG_LEVEL_WARN,
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_FATAL
+} log_level_t;
+
+typedef struct log_handler_t {
+    void (*write)(log_level_t level, const char *file, int line,
+                  const char *fmt, va_list args);
+    log_level_t min_level;
+    log_handler_t *next;
+} log_handler_t;
+
+// 日志API
+void log_init(log_level_t default_level);
+void log_cleanup(void);
+void log_add_handler(log_handler_t *handler);
+void log_remove_handler(log_handler_t *handler);
+
+// 便捷宏
+#define LOG_DEBUG(fmt, ...) log_write(LOG_LEVEL_DEBUG, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_INFO(fmt, ...)  log_write(LOG_LEVEL_INFO, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_WARN(fmt, ...)  log_write(LOG_LEVEL_WARN, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_ERROR(fmt, ...) log_write(LOG_LEVEL_ERROR, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_FATAL(fmt, ...) log_write(LOG_LEVEL_FATAL, __FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+// 替代现有的 logger/fatal/warn
+#define logger LOG_INFO
+#define warn LOG_WARN
+#define fatal LOG_FATAL
+#+END_SRC
+
+**** 1.3 错误处理机制
+*问题*: GError 使用不当，错误信息丢失
+
+*解决方案*: 统一错误处理接口
+
+#+BEGIN_SRC c
+// src/core/error.h
+typedef enum error_code_t {
+    ERROR_NONE = 0,
+    ERROR_NOMEM,
+    ERROR_INVALID_ARG,
+    ERROR_XCB_FAILED,
+    ERROR_FILE_NOT_FOUND,
+    ERROR_PARSE_FAILED,
+    // ... 更多错误码
+} error_code_t;
+
+typedef struct error_t {
+    error_code_t code;
+    char message[256];
+    const char *file;
+    int line;
+} error_t;
+
+// 错误处理API
+void error_set(error_t **err, error_code_t code, const char *fmt, ...);
+void error_clear(error_t **err);
+const char *error_get_message(const error_t *err);
+
+// 错误传播宏
+#define CHECK_ERROR(cond, err, code, fmt, ...) \
+    if (!(cond)) { \
+        error_set(err, code, fmt, ##__VA_ARGS__); \
+        return false; \
+    }
+#+END_SRC
+
+*** 第二层：数据抽象层 (Data Layer)
+
+**** 2.1 状态管理器
+*问题*: 状态散落在多个模块，难以同步
+
+*解决方案*: 统一状态管理接口
+
+#+BEGIN_SRC c
+// src/core/state.h
+typedef enum state_type_t {
+    STATE_MONITOR,
+    STATE_CLIENT,
+    STATE_TAG,
+    STATUS_LAYOUT,
+    STATE_CONFIG
+} state_type_t;
+
+typedef struct state_change_t {
+    state_type_t type;
+    void *old_state;
+    void *new_state;
+} state_change_t;
+
+typedef void (*state_change_callback)(const state_change_t *change, void *user_data);
+
+typedef struct state_manager_t {
+    // 状态变更监听器
+    state_change_callback *listeners;
+    void **listener_data;
+    size_t listener_count;
+
+    // 状态存储
+    hash_table_t *states;
+} state_manager_t;
+
+// 状态管理API
+state_manager_t *state_manager_create(void);
+void state_manager_destroy(state_manager_t *mgr);
+
+void state_manager_notify(state_manager_t *mgr, const state_change_t *change);
+void state_manager_subscribe(state_manager_t *mgr,
+                            state_change_callback callback,
+                            void *user_data);
+
+// 状态访问
+void *state_get(state_manager_t *mgr, state_type_t type);
+void state_set(state_manager_t *mgr, state_type_t type, void *data);
+#+END_SRC
+
+**** 2.2 配置抽象层
+*问题*: 配置系统不统一，缺少热重载
+
+*解决方案*: 分层配置系统
+
+#+BEGIN_SRC c
+// src/config/config_layer.h
+typedef enum config_source_t {
+    CONFIG_SOURCE_DEFAULT,    // 编译时默认值
+    CONFIG_SOURCE_FILE,       // 配置文件
+    CONFIG_SOURCE_XRESOURCE,  // X资源数据库
+    CONFIG_SOURCE_RUNTIME,    // 运行时API（最高优先级）
+} config_source_t;
+
+typedef struct config_value_t {
+    config_source_t source;
+    union {
+        bool boolean;
+        int integer;
+        char *string;
+        void *pointer;
+    } value;
+} config_value_t;
+
+typedef struct config_layer_t {
+    hash_table_t *values;  // key -> config_value_t
+    config_source_t source;
+    bool readonly;
+} config_layer_t;
+
+typedef struct config_stack_t {
+    config_layer_t **layers;
+    size_t layer_count;
+} config_stack_t;
+
+// 配置API
+config_stack_t *config_stack_create(void);
+void config_stack_destroy(config_stack_t *stack);
+
+void config_stack_push_layer(config_stack_t *stack, config_source_t source);
+void config_stack_pop_layer(config_stack_t *stack);
+
+// 配置访问（自动从最高优先级层查找）
+bool config_get_bool(config_stack_t *stack, const char *key, bool *value);
+bool config_get_int(config_stack_t *stack, const char *key, int *value);
+bool config_get_string(config_stack_t *stack, const char *key, char **value);
+
+// 配置设置（总是设置到运行时层）
+bool config_set_bool(config_stack_t *stack, const char *key, bool value);
+bool config_set_int(config_stack_t *stack, const char *key, int value);
+bool config_set_string(config_stack_t *stack, const char *key, const char *value);
+
+// 配置热重载
+bool config_reload_from_file(config_stack_t *stack, const char *filepath);
+#+END_SRC
+
+*** 第三层：服务抽象层 (Service Layer)
+
+**** 3.1 显示后端抽象
+*问题*: XCB调用散落各处，难以测试，且无法支持 Wayland
+
+*解决方案*: 显示服务器无关的统一接口，支持 X11 和 Wayland
+
+#+BEGIN_SRC c
+// src/services/display_backend.h
+
+// 显示后端类型
+typedef enum display_backend_type_t {
+    DISPLAY_BACKEND_AUTO,      // 自动检测
+    DISPLAY_BACKEND_X11,
+    DISPLAY_BACKEND_WAYLAND
+} display_backend_type_t;
+
+// 统一的窗口表示（跨平台）
+typedef struct window_t {
+    uint64_t id;              // 平台无关的窗口ID
+    void *platform_handle;    // XCB window or wl_surface
+} window_t;
+
+// 几何信息
+typedef struct rect_t {
+    int32_t x, y;
+    uint32_t width, height;
+} rect_t;
+
+// 输入事件
+typedef struct input_event_t {
+    enum { INPUT_KEY, INPUT_BUTTON, INPUT_MOTION, INPUT_AXIS } type;
+    uint32_t time;
+    uint32_t detail;          // keycode or button number
+    uint32_t state;           // modifier state
+    int32_t x, y;             // cursor position
+    int32_t axis;             // scroll axis delta
+} input_event_t;
+
+// 渲染表面
+typedef struct render_surface_t {
+    void *handle;             // cairo_surface_t* for X11, EGLSurface for Wayland
+    uint32_t width, height;
+} render_surface_t;
+
+// 显示后端接口
+typedef struct display_backend_t {
+    const char *name;
+    const char *version;
+
+    // 生命周期
+    bool (*init)(wm_context_t *ctx);
+    void (*cleanup)(void);
+
+    // 事件处理
+    int (*get_fd)(void);                    // 获取事件文件描述符
+    bool (*dispatch_event)(void);           // 分发单个事件
+    void (*flush)(void);                    // 刷新请求
+
+    // 屏幕信息
+    bool (*get_screen_geometry)(size_t screen_index, rect_t *geometry);
+    size_t (*get_screen_count)(void);
+
+    // 窗口操作
+    window_t (*create_window)(const rect_t *geometry);
+    void (*destroy_window)(window_t window);
+    void (*map_window)(window_t window);
+    void (*unmap_window)(window_t window);
+
+    // 窗口属性
+    typedef enum {
+        WINDOW_PROPERTY_TITLE,
+        WINDOW_PROPERTY_CLASS,
+        WINDOW_PROPERTY_ROLE,
+        WINDOW_PROPERTY_PID,
+        WINDOW_PROPERTY_TYPE,
+        WINDOW_PROPERTY_TRANSIENT_FOR,
+        WINDOW_PROPERTY_SIZE_HINTS,
+        WINDOW_PROPERTY_MOTIF_HINTS,
+        WINDOW_PROPERTY_FULLSCREEN,
+        WINDOW_PROPERTY_OPACITY,
+    } window_property_t;
+
+    bool (*get_window_property)(window_t window, window_property_t prop,
+                               void *data, size_t *size);
+    bool (*set_window_property)(window_t window, window_property_t prop,
+                               const void *data, size_t size);
+
+    // 窗口几何
+    bool (*configure_window)(window_t window, const rect_t *geometry);
+    bool (*get_window_geometry)(window_t window, rect_t *geometry);
+    void (*raise_window)(window_t window);
+    void (*focus_window)(window_t window);
+
+    // 输入处理
+    bool (*grab_keyboard)(window_t window);
+    bool (*grab_pointer)(window_t window);
+    void (*ungrab_keyboard)(void);
+    void (*ungrab_pointer)(void);
+
+    // 渲染集成
+    render_surface_t (*create_render_surface)(window_t window,
+                                             uint32_t width, uint32_t height);
+    void (*destroy_render_surface)(render_surface_t surface);
+    cairo_t* (*create_cairo_context)(render_surface_t surface);
+
+    // Wayland 特定：窗口状态（用于 xdg-shell）
+    typedef enum {
+        STATE_FLAG_FULLSCREEN = (1 << 0),
+        STATE_FLAG_MAXIMIZED   = (1 << 1),
+        STATE_FLAG_ RESIZING    = (1 << 2),
+        STATE_FLAG_ACTIVATING  = (1 << 3),
+    } state_flag_t;
+
+    bool (*set_window_state)(window_t window, uint32_t state_flags);
+    bool (*set_window_bounds)(window_t window, const rect_t *bounds);
+
+    // 平台特定扩展
+    void* (*get_platform_handle)(void);  // xcb_connection_t* or wl_display*
+} display_backend_t;
+
+// 显示后端管理
+display_backend_t *display_backend_create(display_backend_type_t type);
+bool display_backend_init(wm_context_t *ctx, display_backend_type_t type);
+void display_backend_cleanup(display_backend_t *backend);
+
+// X11 后端声明
+extern display_backend_t x11_backend;
+
+// Wayland 后端声明（未来实现）
+extern display_backend_t wayland_backend;
+#+END_SRC
+
+*优势*:
+- 为 Wayland 移植奠定基础
+- 显示逻辑与核心逻辑分离
+- 便于使用 mock 后端进行测试
+- 运行时可切换显示后端
+
+*X11 后端实现*:
+
+#+BEGIN_SRC c
+// src/services/x11_backend.c
+#include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
+#include <cairo-xcb.h>
+
+typedef struct x11_backend_data_t {
+    xcb_connection_t *conn;
+    xcb_screen_t *screen;
+    xcb_window_t root_window;
+    xcb_atom_t wm_protocols;
+    xcb_atom_t wm_delete_window;
+    GHashTable *window_map;  // uint64_t -> xcb_window_t
+} x11_backend_data_t;
+
+static bool x11_init(wm_context_t *ctx) {
+    x11_backend_data_t *data = calloc(1, sizeof(x11_backend_data_t));
+
+    data->conn = xcb_connect(NULL, NULL);
+    if (xcb_connection_has_error(data->conn)) {
+        free(data);
+        return false;
+    }
+
+    data->screen = xcb_setup_roots_iterator(xcb_get_setup(data->conn)).data;
+    data->root_window = data->screen->root;
+
+    // 初始化 atoms 和其他资源
+    // ...
+
+    return true;
+}
+
+static window_t x11_create_window(const rect_t *geometry) {
+    x11_backend_data_t *data = display_backend_get_data(&x11_backend);
+
+    xcb_window_t xcb_win = xcb_generate_id(data->conn);
+    // 创建窗口...
+
+    return (window_t){
+        .id = (uint64_t)xcb_win,
+        .platform_handle = (void *)(uintptr_t)xcb_win
+    };
+}
+
+// ... 其他 X11 实现
+
+display_backend_t x11_backend = {
+    .name = "x11",
+    .version = "1.0",
+    .init = x11_init,
+    .cleanup = x11_cleanup,
+    .create_window = x11_create_window,
+    // ... 其他函数指针
+};
+#+END_SRC
+
+*Wayland 后端框架*:
+
+#+BEGIN_SRC c
+// src/services/wayland_backend.c
+#include <wayland-client.h>
+
+typedef struct wayland_backend_data_t {
+    struct wl_display *display;
+    struct wl_compositor *compositor;
+    struct wl_seat *seat;
+    struct xdg_wm_base *xdg_wm_base;
+    GHashTable *window_map;
+} wayland_backend_data_t;
+
+static bool wayland_init(wm_context_t *ctx) {
+    wayland_backend_data_t *data = calloc(1, sizeof(wayland_backend_data_t));
+
+    data->display = wl_display_connect(NULL);
+    if (!data->display) {
+        free(data);
+        return false;
+    }
+
+    // 注册全局对象监听器
+    wl_display_roundtrip(data->display);
+
+    return true;
+}
+
+// ... 其他 Wayland 实现（未来工作）
+
+display_backend_t wayland_backend = {
+    .name = "wayland",
+    .version = "1.0",
+    .init = wayland_init,
+    // ... 其他函数指针
+};
+#+END_SRC
+
+**** 3.2 事件总线
+*问题*: 事件处理直接耦合业务逻辑
+
+*解决方案*: 发布-订阅事件系统
+
+#+BEGIN_SRC c
+// src/services/event_bus.h
+typedef enum event_type_t {
+    // 窗口事件
+    EVENT_WINDOW_CREATE,
+    EVENT_WINDOW_DESTROY,
+    EVENT_WINDOW_CONFIGURE,
+    EVENT_WINDOW_FOCUS,
+
+    // 监视器事件
+    EVENT_MONITOR_ADD,
+    EVENT_MONITOR_REMOVE,
+    EVENT_MONITOR_CHANGE,
+
+    // 标签事件
+    EVENT_TAG_ADD,
+    EVENT_TAG_REMOVE,
+    EVENT_TAG_CHANGE,
+
+    // 用户事件
+    EVENT_KEY_PRESS,
+    EVENT_MOUSE_PRESS,
+    EVENT_COMMAND,
+
+    // 系统事件
+    EVENT_CONFIG_RELOAD,
+    EVENT_RESTART,
+    EVENT_EXIT
+} event_type_t;
+
+typedef struct event_t {
+    event_type_t type;
+    void *data;           // 事件特定数据
+    void *source;         // 事件源对象
+} event_t;
+
+typedef void (*event_callback)(const event_t *event, void *user_data);
+
+typedef struct event_subscription_t {
+    event_type_t type;
+    event_callback callback;
+    void *user_data;
+    bool once;            // 是否只触发一次
+} event_subscription_t;
+
+typedef struct event_bus_t {
+    event_subscription_t **subscriptions;
+    size_t subscription_count;
+    size_t capacity;
+} event_bus_t;
+
+// 事件总线API
+event_bus_t *event_bus_create(void);
+void event_bus_destroy(event_bus_t *bus);
+
+// 订阅事件
+event_subscription_t *event_bus_subscribe(event_bus_t *bus,
+                                         event_type_t type,
+                                         event_callback callback,
+                                         void *user_data);
+void event_bus_unsubscribe(event_bus_t *bus, event_subscription_t *sub);
+
+// 发布事件
+void event_bus_publish(event_bus_t *bus, const event_t *event);
+
+// 便捷宏
+#define EVENT_SUBSCRIBE(bus, type, callback, data) \
+    event_bus_subscribe(bus, type, callback, data)
+
+#define EVENT_PUBLISH(bus, type, data) \
+    event_bus_publish(bus, &(event_t){ .type = type, .data = data })
+#+END_SRC
+
+**** 3.3 插件系统
+*问题*: 扩展功能需要修改核心代码
+
+*解决方案*: 轻量级插件接口
+
+#+BEGIN_SRC c
+// src/services/plugin.h
+typedef struct plugin_t {
+    char *name;
+    char *version;
+    void *handle;         // dlopen句柄
+
+    // 生命周期
+    bool (*init)(wm_context_t *ctx);
+    void (*cleanup)(void);
+
+    // 事件处理
+    void (*on_event)(const event_t *event);
+
+    // 配置
+    bool (*set_config)(const char *key, const char *value);
+} plugin_t;
+
+typedef struct plugin_manager_t {
+    plugin_t **plugins;
+    size_t plugin_count;
+    event_bus_t *event_bus;
+} plugin_manager_t;
+
+// 插件管理API
+plugin_manager_t *plugin_manager_create(event_bus_t *bus);
+void plugin_manager_destroy(plugin_manager_t *mgr);
+
+// 插件加载
+bool plugin_manager_load(plugin_manager_t *mgr, const char *path);
+bool plugin_manager_unload(plugin_manager_t *mgr, const char *name);
+
+// 插件API（供插件实现者使用）
+void plugin_register(plugin_t *plugin);
+void plugin_unregister(const char *name);
+
+// 插件宏（简化插件开发）
+#define PLUGIN_EXPORT(name, version, init_fn, cleanup_fn) \
+    __attribute__((used)) plugin_t *_plugin_get_info(void) { \
+        static plugin_t plugin = { \
+            .name = name, \
+            .version = version, \
+            .init = init_fn, \
+            .cleanup = cleanup_fn \
+        }; \
+        return &plugin; \
+    }
+#+END_SRC
+
+*** 第四层：业务抽象层 (Business Layer)
+
+**** 4.1 客户端抽象
+*问题*: client.c 职责过多，难以维护
+
+*解决方案*: 客户端接口抽象
+
+#+BEGIN_SRC c
+// src/business/client_interface.h
+// 客户端状态机
+typedef enum client_state_t {
+    CLIENT_STATE_NEW,
+    CLIENT_STATE_NORMAL,
+    CLIENT_STATE_FLOATING,
+    CLIENT_STATE_FULLSCREEN,
+    CLIENT_STATE_MAXIMIZED,
+    CLIENT_STATE_MINIMIZED,
+    CLIENT_STATE_DOCK,
+    CLIENT_STATE_DYING
+} client_state_t;
+
+// 客户端接口
+typedef struct client_interface_t {
+    // 生命周期
+    client_t* (*create)(xcb_window_t window);
+    void (*destroy)(client_t *client);
+
+    // 状态管理
+    client_state_t (*get_state)(const client_t *client);
+    bool (*set_state)(client_t *client, client_state_t new_state);
+
+    // 几何管理
+    bool (*set_geometry)(client_t *client, const rect_t *geometry);
+    rect_t (*get_geometry)(const client_t *client);
+
+    // 焦点管理
+    bool (*focus)(client_t *client);
+    bool (*is_focused)(const client_t *client);
+
+    // 属性管理
+    bool (*set_property)(client_t *client, const char *key, void *value);
+    void* (*get_property)(const client_t *client, const char *key);
+
+    // 渲染
+    bool (*needs_redraw)(const client_t *client);
+    void (*draw)(client_t *client, cairo_t *cr);
+} client_interface_t;
+
+// 客户端管理器
+typedef struct client_manager_t {
+    client_interface_t *iface;
+    list_t *clients;          // 所有客户端
+    hash_table_t *window_map; // window -> client
+} client_manager_t;
+
+// 客户端管理API
+client_manager_t *client_manager_create(client_interface_t *iface);
+void client_manager_destroy(client_manager_t *mgr);
+
+client_t *client_manager_add(client_manager_t *mgr, xcb_window_t window);
+bool client_manager_remove(client_manager_t *mgr, client_t *client);
+client_t *client_manager_find(client_manager_t *mgr, xcb_window_t window);
+#+END_SRC
+
+**** 4.2 布局引擎抽象
+*问题*: 布局系统已经设计良好，但缺少插件化
+
+*解决方案*: 布局插件接口
+
+#+BEGIN_SRC c
+// src/business/layout_engine.h
+typedef struct layout_context_t {
+    tag_t *tag;
+    rect_t workarea;
+    client_t **clients;
+    size_t client_count;
+} layout_context_t;
+
+typedef struct layout_algorithm_t {
+    const char *name;
+    const char *symbol;
+
+    // 布局计算
+    void (*arrange)(const layout_context_t *ctx, rect_t *geometries);
+
+    // 可选：预览布局（不实际应用）
+    void (*preview)(const layout_context_t *ctx, rect_t *geometries);
+
+    // 可选：布局参数
+    bool (*set_param)(const char *key, void *value);
+} layout_algorithm_t;
+
+typedef struct layout_engine_t {
+    layout_algorithm_t **algorithms;
+    size_t algorithm_count;
+    layout_algorithm_t *default_algorithm;
+} layout_engine_t;
+
+// 布局引擎API
+layout_engine_t *layout_engine_create(void);
+void layout_engine_destroy(layout_engine_t *engine);
+
+bool layout_engine_register(layout_engine_t *engine, layout_algorithm_t *algo);
+bool layout_engine_unregister(layout_engine_t *engine, const char *name);
+
+layout_algorithm_t *layout_engine_find(layout_engine_t *engine, const char *name);
+void layout_engine_arrange(layout_engine_t *engine, const layout_context_t *ctx);
+
+// 便捷宏：定义布局算法
+#define LAYOUT_ALGORITHM(name, symbol, arrange_fn) \
+    static layout_algorithm_t _layout_##name = { \
+        .name = #name, \
+        .symbol = symbol, \
+        .arrange = arrange_fn \
+    }; \
+    __attribute__((constructor)) \
+    static void _layout_register_##name(void) { \
+        layout_engine_register(layout_engine_get_default(), &_layout_##name); \
+    }
+#+END_SRC
+
+**** 4.3 操作抽象
+*问题*: 操作系统已经设计良好，可以增强
+
+*解决方案*: 命令模式增强
+
+#+BEGIN_SRC c
+// src/business/command.h
+typedef enum command_arg_type_t {
+    COMMAND_ARG_NONE,
+    COMMAND_ARG_INT,
+    COMMAND_ARG_STRING,
+    COMMAND_ARG_BOOLEAN
+} command_arg_type_t;
+
+typedef struct command_arg_t {
+    command_arg_type_t type;
+    union {
+        int integer;
+        char *string;
+        bool boolean;
+    } value;
+} command_arg_t;
+
+typedef struct command_result_t {
+    bool success;
+    char *message;
+    void *data;          // 可选的返回数据
+    void (*data_cleanup)(void *data);
+} command_result_t;
+
+typedef struct command_t {
+    const char *name;
+    const char *description;
+
+    // 参数定义
+    command_arg_type_t *arg_types;
+    size_t arg_count;
+
+    // 执行函数
+    command_result_t (*execute)(wm_context_t *ctx,
+                               const command_arg_t *args,
+                               size_t arg_count);
+
+    // 可选：自动完成
+    char* (*complete)(const char *prefix, size_t arg_index);
+} command_t;
+
+typedef struct command_registry_t {
+    hash_table_t *commands;  // name -> command_t
+} command_registry_t;
+
+// 命令注册API
+command_registry_t *command_registry_create(void);
+void command_registry_destroy(command_registry_t *registry);
+
+bool command_registry_register(command_registry_t *registry, command_t *cmd);
+bool command_registry_unregister(command_registry_t *registry, const char *name);
+
+command_result_t command_execute(command_registry_t *registry,
+                                wm_context_t *ctx,
+                                const char *name,
+                                const command_arg_t *args,
+                                size_t arg_count);
+
+// 便捷宏
+#define COMMAND_REGISTER(registry, name, fn) \
+    command_registry_register(registry, &(command_t){ \
+        .name = name, \
+        .execute = fn \
+    })
+#+END_SRC
+
+*** 第五层：UI抽象层 (Presentation Layer)
+
+**** 5.1 渲染器抽象
+*问题*: 渲染逻辑散落各处，难以扩展
+
+*解决方案*: 统一渲染接口
+
+#+BEGIN_SRC c
+// src/ui/renderer.h
+typedef struct render_context_t {
+    cairo_t *cr;
+    rect_t viewport;
+    color_scheme_t *colors;
+} render_context_t;
+
+typedef struct renderer_t {
+    const char *name;
+
+    // 初始化
+    bool (*init)(wm_context_t *ctx);
+
+    // 清理
+    void (*cleanup)(void);
+
+    // 渲染
+    void (*render)(const render_context_t *ctx, void *data);
+
+    // 尺寸计算
+    void (*measure)(const render_context_t *ctx, void *data, size_t *width, size_t *height);
+} renderer_t;
+
+typedef struct renderer_manager_t {
+    renderer_t **renderers;
+    size_t renderer_count;
+} renderer_manager_t;
+
+// 渲染器管理API
+renderer_manager_t *renderer_manager_create(void);
+void renderer_manager_destroy(renderer_manager_t *mgr);
+
+bool renderer_manager_register(renderer_manager_t *mgr, renderer_t *r);
+bool renderer_manager_unregister(renderer_manager_t *mgr, const char *name);
+
+renderer_t *renderer_manager_find(renderer_manager_t *mgr, const char *name);
+void renderer_manager_render(renderer_manager_t *mgr, const char *name,
+                            const render_context_t *ctx, void *data);
+#+END_SRC
+
+**** 5.2 状态栏组件系统
+*问题*: 状态栏已经设计良好，可以组件化
+
+*解决方案*: 组件化状态栏
+
+#+BEGIN_SRC c
+// src/ui/statusbar_component.h
+typedef struct statusbar_component_t {
+    const char *name;
+    size_t preferred_width;
+    size_t preferred_height;
+
+    // 渲染
+    void (*render)(const render_context_t *ctx, void *data);
+
+    // 尺寸计算
+    void (*measure)(const render_context_t *ctx, void *data,
+                   size_t *width, size_t *height);
+
+    // 事件处理
+    void (*on_click)(void *data, int x, int y);
+    void (*on_scroll)(void *data, int delta);
+
+    // 生命周期
+    void (*init)(wm_context_t *ctx, void **data);
+    void (*cleanup)(void *data);
+} statusbar_component_t;
+
+typedef struct statusbar_t {
+    statusbar_component_t **components;
+    void **component_data;
+    size_t component_count;
+
+    // 布局管理
+    enum {
+        STATUSBAR_LAYOUT_LEFT_TO_RIGHT,
+        STATUSBAR_LAYOUT_RIGHT_TO_LEFT
+    } layout_direction;
+} statusbar_t;
+
+// 状态栏组件API
+statusbar_t *statusbar_create(void);
+void statusbar_destroy(statusbar_t *bar);
+
+bool statusbar_add_component(statusbar_t *bar, statusbar_component_t *comp);
+bool statusbar_remove_component(statusbar_t *bar, const char *name);
+
+void statusbar_render(statusbar_t *bar, const render_context_t *ctx);
+void statusbar_handle_event(statusbar_t *bar, const event_t *event);
+
+// 预定义组件
+extern statusbar_component_t statusbar_clock_component;
+extern statusbar_component_t statusbar_cpu_component;
+extern statusbar_component_t statusbar_memory_component;
+extern statusbar_component_t statusbar_network_component;
+#+END_SRC
+
+** 架构分层图
+
+#+BEGIN_EXAMPLE
+┌─────────────────────────────────────────────────────────────┐
+│                    UI 抽象层                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ 渲染器管理   │  │ 状态栏组件   │  │ 通知系统     │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                            ▲
+                            │
+┌─────────────────────────────────────────────────────────────┐
+│                   业务抽象层                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ 客户端接口   │  │ 布局引擎     │  │ 命令系统     │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                            ▲
+                            │
+┌─────────────────────────────────────────────────────────────┐
+│                   服务抽象层                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ 显示后端     │  │ 事件总线     │  │ 插件系统     │       │
+│  │ (X11/Wayland)│  │              │  │              │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                            ▲
+                            │
+┌─────────────────────────────────────────────────────────────┐
+│                   数据抽象层                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ 状态管理器   │  │ 配置系统     │  │ 资源缓存     │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+                            ▲
+                            │
+┌─────────────────────────────────────────────────────────────┐
+│                  基础设施抽象层                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │ 上下文管理   │  │ 日志系统     │  │ 错误处理     │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+#+END_EXAMPLE
+
+** 实施路径
+
+*** 阶段1：基础设施层 (2-3周)
+1. *上下文管理器*
+   - 创建 =wm_context_t=
+   - 修改现有代码使用上下文
+   - 保持向后兼容宏
+
+2. *日志系统*
+   - 实现 =log.h/c=
+   - 替换所有 =logger/fatal/warn=
+   - 添加文件输出 handler
+
+3. *错误处理*
+   - 实现 =error.h/c=
+   - 修复 GError 使用
+   - 添加错误恢复机制
+
+*** 阶段2：数据抽象层 (3-4周)
+1. *状态管理器*
+   - 实现 =state_manager_t=
+   - 迁移关键状态到统一管理
+   - 添加状态变更监听
+
+2. *配置系统*
+   - 实现配置栈
+   - 支持配置文件热重载
+   - 添加配置验证
+
+*** 阶段3：服务抽象层 (4-6周)
+1. *显示后端抽象*
+   - 定义显示后端统一接口
+   - 实现 X11 后端（迁移现有 XCB 调用）
+   - 创建 Wayland 后端框架（仅接口定义）
+   - 实现 Mock 后端用于单元测试
+   - 修改核心逻辑使用显示后端接口
+   - 添加后端自动检测和运行时切换
+
+2. *事件总线*
+   - 实现发布-订阅系统
+   - 迁移现有事件处理
+   - 添加事件日志
+
+3. *插件系统*
+   - 实现插件加载器
+   - 定义插件接口
+   - 创建示例插件
+
+*** 阶段4：业务抽象层 (6-8周)
+1. *客户端重构*
+   - 定义客户端接口
+   - 实现状态机
+   - 拆分 client.c
+
+2. *布局引擎*
+   - 提取布局算法
+   - 支持动态注册
+   - 添加布局预览
+
+3. *命令系统*
+   - 统一命令接口
+   - 支持参数验证
+   - 添加自动完成
+
+*** 阶段5：UI抽象层 (4-6周)
+1. *渲染器管理*
+   - 统一渲染接口
+   - 支持多种渲染器
+   - 添加渲染缓存
+
+2. *状态栏组件化*
+   - 提取组件接口
+   - 实现预定义组件
+   - 支持自定义组件
+
+** 向后兼容策略
+
+1. *渐进式迁移*
+   - 新旧API并存
+   - 使用宏提供兼容层
+   - 标记旧API为deprecated
+
+2. *编译时选项*
+   #+BEGIN_SRC c
+   #ifdef USE_NEW_ARCH
+       // 使用新API
+   #else
+       // 使用旧API
+   #endif
+   #+END_SRC
+
+3. *运行时切换*
+   - 支持命令行参数选择架构
+   - 便于性能对比和问题定位
+
+** 测试策略
+
+1. *单元测试*
+   - 每个抽象层独立测试
+   - 使用mock对象隔离依赖
+
+2. *集成测试*
+   - 测试层间交互
+   - 端到端场景测试
+
+3. *性能测试*
+   - 对比新旧架构性能
+   - 内存使用分析
+   - 响应时间测试
+
+** 预期收益
+
+*** 可维护性提升
+- 清晰的职责划分
+- 松耦合的模块设计
+- 易于定位和修复问题
+
+*** 可扩展性提升
+- 插件化架构
+- 组件化UI
+- 动态配置系统
+
+*** 可测试性提升
+- 依赖注入支持
+- Mock对象友好
+- 隔离测试环境
+
+*** 用户体验提升
+- 配置热重载
+- 插件生态
+- 更好的错误提示
+
+这个抽象层设计既保持了ZDWM的简洁高效，又大幅提升了可维护性和可扩展性，为项目的长期发展奠定坚实基础。
+
+** 显示后端抽象与 Wayland 支持
+
+*** 设计目标
+
+通过引入显示后端抽象层，实现以下目标：
+- 为 Wayland 移植奠定基础，适应显示服务器技术演进
+- 显示逻辑与核心业务逻辑完全分离
+- 支持运行时后端切换，用户可选择 X11 或 Wayland
+- 便于使用 Mock 后端进行单元测试
+
+*** 架构优势
+
+1. *显示服务器无关性*: 核心窗口管理逻辑不依赖特定显示服务器
+2. *渐进式迁移*: 先完善 X11 后端，再逐步实现 Wayland 后端
+3. *性能无损*: 通过编译时优化和内联函数保持高性能
+4. *测试友好*: Mock 后端使单元测试更简单
+
+*** X11 后端实现重点
+
+#+BEGIN_SRC c
+// X11 后端的核心职责
+- 管理 xcb_connection_t 和 xcb_screen_t
+- 窗口生命周期管理（创建、销毁、映射、取消映射）
+- ICCCM/EWMH 协议实现
+- 事件转换（XCB 事件 → 通用 display_event_t）
+- Cairo 集成（cairo_xcb_surface_t）
+- 输入设备抓取（键盘、鼠标）
+#+END_SRC
+
+*** Wayland 后端实现路线图
+
+*阶段1：基础框架（未来 3-6 个月）*
+- 实现 Wayland 客户端协议绑定
+- 支持 wl_display, wl_compositor, wl_shm
+- 实现 xdg-shell 基础功能
+- 窗口创建和基本管理
+
+*阶段2：核心功能（未来 6-12 个月）*
+- 完整的 xdg-shell 支持
+- 输入事件处理（wl_seat, wl_pointer, wl_keyboard）
+- 表面和帧回调（wl_surface, wl_callback）
+- EGL/渲染集成
+
+*阶段3：高级特性（未来 12-18 个月）*
+- xdg-activation 协议（焦点管理）
+- xdg-decoration 协议（服务器端装饰）
+- wl_output 多显示器支持
+- Layer-shell 支持（面板、覆盖层）
+
+*** 后端切换策略
+
+1. *编译时选择*（零成本抽象）
+   #+BEGIN_SRC c
+   #if defined(DISPLAY_BACKEND_X11)
+       #define DISPLAY_CALL(func, ...) x11_##func(__VA_ARGS__)
+   #elif defined(DISPLAY_BACKEND_WAYLAND)
+       #define DISPLAY_CALL(func, ...) wayland_##func(__VA_ARGS__)
+   #endif
+   #+END_SRC
+
+2. *运行时切换*（灵活性）
+   #+BEGIN_SRC c
+   // 通过环境变量选择
+   export ZDWM_BACKEND=x11  // 或 wayland
+
+   // 通过命令行参数选择
+   zdwm --backend=x11
+   zdwm --backend=wayland
+
+   // 自动检测
+   if (getenv("WAYLAND_DISPLAY")) {
+       backend = &wayland_backend;
+   } else if (getenv("DISPLAY")) {
+       backend = &x11_backend;
+   }
+   #+END_SRC
+
+*** 配置示例
+
+#+BEGIN_SRC c
+// 配置文件支持
+typedef struct display_config_t {
+    display_backend_type_t backend;
+    struct {
+        bool enable_ssd;        // 服务器端装饰（X11）
+        bool enable_csd;        // 客户端装饰（Wayland）
+    } decoration;
+    struct {
+        bool enable_vsync;
+        bool use_egl;           // EGL vs SHM（Wayland）
+    } rendering;
+} display_config_t;
+#+END_SRC
+
+*** 兼容性考虑
+
+1. *向后兼容*: 保持现有 XCB 调用接口，通过宏迁移到新接口
+2. *功能对等*: 确保 X11 和 Wayland 后端功能一致性
+3. *性能保持*: Wayland 后端性能应不低于 X11 后端
+
+*** 测试策略
+
+1. *Mock 后端测试*
+   #+BEGIN_SRC c
+   // 用于单元测试的模拟后端
+   static display_backend_t mock_backend = {
+       .name = "mock",
+       .init = mock_init,
+       .create_window = mock_create_window,
+       // ... 其他实现
+   };
+
+   // 测试核心逻辑
+   void test_client_management_with_mock_backend() {
+       wm_context_t *ctx = wm_context_create(DISPLAY_BACKEND_MOCK);
+       // 测试逻辑...
+   }
+   #+END_SRC
+
+2. *双后端集成测试*
+   - 使用相同测试用例验证 X11 和 Wayland 后端
+   - 确保行为一致性
+
+*** 预期收益
+
+1. *未来兼容性*: 为 Wayland 移植奠定基础
+2. *架构清晰*: 显示逻辑与核心逻辑分离
+3. *测试友好*: Mock 后端简化单元测试
+4. *性能无损*: 通过编译时优化保持高性能
+5. *用户选择*: 用户可根据需求选择 X11 或 Wayland
+
+这个显示后端抽象设计确保了 ZDWM 能够适应显示服务器技术的演进，同时保持当前的优秀性能和稳定性。

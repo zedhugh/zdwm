@@ -1,0 +1,342 @@
+* ZDWM 最小核心命令规则
+
+这份文档定义 =wm_policy_apply_command()= 应遵守的最小语义。目标不是覆盖所有未来扩展，而是先把最关键的状态转移规则固定下来，避免后续实现时在 =floating=、=sticky=、=geometry_mode= 和 =stack_order[]= 上出现分叉语义。
+
+* 通用规则
+
+1. 找不到目标 =window_id=、=workspace_id= 或 =output_id= 时，命令失败，不修改状态。
+2. 命令失败时，不递增 =state.generation= 。
+3. 命令成功且造成状态变化时，递增 =state.generation= ，并设置相应 =dirty_flags= 。
+4. =stack_order[]= 是全局 z-order 真相，=raise/lower/focus= 只能通过修改这个数组影响堆叠。
+5. =geometry_mode= 只表示几何显示模式，不表示窗口是否在最上层。
+6. =sticky= 只影响可见性，不改变 =workspace_id= 。
+7. =floating= 决定基础几何来源：
+   =floating = false= 时，基础几何来自 layout 结果。
+   =floating = true= 时，基础几何来自 =float_rect= 。
+
+* 管理类命令
+
+** =WM_COMMAND_MANAGE_WINDOW=
+
+前置条件：
+
+1. 目标窗口尚未出现在 =state.windows[]= 中。
+2. 目标工作区存在。
+
+状态变化：
+
+1. 向 =state.windows[]= 添加一个新窗口。
+2. 设定其 =workspace_id= 。
+3. 初始 =floating= 、=sticky= 、=urgent= 、=geometry_mode= 使用调用方或配置给出的默认值。
+4. 将窗口追加到 =stack_order[]= 顶部。
+5. 可选地将该窗口设为所属工作区的 =focused_window_id= 。
+
+副作用：
+
+1. =WM_DIRTY_STATE=
+2. =WM_DIRTY_LAYOUT=
+3. =WM_DIRTY_STACK=
+4. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_UNMANAGE_WINDOW=
+
+前置条件：
+
+1. 目标窗口存在。
+
+状态变化：
+
+1. 从 =state.windows[]= 中删除该窗口。
+2. 从 =stack_order[]= 中移除该窗口。
+3. 如果它是某个 workspace 的 =focused_window_id= ，清空或重新选择新的 focused window。
+
+副作用：
+
+1. =WM_DIRTY_STATE=
+2. =WM_DIRTY_LAYOUT=
+3. =WM_DIRTY_STACK=
+4. =WM_DIRTY_RENDER=
+
+* 焦点和堆叠命令
+
+** =WM_COMMAND_FOCUS_WINDOW=
+
+状态变化：
+
+1. 将目标窗口所属 workspace 的 =focused_window_id= 设置为该窗口。
+2. 不强制改变 =stack_order[]= 。
+
+可选策略：
+
+1. 若 WM 采用 =focus raises= ，则在实现中额外执行 =raise_window= 逻辑。
+
+** =WM_COMMAND_FOCUS_DIRECTION=
+
+状态变化：
+
+1. 只在目标 =output_id= 当前显示的 workspace 内选择焦点。
+2. 候选窗口应排除 =geometry_mode == WM_GEOMETRY_MINIMIZED= 的窗口。
+3. =sticky= 窗口是否参与方向焦点切换，建议作为单独策略开关，不在最小核心中写死。
+
+** =WM_COMMAND_RAISE_WINDOW=
+
+状态变化：
+
+1. 在 =stack_order[]= 中找到目标窗口。
+2. 将它移动到数组末尾，也就是最顶层。
+
+副作用：
+
+1. =WM_DIRTY_STACK=
+2. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_LOWER_WINDOW=
+
+状态变化：
+
+1. 在 =stack_order[]= 中找到目标窗口。
+2. 将它移动到数组开头，也就是最底层。
+
+副作用：
+
+1. =WM_DIRTY_STACK=
+2. =WM_DIRTY_RENDER=
+
+* 工作区命令
+
+** =WM_COMMAND_SWITCH_WORKSPACE=
+
+状态变化：
+
+1. 将目标输出的 =current_workspace_id= 改为指定工作区。
+2. 不修改任何窗口的 =workspace_id= 。
+3. 不修改 =stack_order[]= 。
+
+副作用：
+
+1. =WM_DIRTY_OUTPUT=
+2. =WM_DIRTY_LAYOUT=
+3. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_SEND_WINDOW_TO_WORKSPACE=
+
+状态变化：
+
+1. 修改目标窗口的 =workspace_id= 。
+2. 不改变 =sticky= 。
+3. 不改变 =floating= 。
+4. 不改变 =float_rect= 。
+5. 如果窗口是原 workspace 的 =focused_window_id= ，需要重新选择原 workspace 焦点。
+
+副作用：
+
+1. =WM_DIRTY_STATE=
+2. =WM_DIRTY_LAYOUT=
+3. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_SEND_WINDOW_TO_OUTPUT=
+
+状态变化：
+
+1. 这是工作区迁移命令的语法糖。
+2. 取目标 output 当前的 =current_workspace_id= 。
+3. 若 =policy == WM_CROSS_OUTPUT_KEEP_WORKSPACE= ，则不改 =workspace_id= ，只允许调用方随后自行调整几何。
+4. 若 =policy == WM_CROSS_OUTPUT_MOVE_TO_TARGET_WORKSPACE= ，则把窗口 =workspace_id= 改成目标 output 当前工作区。
+
+* 模式切换命令
+
+** =WM_COMMAND_TOGGLE_FLOATING=
+
+状态变化：
+
+1. 若原来 =floating == false= ：
+   将 =floating= 设为 =true= 。
+   将当前 =frame_rect= 复制到 =float_rect= ，作为浮动基准矩形。
+2. 若原来 =floating == true= ：
+   将 =floating= 设为 =false= 。
+   保留 =float_rect= ，供未来再次进入 floating 时恢复。
+3. 不改变 =geometry_mode= 。
+4. 若窗口处于 =WM_GEOMETRY_MINIMIZED= ，允许切换 =floating= ，但不会立刻显示出来。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_TOGGLE_MAXIMIZE=
+
+状态变化：
+
+1. 若当前 =geometry_mode == WM_GEOMETRY_MAXIMIZED= ：
+   设回 =WM_GEOMETRY_NORMAL= 。
+2. 若当前 =geometry_mode == WM_GEOMETRY_FULLSCREEN= ：
+   直接切换为 =WM_GEOMETRY_MAXIMIZED= 。
+3. 若当前 =geometry_mode == WM_GEOMETRY_MINIMIZED= ：
+   直接切换为 =WM_GEOMETRY_MAXIMIZED= 。
+4. 其余情况：
+   设为 =WM_GEOMETRY_MAXIMIZED= 。
+5. 不改变 =floating= 。
+6. 若窗口原本是 floating，退出 maximize 后回到 =float_rect= 。
+7. 若窗口原本不是 floating，退出 maximize 后重新参与 layout。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_TOGGLE_FULLSCREEN=
+
+状态变化：
+
+1. 若当前 =geometry_mode == WM_GEOMETRY_FULLSCREEN= ：
+   设回 =WM_GEOMETRY_NORMAL= 。
+2. 否则：
+   设为 =WM_GEOMETRY_FULLSCREEN= 。
+3. 不改变 =floating= 。
+4. fullscreen 只决定几何占用 =output.geometry= ，不自动改变 =stack_order[]= 。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_TOGGLE_MINIMIZE=
+
+状态变化：
+
+1. 若当前 =geometry_mode == WM_GEOMETRY_MINIMIZED= ：
+   设回 =WM_GEOMETRY_NORMAL= 。
+2. 否则：
+   设为 =WM_GEOMETRY_MINIMIZED= 。
+3. 不改变 =floating= 。
+4. 不改变 =sticky= 。
+5. minimized 后窗口不再参与显示和焦点候选。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+* 浮动几何命令
+
+** =WM_COMMAND_MOVE_FLOATING_WINDOW=
+
+前置条件：
+
+1. 目标窗口存在。
+2. 目标窗口应为 =floating == true= 。
+
+状态变化：
+
+1. 按 =dx/dy= 修改 =float_rect.x/y= 。
+2. 若 =commit_workspace_change == false= ，只修改几何，不修改 =workspace_id= 。
+3. 若 =commit_workspace_change == true= ：
+   依据 =anchor= 找到目标输出。
+   再按 =policy= 决定是否修改 =workspace_id= 。
+4. 不改变 =geometry_mode= 。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_RESIZE_FLOATING_WINDOW=
+
+前置条件：
+
+1. 目标窗口存在。
+2. 目标窗口应为 =floating == true= 。
+
+状态变化：
+
+1. 按 =dw/dh= 修改 =float_rect.w/h= 。
+2. 应对宽高做最小值约束，避免得到零或负值。
+3. 不改变 =workspace_id= 。
+4. 不改变 =geometry_mode= 。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+* 布局命令
+
+** =WM_COMMAND_SET_LAYOUT=
+
+前置条件：
+
+1. 目标 workspace 存在。
+2. 目标 =layout_id= 已在 layout registry 中注册。
+
+状态变化：
+
+1. 修改 workspace 的 =layout_id= 。
+2. 不影响 floating 窗口的基础几何。
+3. 影响所有 =floating == false= 且 =geometry_mode == WM_GEOMETRY_NORMAL= 的窗口。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
+* redraw 和 quit
+
+** =WM_COMMAND_REDRAW=
+
+状态变化：
+
+1. 不修改 =state= 。
+
+副作用：
+
+1. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_QUIT=
+
+状态变化：
+
+1. 不再接收新事件，交由 =runtime= 退出主循环。
+
+* 可见性推导建议
+
+建议实现顺序如下：
+
+#+BEGIN_SRC c
+bool wm_state_window_should_be_visible(const wm_state_t *state,
+                                       const wm_window_t *window) {
+  if (window->geometry_mode == WM_GEOMETRY_MINIMIZED) return false;
+  if (window->sticky) return true;
+  return wm_state_workspace_is_visible(state, window->workspace_id);
+}
+#+END_SRC
+
+然后再按输出判断：
+
+#+BEGIN_SRC c
+bool wm_state_window_should_be_visible_on_output(const wm_state_t *state,
+                                                 const wm_window_t *window,
+                                                 const wm_output_t *output) {
+  if (!wm_state_window_should_be_visible(state, window)) return false;
+  if (window->sticky) return true;
+  return window->workspace_id == output->current_workspace_id;
+}
+#+END_SRC
+
+* 几何解析优先级
+
+窗口最终矩形建议按下面的优先级解析：
+
+1. =WM_GEOMETRY_MINIMIZED=
+不显示。
+
+2. =WM_GEOMETRY_FULLSCREEN=
+使用 =output.geometry= 。
+
+3. =WM_GEOMETRY_MAXIMIZED=
+使用 =output.workarea= 。
+
+4. =floating == true=
+使用 =float_rect= 。
+
+5. 其余情况
+使用 layout 输出。
