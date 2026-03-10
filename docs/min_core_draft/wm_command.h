@@ -31,6 +31,7 @@ typedef enum wm_command_type_t {
   WM_COMMAND_MOVE_FLOATING_WINDOW,
   WM_COMMAND_RESIZE_FLOATING_WINDOW,
   WM_COMMAND_SET_LAYOUT,
+  WM_COMMAND_CYCLE_LAYOUT,
   WM_COMMAND_REDRAW,
   WM_COMMAND_QUIT,
 } wm_command_type_t;
@@ -133,5 +134,10 @@ typedef struct wm_command_t {
       wm_workspace_id_t workspace_id;
       wm_layout_id_t layout_id;
     } set_layout;
+
+    struct {
+      wm_workspace_id_t workspace_id;
+      int direction;  // 1: 下一个布局, -1: 上一个布局
+    } cycle_layout;
   } as;
 } wm_command_t;

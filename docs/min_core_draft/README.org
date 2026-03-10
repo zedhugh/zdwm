@@ -268,6 +268,11 @@ move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继
 工作区名称直接存储在 =wm_workspace_t= 中，用于状态栏显示。
 核心算法不应依赖此字段。
 
+8. =workspace layouts=
+每个 workspace 维护一个可用布局列表（=available_layouts=），在启动时根据配置分配，运行时固定。
+workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个）。
+使用 =CYCLE_LAYOUT= 命令在可用布局间循环切换。
+
 * 核心不变量
 
 1. 每个窗口必须且只能属于一个工作区。
@@ -283,6 +288,7 @@ move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继
 11. layout 的 name 字段同时用于状态栏显示，应为 1-2 个字符的简短标识符（如 "T", "M"）。
 12. 窗口标题、类名等元数据存储在 =wm_window_t= 中，与控制状态一同管理。
 13. 工作区名称存储在 =wm_workspace_t= 中，核心算法不应依赖此字段。
+14. 每个 workspace 的可用布局列表在启动时分配，运行时固定，只能通过 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令切换当前活动布局。
 
 * Generation 字段
 
@@ -365,6 +371,8 @@ Workspace-Output 配置示例和最佳实践。
    =MANAGE_WINDOW=
    =UNMANAGE_WINDOW=
    =SWITCH_WORKSPACE=
+   =SET_LAYOUT=
+   =CYCLE_LAYOUT=
    =TOGGLE_FLOATING=
    =TOGGLE_MAXIMIZE=
    =MOVE_FLOATING_WINDOW=

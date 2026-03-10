@@ -188,6 +188,26 @@
 1. =WM_DIRTY_LAYOUT=
 2. =WM_DIRTY_RENDER=
 
+** =WM_COMMAND_CYCLE_LAYOUT=
+
+前置条件：
+
+1. 目标 workspace 存在。
+2. Workspace 的可用布局列表非空（=layout_count > 0=）。
+
+状态变化：
+
+1. 若 =direction == 1= ：切换到下一个布局（循环）。
+2. 若 =direction == -1= ：切换到上一个布局（循环）。
+3. 在 workspace 的 =available_layouts[]= 数组中找到当前 =layout_id= 的索引。
+4. 按方向移动到相邻索引，循环回到数组开头或末尾。
+5. 将新的布局 ID 设置为 workspace 的 =layout_id= 。
+
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
 * 模式切换命令
 
 ** =WM_COMMAND_TOGGLE_FLOATING=

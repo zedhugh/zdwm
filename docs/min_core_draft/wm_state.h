@@ -31,8 +31,12 @@ typedef struct wm_window_t {
 typedef struct wm_workspace_t {
   wm_workspace_id_t id;
   wm_output_id_t output_id;      // 固定归属某个输出
-  wm_layout_id_t layout_id;
+  wm_layout_id_t layout_id;      // 当前活动布局（可用布局列表中的一个）
   wm_window_id_t focused_window_id;
+
+  // 可用布局列表（启动时根据配置分配，运行时固定）
+  wm_layout_id_t *available_layouts;
+  size_t layout_count;
 
   // 名称（核心算法不依赖，仅用于状态栏显示）
   char *name;
@@ -90,6 +94,37 @@ bool wm_state_workspace_valid(wm_state_t *state, wm_workspace_id_t id);
 size_t wm_state_workspace_get_by_output(const wm_state_t *state,
                                          wm_output_id_t output_id,
                                          wm_workspace_t **out_workspaces);
+
+// ========== Workspace 布局操作 ==========
+
+/*
+ * 设置 workspace 的可用布局列表
+ * 注意：应在 workspace 初始化时调用，运行时不应修改
+ */
+void wm_workspace_set_layouts(wm_workspace_t *workspace,
+                              const wm_layout_id_t *layouts,
+                              size_t count);
+
+/*
+ * 获取 workspace 的可用布局列表
+ */
+const wm_layout_id_t *wm_workspace_get_layouts(const wm_workspace_t *workspace,
+                                                size_t *out_count);
+
+/*
+ * 切换到下一个布局（循环）
+ */
+bool wm_workspace_cycle_layout(wm_workspace_t *workspace);
+
+/*
+ * 切换到指定索引的布局
+ */
+bool wm_workspace_set_layout_by_index(wm_workspace_t *workspace, size_t index);
+
+/*
+ * 切换到指定 ID 的布局（如果该布局在可用列表中）
+ */
+bool wm_workspace_set_layout_by_id(wm_workspace_t *workspace, wm_layout_id_t id);
 
 // ========== Output 访问 ==========
 

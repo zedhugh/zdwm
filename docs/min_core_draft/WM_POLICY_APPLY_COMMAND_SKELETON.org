@@ -111,6 +111,10 @@ bool wm_policy_apply_command(wm_state_t *state,
       changed = apply_set_layout(state, layouts, command, plan);
       break;
 
+    case WM_COMMAND_CYCLE_LAYOUT:
+      changed = apply_cycle_layout(state, command, plan);
+      break;
+
     case WM_COMMAND_REDRAW:
       changed = apply_redraw(state, command, plan);
       break;
@@ -574,6 +578,45 @@ static bool apply_set_layout(wm_state_t *state,
   if (ws->layout_id == command->as.set_layout.layout_id) return false;
 
   ws->layout_id = command->as.set_layout.layout_id;
+  plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
+  push_render_all_outputs(state, plan);
+  return true;
+}
+#+END_SRC
+
+** =apply_cycle_layout()=
+
+#+BEGIN_SRC c
+static bool apply_cycle_layout(wm_state_t *state,
+                               const wm_command_t *command,
+                               wm_plan_t *plan) {
+  wm_workspace_t *ws =
+    require_workspace(state, command->as.cycle_layout.workspace_id);
+  if (!ws) return false;
+  if (ws->layout_count == 0) return false;
+
+  // 找到当前布局在列表中的索引
+  size_t current_idx = 0;
+  for (size_t i = 0; i < ws->layout_count; i++) {
+    if (ws->available_layouts[i] == ws->layout_id) {
+      current_idx = i;
+      break;
+    }
+  }
+
+  // 计算下一个索引（支持前后循环）
+  size_t next_idx;
+  if (command->as.cycle_layout.direction > 0) {
+    next_idx = (current_idx + 1) % ws->layout_count;
+  } else {
+    next_idx = (current_idx == 0) ? (ws->layout_count - 1) : (current_idx - 1);
+  }
+
+  // 如果新旧布局相同，直接返回
+  wm_layout_id_t next_layout = ws->available_layouts[next_idx];
+  if (next_layout == ws->layout_id) return false;
+
+  ws->layout_id = next_layout;
   plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
   push_render_all_outputs(state, plan);
   return true;

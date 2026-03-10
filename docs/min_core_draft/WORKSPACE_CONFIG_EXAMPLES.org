@@ -212,9 +212,75 @@ bool load_workspace_config(const char *path,
 --      如果 workspace 4 当前在 DP-2 显示，窗口会在 DP-2 出现
 #+END_SRC
 
+** 布局列表配置
+
+每个 workspace 可以配置自己的可用布局列表。
+
+*** 基础配置
+
+#+BEGIN_SRC lua
+-- 声明布局注册表
+layouts = {
+  { id = 0, name = "T", fn = layout_tile },
+  { id = 1, name = "M", fn = layout_monocle },
+  { id = 2, name = "F", fn = layout_floating },
+  { id = 3, name = "S", fn = layout_stack },
+  { id = 4, name = "G", fn = layout_grid },
+}
+
+-- 单显示器：每个 workspace 可用所有布局
+workspaces = {
+  { id = 1, name = "1", output_id = 0, layouts = {0, 1, 2, 3, 4}, default_layout = 0 },
+  { id = 2, name = "2", output_id = 0, layouts = {0, 1, 2, 3, 4}, default_layout = 0 },
+  { id = 3, name = "3", output_id = 0, layouts = {0, 1, 2, 3, 4}, default_layout = 0 },
+}
+#+END_SRC
+
+*** 主题化布局配置
+
+不同用途的 workspace 配置不同的布局集合：
+
+#+BEGIN_SRC lua
+workspaces = {
+  -- 代码 workspace：平铺、单列、堆叠（适合代码+终端）
+  { id = 1, name = "code", output_id = 0,
+    layouts = {0, 3, 4}, default_layout = 0 },  -- T, S, G
+
+  -- 浏览器 workspace：单列、浮动、全屏（适合阅读）
+  { id = 2, name = "web", output_id = 0,
+    layouts = {1, 2}, default_layout = 1 },     -- M, F
+
+  -- 游戏 workspace：仅浮动（游戏窗口通常需要浮动）
+  { id = 3, name = "game", output_id = 1,
+    layouts = {2}, default_layout = 2 },       -- F only
+
+  -- 聊天 workspace：堆叠、单列
+  { id = 4, name = "chat", output_id = 1,
+    layouts = {3, 1}, default_layout = 3 },    -- S, M
+}
+#+END_SRC
+
+*** 默认布局配置
+
+如果不指定 layouts 字段，使用全局默认布局列表：
+
+#+BEGIN_SRC lua
+-- 全局默认
+default_layouts = {0, 1, 2, 3, 4}  -- 所有布局可用
+
+-- workspace 省略 layouts 时使用全局默认
+workspaces = {
+  { id = 1, name = "1", output_id = 0 },  -- 使用全局默认
+  { id = 2, name = "2", output_id = 0,
+    layouts = {0, 1}, default_layout = 0 },  -- 自定义
+}
+#+END_SRC
+
 ** 注意事项
 
 1. *固定归属*：workspace.output_id 在创建后不应改变
 2. *输出变化*：显示器配置变化时，WM 会重启，重新扫描和配置
 3. *可见性*：窗口只在归属的 output 上可见
 4. *独立性*：切换不同 output 的 workspace 互不影响
+5. *布局列表*：workspace.layouts 在启动时分配，运行时固定
+6. *布局切换*：使用 CYCLE_LAYOUT 命令在可用布局间循环切换
