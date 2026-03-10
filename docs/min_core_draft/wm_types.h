@@ -4,10 +4,19 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// ID 类型定义
+// workspace/output/layout 在启动时分配固定数量，运行时不再增删
+// window 由后端管理，使用后端原生 ID
 typedef uint32_t wm_window_id_t;
 typedef uint16_t wm_workspace_id_t;
 typedef uint16_t wm_output_id_t;
 typedef uint32_t wm_layout_id_t;
+
+// 无效 ID 标记
+#define WM_WINDOW_ID_INVALID     ((wm_window_id_t)0)
+#define WM_WORKSPACE_ID_INVALID  ((wm_workspace_id_t)-1)
+#define WM_OUTPUT_ID_INVALID     ((wm_output_id_t)-1)
+#define WM_LAYOUT_ID_INVALID     ((wm_layout_id_t)-1)
 
 typedef struct wm_point_t {
   int16_t x;

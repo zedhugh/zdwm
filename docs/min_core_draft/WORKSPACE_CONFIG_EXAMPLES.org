@@ -1,0 +1,220 @@
+* Workspace-Output 配置示例
+
+本文档展示在不同场景下如何配置 workspace 和 output 的归属关系。
+
+** 单显示器配置
+
+最简单的配置：所有 workspace 归属到唯一输出。
+
+#+BEGIN_SRC lua
+-- zdwm.lua
+
+outputs = {
+  { id = 0, name = "DP-1", enabled = true, primary = true },
+}
+
+-- 所有 workspace 都归属 DP-1
+workspaces = {
+  { id = 1, name = "1", output_id = 0 },
+  { id = 2, name = "2", output_id = 0 },
+  { id = 3, name = "3", output_id = 0 },
+  { id = 4, name = "4", output_id = 0 },
+  { id = 5, name = "5", output_id = 0 },
+  { id = 6, name = "6", output_id = 0 },
+  { id = 7, name = "7", output_id = 0 },
+  { id = 8, name = "8", output_id = 0 },
+  { id = 9, name = "9", output_id = 0 },
+  { id = 10, name = "10", output_id = 0 },
+}
+
+-- 或使用自动生成
+workspaces = auto_generate_workspaces({
+  output_id = 0,
+  count = 10,
+  name_pattern = "number"  -- 1, 2, 3, ...
+})
+#+END_SRC
+
+** 双显示器配置
+
+*** 场景 1：平分 workspace
+
+#+BEGIN_SRC lua
+-- 左侧显示器 1-5，右侧显示器 6-10
+outputs = {
+  { id = 0, name = "DP-1",  enabled = true, primary = true },
+  { id = 1, name = "DP-2",  enabled = true },
+}
+
+workspaces = {
+  -- DP-1 的 workspace
+  { id = 1, name = "1", output_id = 0 },
+  { id = 2, name = "2", output_id = 0 },
+  { id = 3, name = "3", output_id = 0 },
+  { id = 4, name = "4", output_id = 0 },
+  { id = 5, name = "5", output_id = 0 },
+
+  -- DP-2 的 workspace
+  { id = 6, name = "6", output_id = 1 },
+  { id = 7, name = "7", output_id = 1 },
+  { id = 8, name = "8", output_id = 1 },
+  { id = 9, name = "9", output_id = 1 },
+  { id = 10, name = "10", output_id = 1 },
+}
+#+END_SRC
+
+*** 场景 2：偶数/奇数分配
+
+#+BEGIN_SRC lua
+-- 奇数在左，偶数在右
+workspaces = {}
+for i = 1, 10 do
+  table.insert(workspaces, {
+    id = i,
+    name = tostring(i),
+    output_id = (i % 2 == 1) and 0 or 1  -- 奇数->0，偶数->1
+  })
+end
+#+END_SRC
+
+*** 场景 3：主题化 workspace
+
+#+BEGIN_SRC lua
+-- 左侧开发相关，右侧娱乐相关
+outputs = {
+  { id = 0, name = "DP-1",  primary = true },
+  { id = 1, name = "HDMI-1" },
+}
+
+workspaces = {
+  -- DP-1 (开发)
+  { id = 1, name = "code", output_id = 0 },
+  { id = 2, name = "term", output_id = 0 },
+  { id = 3, name = "docs", output_id = 0 },
+  { id = 4, name = "debug", output_id = 0 },
+
+  -- HDMI-1 (娱乐)
+  { id = 5, name = "chat", output_id = 1 },
+  { id = 6, name = "web",  output_id = 1 },
+  { id = 7, name = "media", output_id = 1 },
+  { id = 8, name = "game",  output_id = 1 },
+}
+#+END_SRC
+
+** 三显示器配置
+
+笔记本 + 外接显示器的常见配置：
+
+#+BEGIN_SRC lua
+-- eDP-1: 日常工作 (1-3)
+-- DP-1:  代码 (4-6)
+-- HDMI-1: 娱乐 (7-9)
+
+outputs = {
+  { id = 0, name = "eDP-1",   primary = true },
+  { id = 1, name = "DP-1",    enabled = true },
+  { id = 2, name = "HDMI-1",  enabled = true },
+}
+
+workspaces = {
+  -- eDP-1 (笔记本)
+  { id = 1, name = "mail",  output_id = 0 },
+  { id = 2, name = "chat",  output_id = 0 },
+  { id = 3, name = "docs",  output_id = 0 },
+
+  -- DP-1 (外接显示器 - 左)
+  { id = 4, name = "code",  output_id = 1 },
+  { id = 5, name = "term",  output_id = 1 },
+  { id = 6, name = "debug", output_id = 1 },
+
+  -- HDMI-1 (外接显示器 - 右)
+  { id = 7, name = "web",   output_id = 2 },
+  { id = 8, name = "media", output_id = 2 },
+  { id = 9, name = "game",  output_id = 2 },
+}
+#+END_SRC
+
+** 动态配置（脚本式）
+
+根据实际检测到的输出数量动态生成：
+
+#+BEGIN_SRC lua
+function configure_workspaces(runtime)
+  local outputs = runtime:scan_outputs()
+  local workspaces = {}
+  local ws_id = 1
+
+  -- 每个 output 分配 3 个 workspace
+  for _, output in ipairs(outputs) do
+    for i = 1, 3 do
+      table.insert(workspaces, {
+        id = ws_id,
+        name = string.format("%d:%s", ws_id, output.name),
+        output_id = output.id,
+        layout_id = 0,  -- 默认布局
+      })
+      ws_id = ws_id + 1
+    end
+  end
+
+  return workspaces
+end
+#+END_SRC
+
+** 配置加载流程
+
+#+BEGIN_SRC c
+// config_loader.c
+
+typedef struct workspace_config_t {
+  wm_workspace_id_t id;
+  const char *name;
+  wm_output_id_t output_id;
+  wm_layout_id_t layout_id;
+} workspace_config_t;
+
+bool load_workspace_config(const char *path,
+                           workspace_config_t **out_workspaces,
+                           size_t *out_count) {
+  // 1. 扫描输出
+  output_config_t *outputs;
+  size_t output_count;
+  scan_outputs(&outputs, &output_count);
+
+  // 2. 加载 workspace 配置
+  workspace_config_t *workspaces;
+  size_t workspace_count;
+  parse_config_file(path, &workspaces, &workspace_count);
+
+  // 3. 验证：每个 workspace 的 output_id 必须有效
+  for (size_t i = 0; i < workspace_count; i++) {
+    if (workspaces[i].output_id >= output_count) {
+      fprintf(stderr, "Workspace %d: invalid output_id %d\n",
+              workspaces[i].id, workspaces[i].output_id);
+      return false;
+    }
+  }
+
+  *out_workspaces = workspaces;
+  *out_count = workspace_count;
+  return true;
+}
+#+END_SRC
+
+** 切换行为示例
+
+#+BEGIN_SRC lua
+-- 切换到 workspace 4（在 DP-1 上）
+-- 效果：只有 DP-1 切换，DP-2 保持当前 workspace
+
+-- 将窗口从 workspace 1 移动到 workspace 4
+-- 效果：窗口从 DP-1 移动到 DP-1（但在不同的 workspace）
+--      如果 workspace 4 当前在 DP-2 显示，窗口会在 DP-2 出现
+#+END_SRC
+
+** 注意事项
+
+1. *固定归属*：workspace.output_id 在创建后不应改变
+2. *输出变化*：显示器配置变化时，WM 会重启，重新扫描和配置
+3. *可见性*：窗口只在归属的 output 上可见
+4. *独立性*：切换不同 output 的 workspace 互不影响

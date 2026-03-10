@@ -14,6 +14,7 @@ typedef enum wm_event_type_t {
   WM_EVENT_WINDOW_METADATA_CHANGED,
   WM_EVENT_CONFIGURE_REQUEST,
   WM_EVENT_OUTPUT_CHANGED,
+  WM_EVENT_OUTPUT_REMOVED,
   WM_EVENT_TIMER_TICK,
   WM_EVENT_STATUS_TICK,
   WM_EVENT_QUIT,
@@ -59,6 +60,16 @@ typedef enum wm_window_meta_changed_flags_t {
 typedef struct wm_window_metadata_changed_event_t {
   wm_window_id_t window_id;
   uint32_t changed_fields;
+  /*
+   * These strings are borrowed from the backend adapter and are valid until
+   * wm_runtime_process_event() returns. changed_fields decides which ones are
+   * meaningful for the current event.
+   * runtime 会复制这些字符串到 wm_window_t 中的对应字段。
+   */
+  const char *title;
+  const char *app_id;
+  const char *class_name;
+  const char *instance_name;
 } wm_window_metadata_changed_event_t;
 
 typedef struct wm_configure_request_event_t {
@@ -71,6 +82,10 @@ typedef struct wm_output_changed_event_t {
   wm_rect_t geometry;
   wm_rect_t workarea;
 } wm_output_changed_event_t;
+
+typedef struct wm_output_removed_event_t {
+  wm_output_id_t output_id;
+} wm_output_removed_event_t;
 
 typedef struct wm_timer_tick_event_t {
   uint64_t now_ms;
@@ -90,6 +105,7 @@ typedef struct wm_event_t {
     wm_window_metadata_changed_event_t window_metadata_changed;
     wm_configure_request_event_t configure_request;
     wm_output_changed_event_t output_changed;
+    wm_output_removed_event_t output_removed;
     wm_timer_tick_event_t timer_tick;
   } as;
 } wm_event_t;

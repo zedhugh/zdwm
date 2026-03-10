@@ -1,0 +1,412 @@
+* ZDWM 配置系统设计
+
+** 概述
+
+配置系统现在只保留两类正式输入：
+
+1. 编译进二进制的默认配置
+2. 用户动态库配置（=~/.config/zdwm/config.c= 编译得到 =config.so=）
+
+不再支持 XResources，也不再保留 =Xft.dpi= 作为兼容输入。字体、DPI、颜色、边框、布局、规则、快捷键和服务设置都只来自默认配置和动态库配置。
+
+配置系统的职责也收紧为：
+
+1. 生成 core-native 配置快照。
+2. 为 runtime adapter、service 层和输入绑定层提供稳定输入。
+3. 不直接操作 =wm_state_t= 。
+4. 不再暴露 =client_t= 、=tag_t= 、=monitor_t= 之类的旧对象。
+
+** 设计目标
+
+1. 配置层继续放在核心之外。
+2. 配置结果必须能无损对接新的 =runtime/policy/layout/service= 边界。
+3. 配置重载应以“重建快照并显式应用”为单位，而不是任意时刻写全局内存。
+4. 彻底移除 XResources 路径，避免维护两套并行语义。
+
+** 配置来源与优先级
+
+最终有效配置按下面顺序构建：
+
+#+BEGIN_EXAMPLE
+默认配置
+   ↓
+动态库配置 config.so
+   ↓
+冻结为 zdwm_config_t
+#+END_EXAMPLE
+
+动态库配置优先级高于默认配置。
+
+** 非目标
+
+下面这些能力不再属于配置系统设计范围：
+
+1. =Zdwm.*= 风格的 XResources 覆盖。
+2. =Xft.dpi= 的额外兼容读取。
+3. =hook_manage_new(client_t *)= 和 =hook_manage_unmanage(client_t *)= 这类直接对象钩子。
+4. =arrange(tag_t *)= 这类依赖旧 tag 模型的布局接口。
+5. 从配置层直接访问或修改 =wm= 全局对象。
+
+** 配置输出模型
+
+配置系统输出一份冻结后的配置快照，而不是一组可随时调用的副作用回调。
+
+*** 外观配置
+
+#+BEGIN_SRC c
+typedef struct zdwm_appearance_config_t {
+  char *font_family;
+  uint32_t font_size;
+  uint32_t dpi;
+  uint16_t border_width;
+  uint16_t bar_y_padding;
+  uint16_t tag_x_padding;
+  color_set_t colors;
+} zdwm_appearance_config_t;
+#+END_SRC
+
+这部分不进入最小核心状态，而是供 render/bar/text 这类核心外服务使用。
+
+*** workspace 配置
+
+=wm_workspace_t= 是运行时状态结构，里面包含 =focused_window_id= 这类不属于静态配置的数据。因此配置层应单独定义 workspace 配置描述：
+
+#+BEGIN_SRC c
+typedef struct zdwm_workspace_config_t {
+  wm_workspace_id_t id;
+  wm_layout_id_t initial_layout_id;
+
+  const char *name;
+  const char *symbol_text;
+  const char *symbol_icon_path;
+} zdwm_workspace_config_t;
+#+END_SRC
+
+runtime adapter 会把它拆成：
+
+1. =wm_workspace_t= 的初始数组
+2. =wm_workspace_desc_t= 描述表
+
+*** 管理规则
+
+#+BEGIN_SRC c
+typedef struct zdwm_manage_rule_t {
+  const char *title;
+  const char *app_id;
+  const char *class_name;
+  const char *instance_name;
+
+  wm_workspace_id_t workspace_id;
+  wm_manage_window_init_t initial_state;
+  bool switch_to_workspace;
+} zdwm_manage_rule_t;
+#+END_SRC
+
+规则层的职责仅限于：
+
+1. 匹配窗口元数据。
+2. 决定 =MANAGE_WINDOW= 的 =workspace_id= 。
+3. 决定 =MANAGE_WINDOW= 的 =initial_state= 。
+4. 可选地决定是否切到目标 workspace。
+
+规则层不直接管理窗口对象，也不直接写 =wm_state_t= 。
+
+*** 快捷键绑定
+
+快捷键也需要从旧的“直接 action 回调”收敛到新边界。
+
+#+BEGIN_SRC c
+typedef enum zdwm_binding_target_t {
+  ZDWM_BINDING_CORE_COMMAND,
+  ZDWM_BINDING_SERVICE_ACTION,
+} zdwm_binding_target_t;
+
+typedef struct zdwm_service_action_t {
+  const char *service_name;
+  const char *action_name;
+  const char *string_arg;
+  int32_t int_arg;
+} zdwm_service_action_t;
+
+typedef struct zdwm_keybinding_t {
+  uint32_t modifiers;
+  xkb_keysym_t keysym;
+  zdwm_binding_target_t target;
+  union {
+    wm_command_t command;
+    zdwm_service_action_t service_action;
+  } as;
+} zdwm_keybinding_t;
+#+END_SRC
+
+=core command= 用于工作区切换、布局切换、浮动切换、焦点切换等窗口管理行为。
+
+=service action= 用于启动外部程序、刷新状态服务、触发核心外功能。
+
+*** 服务设置
+
+#+BEGIN_SRC c
+typedef struct zdwm_service_setting_t {
+  const char *service_name;
+  const char *key;
+  const char *value;
+} zdwm_service_setting_t;
+#+END_SRC
+
+服务配置由配置层生成，但仍由 service 层解释和持有。
+
+*** 总配置快照
+
+#+BEGIN_SRC c
+typedef struct zdwm_config_source_t {
+  bool has_user_lib;
+} zdwm_config_source_t;
+
+typedef struct zdwm_runtime_config_t {
+  wm_policy_config_t policy;
+
+  zdwm_workspace_config_t *workspaces;
+  size_t workspace_count;
+
+  wm_layout_slot_t *layouts;
+  size_t layout_count;
+} zdwm_runtime_config_t;
+
+typedef struct zdwm_config_t {
+  zdwm_runtime_config_t runtime;
+  zdwm_appearance_config_t appearance;
+
+  zdwm_manage_rule_t *rules;
+  size_t rule_count;
+
+  zdwm_keybinding_t *keybindings;
+  size_t keybinding_count;
+
+  const char *const *autostart_list;
+
+  zdwm_service_setting_t *service_settings;
+  size_t service_setting_count;
+
+  zdwm_config_source_t source;
+} zdwm_config_t;
+#+END_SRC
+
+注意这里故意不把 =outputs= 和启动时已有窗口塞进配置结果里。它们属于 backend 发现结果，不属于静态配置。
+
+** 与最小核心的集成方式
+
+配置层与 runtime 的拼装分为两步：
+
+*** 第一步：构建配置快照
+
+#+BEGIN_EXAMPLE
+默认配置
+   ↓
+config.so 覆盖与增量注册
+   ↓
+zdwm_config_t
+#+END_EXAMPLE
+
+*** 第二步：由 adapter 组装 runtime bootstrap
+
+#+BEGIN_EXAMPLE
+zdwm_config_t
+   +
+backend 发现的 outputs
+   +
+backend 扫描得到的初始 MANAGE_WINDOW 命令
+   ↓
+wm_runtime_bootstrap_t
+#+END_EXAMPLE
+
+组装规则应为：
+
+1. =policy= 来自 =config.runtime.policy= 。
+2. =workspaces= 来自 =config.runtime.workspaces[]= 的静态定义。
+3. =workspace_descs= 来自 =config.runtime.workspaces[]= 中的展示字段。
+4. =outputs= 来自 backend。
+5. =initial_commands= 来自 backend 对已有窗口的扫描和规则匹配。
+
+这样配置层不需要知道当前有哪些物理输出，也不需要自己扫描窗口。
+
+** 动态库 API
+
+动态库 API 由“builder 风格”的配置写入接口组成：
+
+#+BEGIN_SRC c
+typedef struct zdwm_api_t {
+  uint32_t version;
+
+  // appearance
+  void (*set_font)(const char *family, uint32_t size);
+  void (*set_dpi)(uint32_t dpi);
+  void (*set_color)(const char *name, const char *hex);
+  void (*set_border_width)(uint16_t width);
+  void (*set_padding)(uint16_t bar_y, uint16_t tag_x);
+
+  // runtime config
+  void (*set_policy)(wm_policy_config_t policy);
+  void (*define_workspace)(zdwm_workspace_config_t workspace);
+  void (*register_layout)(wm_layout_slot_t layout);
+
+  // rules
+  void (*add_rule)(zdwm_manage_rule_t rule);
+
+  // bindings
+  void (*add_keybinding)(zdwm_keybinding_t binding);
+  void (*clear_keybindings)(void);
+
+  // autostart and services
+  void (*add_autostart)(const char *command);
+  void (*set_service_option)(const char *service_name,
+                             const char *key,
+                             const char *value);
+} zdwm_api_t;
+#+END_SRC
+
+用户动态库入口保持简单：
+
+#+BEGIN_SRC c
+typedef struct zdwm_user_config_t {
+  void (*cleanup)(void);
+} zdwm_user_config_t;
+
+zdwm_user_config_t *zdwm_config_init(zdwm_api_t *api);
+#+END_SRC
+
+=cleanup()= 只负责动态库自身资源，不负责 runtime 状态回收。
+
+** 加载流程
+
+#+BEGIN_SRC c
+zdwm_config_t *config_load(void) {
+  zdwm_config_t *config = calloc(1, sizeof(*config));
+
+  config_apply_defaults(config);
+  config_load_user_lib(config);
+  config_finalize(config);
+
+  return config;
+}
+#+END_SRC
+
+这里的 =config_finalize()= 建议至少做这些事情：
+
+1. 检查 workspace id 是否唯一。
+2. 检查 layout id 是否唯一。
+3. 检查规则和快捷键数组是否合法。
+4. 补齐未设置的默认值。
+5. 冻结动态数组，避免运行时再被随意写入。
+
+** 管理规则接入链路
+
+管理规则不直接操作窗口，推荐链路如下：
+
+#+BEGIN_EXAMPLE
+backend 发现新窗口
+   ↓
+同步窗口 metadata
+   ↓
+在 rules 中匹配
+   ↓
+生成 WM_COMMAND_MANAGE_WINDOW
+   - workspace_id
+   - initial_state
+   ↓
+runtime / policy apply_command()
+#+END_EXAMPLE
+
+这样规则层只负责“把 metadata 翻译成命令参数”。
+
+** 快捷键接入链路
+
+#+BEGIN_EXAMPLE
+backend 输入事件
+   ↓
+keybinding table 匹配
+   ↓
+若 target == ZDWM_BINDING_CORE_COMMAND:
+  生成 wm_command_t
+若 target == ZDWM_BINDING_SERVICE_ACTION:
+  发送给 service 层
+#+END_EXAMPLE
+
+配置层不再保存 =void (*action)(const void *)= 这类旧式回调。
+
+** 热重载
+
+配置热重载仍然可以保留，但边界必须清晰。
+
+推荐流程：
+
+#+BEGIN_EXAMPLE
+收到 SIGHUP
+   ↓
+重建 zdwm_config_t
+   ↓
+原子替换：
+  - appearance
+  - policy
+  - keybindings
+  - workspace descriptors
+  - layout registry
+  - service settings
+   ↓
+通知相关 service 刷新
+#+END_EXAMPLE
+
+热重载约束：
+
+1. 不直接改 =wm_state_t= 。
+2. 规则变更只影响后续新管理的窗口，不回溯重算现有窗口。
+3. workspace 描述、颜色、字体、DPI、bindings、policy 适合热重载。
+4. 大规模布局或 service 拓扑变化，必要时可以走受控重启。
+
+** 文件结构
+
+#+BEGIN_EXAMPLE
+src/
+├── config.h              # 配置系统头文件
+├── config.c              # 配置加载主逻辑
+├── config_defaults.c     # 默认配置
+├── config_lib.c          # 动态库加载
+├── config_api.c          # builder API
+└── config_validate.c     # 配置收尾校验（可选）
+
+docs/
+└── config_system.org     # 本文档
+#+END_EXAMPLE
+
+这里不再有 =config_xres.c= 或任何通用 XResources 解析模块。
+
+** 迁移说明
+
+下面这些旧设计应视为废弃：
+
+1. =默认配置 -> XResources -> 动态库配置= 三层覆盖模型。
+2. =Xft.dpi= 的兼容读取。
+3. =hook_manage_new(client_t *)= 和 =hook_manage_unmanage(client_t *)= 。
+4. =add_layout(... arrange(tag_t *tag))= 。
+5. 任何直接依赖 =client_t= 、=tag_t= 、=monitor_t= 的配置接口。
+
+迁移后的对应关系：
+
+1. tag 名称与符号 → =zdwm_workspace_config_t=
+2. 布局注册 → =wm_layout_slot_t=
+3. 窗口规则 → =zdwm_manage_rule_t=
+4. 快捷键动作 → =wm_command_t= 或 =zdwm_service_action_t=
+5. 外观设置 → =zdwm_appearance_config_t=
+
+** 实施优先级
+
+1. =config_defaults.c=
+先保证“无用户配置”也能跑。
+
+2. =config.c + config_lib.c=
+打通默认配置和动态库配置装配。
+
+3. =config_api.c=
+落地新的 builder API，替代旧 action/hook 模型。
+
+4. runtime adapter 对接
+把 =zdwm_config_t= 装配成 =wm_runtime_bootstrap_t= 、规则表、service 设置和 keybinding table。

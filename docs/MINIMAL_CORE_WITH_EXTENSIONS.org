@@ -1,0 +1,650 @@
+# ZDWM 最小核心 + 外围扩展设计
+
+* 设计原则
+
+1. *核心只做一件事*：管理窗口、显示器、工作区
+2. *所有扩展都通过插件*：状态栏、配置、快捷键、布局算法
+3. *核心提供稳定的钩子*：插件可以在关键点介入
+4. *零运行时开销*：扩展不增加核心复杂度
+
+* 最小核心定义
+
+#+BEGIN_SRC c
+// src/core/zdwm.h
+#include <stdbool.h>
+#include <stdint.h>
+
+// ========== 基础类型 ==========
+typedef struct {
+    int x, y;
+    unsigned int width, height;
+} rect_t;
+
+typedef struct {
+    const char *name;
+    const char *instance;
+} wm_class_t;
+
+// ========== 窗口 ==========
+typedef uint64_t wm_window_id_t;
+
+typedef struct {
+    wm_window_id_t id;
+    rect_t geometry;
+    wm_class_t class;
+    bool mapped;
+    bool floating;
+    bool fullscreen;
+    bool focused;
+    // ... 其他基本状态
+} wm_window_t;
+
+// ========== 工作区 ==========
+typedef uint32_t wm_workspace_id_t;
+
+typedef struct {
+    wm_workspace_id_t id;
+    char *name;
+    wm_window_id_t *windows;
+    size_t window_count;
+    wm_window_id_t focused_window;
+} wm_workspace_t;
+
+// ========== 显示器 ==========
+typedef uint32_t wm_output_id_t;
+
+typedef struct {
+    wm_output_id_t id;
+    rect_t geometry;
+    rect_t workarea;
+    wm_workspace_id_t current_workspace;
+} wm_output_t;
+
+// ========== 核心状态 ==========
+typedef struct {
+    wm_window_t *windows;
+    size_t window_count;
+
+    wm_workspace_t *workspaces;
+    size_t workspace_count;
+    wm_workspace_id_t current_workspace;
+
+    wm_output_t *outputs;
+    size_t output_count;
+} wm_state_t;
+
+// ========== 核心 API ==========
+// 初始化和清理
+bool wm_init(void);
+void wm_shutdown(void);
+
+// 主循环
+void wm_run(void);
+
+// 查询接口
+wm_window_t* wm_find_window(wm_window_id_t id);
+wm_workspace_t* wm_find_workspace(wm_workspace_id_t id);
+wm_output_t* wm_find_output(wm_output_id_t id);
+
+// 窗口操作
+void wm_manage_window(wm_window_id_t id);
+void wm_unmanage_window(wm_window_id_t id);
+void wm_focus_window(wm_window_id_t id);
+void wm_set_window_floating(wm_window_id_t id, bool floating);
+
+// 工作区操作
+void wm_switch_workspace(wm_workspace_id_t id);
+void wm_send_window_to_workspace(wm_window_id_t window, wm_workspace_id_t workspace);
+
+// 显示器操作
+void wm_switch_output(wm_output_id_t id);
+#+END_SRC
+
+* 扩展接口设计
+
+**1. 事件钩子系统**
+
+#+BEGIN_SRC c
+// src/core/hooks.h
+
+// 钩子类型（关键事件点）
+typedef enum wm_hook_type_t {
+    HOOK_WINDOW_MANAGE,        // 窗口被管理时
+    HOOK_WINDOW_UNMANAGE,      // 窗口取消管理时
+    HOOK_WINDOW_FOCUS,         // 窗口焦点变化时
+    HOOK_WORKSPACE_SWITCH,      // 工作区切换时
+    HOOK_LAYOUT_CALCULATE,      // 布局计算时
+    HOOK_CONFIG_RELOAD,        // 配置重载时
+    HOOK_KEY_PRESS,             // 键盘按下时
+    HOOK_COUNT
+} wm_hook_type_t;
+
+// 钩子回调函数类型
+typedef void (*wm_hook_window_manage_t)(wm_window_t *window, void *user_data);
+typedef void (*wm_hook_window_focus_t)(wm_window_t *old_focus, wm_window_t *new_focus, void *user_data);
+typedef void (*wm_hook_layout_calculate_t)(wm_workspace_t *workspace, rect_t *geometries, size_t count, void *user_data);
+typedef bool (*wm_hook_key_press_t)(uint32_t keycode, uint32_t modifiers, void *user_data);
+
+// 钩子注册
+typedef struct {
+    wm_hook_type_t type;
+    void *callback;
+    void *user_data;
+    int priority;           // 优先级：数字越小越先执行
+} wm_hook_t;
+
+// 核心 API：注册钩子
+void wm_hook_register(wm_hook_type_t type, void *callback, void *user_data, int priority);
+void wm_hook_unregister(wm_hook_type_t type, void *callback);
+
+// 核心 API：触发钩子
+void wm_hook_trigger_window_manage(wm_window_t *window);
+void wm_hook_trigger_window_focus(wm_window_t *old_focus, wm_window_t *new_focus);
+void wm_hook_trigger_layout_calculate(wm_workspace_t *workspace, rect_t *geometries, size_t count);
+bool wm_hook_trigger_key_press(uint32_t keycode, uint32_t modifiers);
+#+END_SRC
+
+**2. 插件系统**
+
+#+BEGIN_SRC c
+// src/core/plugin.h
+
+// 插件接口
+typedef struct {
+    const char *name;
+    const char *version;
+
+    // 必须实现
+    bool (*init)(void);
+    void (*shutdown)(void);
+
+    // 可选实现
+    void (*on_event)(wm_hook_type_t event, void *event_data);
+} wm_plugin_t;
+
+// 核心 API：插件加载
+bool wm_plugin_load(wm_plugin_t *plugin);
+bool wm_plugin_unload(const char *name);
+#+END_SRC
+
+* 扩展编写指南
+
+**扩展1：布局算法（插件）**
+
+#+BEGIN_SRC c
+// plugins/layout_tile.c
+
+#include "plugins/layout.h"
+#include "core/hooks.h"
+
+// 布局算法实现
+static void tile_calculate_layout(wm_workspace_t *workspace,
+                                  rect_t *geometries,
+                                  size_t count,
+                                  void *user_data) {
+    // 布局参数（可以通过配置获取）
+    int gap = 10;
+    int master_count = 1;
+
+    for (size_t i = 0; i < count; i++) {
+        if (i < master_count) {
+            // 主窗口：左侧，占 60%
+            geometries[i].x = workspace->outputs[0].x;
+            geometries[i].y = workspace->outputs[0].y;
+            geometries[i].width = workspace->outputs[0].width * 0.6 - gap;
+            geometries[i].height = workspace->outputs[0].height;
+        } else {
+            // 堆叠窗口：右侧，占 40%
+            geometries[i].x = workspace->outputs[0].x + workspace->outputs[0].width * 0.6 + gap;
+            geometries[i].y = workspace->outputs[0].y + (i - master_count) * 20;
+            geometries[i].width = workspace->outputs[0].width * 0.4 - gap;
+            geometries[i].height = 20;
+        }
+    }
+}
+
+// 插件初始化
+static bool layout_tile_init(void) {
+    // 注册布局钩子
+    wm_hook_register(HOOK_LAYOUT_CALCULATE, tile_calculate_layout, NULL, 0);
+    return true;
+}
+
+static void layout_tile_shutdown(void) {
+    // 自动取消注册
+}
+
+// 插件定义
+wm_plugin_t plugin_tile = {
+    .name = "tile",
+    .version = "1.0",
+    .init = layout_tile_init,
+    .shutdown = layout_tile_shutdown
+};
+#+END_SRC
+
+**扩展2：状态栏（插件）**
+
+#+BEGIN_SRC c
+// plugins/statusbar.c
+
+#include "plugins/statusbar.h"
+#include "core/hooks.h"
+
+static cairo_surface_t *g_bar_surface = NULL;
+
+// 在工作区切换时更新状态栏
+static void on_workspace_switch(void *event_data) {
+    wm_workspace_t *workspace = event_data;
+
+    // 绘制状态栏
+    draw_statusbar(workspace);
+}
+
+// 在布局计算后绘制到状态栏
+static void on_layout_calculate(wm_workspace_t *workspace,
+                               rect_t *geometries,
+                               size_t count,
+                               void *user_data) {
+    // 可以在这里显示布局信息
+    draw_layout_info(workspace);
+}
+
+// 绘制状态栏
+static void draw_statusbar(wm_workspace_t *workspace) {
+    // 使用 cairo 绘制
+    // ...
+}
+
+static bool statusbar_init(void) {
+    // 注册钩子
+    wm_hook_register(HOOK_WORKSPACE_SWITCH, on_workspace_switch, NULL, 0);
+    wm_hook_register(HOOK_LAYOUT_CALCULATE, on_layout_calculate, NULL, 0);
+
+    return true;
+}
+
+static void statusbar_shutdown(void) {
+    if (g_bar_surface) {
+        cairo_surface_destroy(g_bar_surface);
+    }
+}
+
+wm_plugin_t plugin_statusbar = {
+    .name = "statusbar",
+    .version = "1.0",
+    .init = statusbar_init,
+    .shutdown = statusbar_shutdown
+};
+#+END_SRC
+
+**扩展3：快捷键绑定（插件）**
+
+#+BEGIN_SRC c
+// plugins/keybindings.c
+
+#include "plugins/keybindings.h"
+#include "core/hooks.h"
+
+// 快捷键配置
+typedef struct {
+    uint32_t keycode;
+    uint32_t modifiers;
+    void (*action)(void);
+} keybinding_t;
+
+static keybinding_t g_bindings[] = {
+    { .keycode = XK_Return, .modifiers = Mod4Mask, .action = action_launch_terminal },
+    { .keycode = XK_q,      .modifiers = Mod4Mask | ShiftMask, .action = action_close_window },
+    { .keycode = XK_space,  .modifiers = Mod4Mask, .action = action_next_layout },
+};
+
+static bool handle_key_press(uint32_t keycode, uint32_t modifiers, void *user_data) {
+    for (size_t i = 0; i < sizeof(g_bindings)/sizeof(g_bindings[0]); i++) {
+        if (g_bindings[i].keycode == keycode &&
+            g_bindings[i].modifiers == modifiers) {
+            g_bindings[i].action();
+            return true;  // 事件被消费
+        }
+    }
+    return false;  // 继续传递
+}
+
+static bool keybindings_init(void) {
+    wm_hook_register(HOOK_KEY_PRESS, handle_key_press, NULL, 0);
+    return true;
+}
+
+static void keybindings_shutdown(void) {
+    // 自动取消注册
+}
+
+wm_plugin_t plugin_keybindings = {
+    .name = "keybindings",
+    .version = "1.0",
+    .init = keybindings_init,
+    .shutdown = keybindings_shutdown
+};
+#+END_SRC
+
+**扩展4：窗口规则（插件）**
+
+#+BEGIN_SRC c
+// plugins/rules.c
+
+#include "plugins/rules.h"
+#include "core/hooks.h"
+
+typedef struct {
+    char *class_name;
+    bool floating;
+    bool sticky;
+    wm_workspace_id_t target_workspace;
+} rule_t;
+
+static rule_t g_rules[] = {
+    { .class_name = "floating_window", .floating = true },
+    { .class_name = "sticky_terminal", .sticky = true },
+};
+
+static void on_window_manage(wm_window_t *window, void *user_data) {
+    // 应用规则
+    for (size_t i = 0; i < sizeof(g_rules)/sizeof(g_rules[0]); i++) {
+        if (strcmp(window->class.name, g_rules[i].class_name) == 0) {
+            if (g_rules[i].floating) {
+                wm_set_window_floating(window->id, true);
+            }
+            // ... 应用其他规则
+        }
+    }
+}
+
+static bool rules_init(void) {
+    wm_hook_register(HOOK_WINDOW_MANAGE, on_window_manage, NULL, 0);
+    return true;
+}
+
+static void rules_shutdown(void) {
+    // 自动取消注册
+}
+
+wm_plugin_t plugin_rules = {
+    .name = "rules",
+    .version = "1.0",
+    .init = rules_init,
+    .shutdown = rules_shutdown
+};
+#+END_SRC
+
+**扩展5：配置系统（插件）**
+
+#+BEGIN_SRC c
+// plugins/config.c
+
+#include "plugins/config.h"
+#include "core/hooks.h"
+
+typedef struct {
+    char *key;
+    char *value;
+} config_item_t;
+
+static config_item_t g_config[] = {
+    { .key = "terminal", .value = "st" },
+    { .key = "browser", .value = "firefox" },
+};
+
+static const char* config_get(const char *key) {
+    for (size_t i = 0; i < sizeof(g_config)/sizeof(g_config[0]); i++) {
+        if (strcmp(g_config[i].key, key) == 0) {
+            return g_config[i].value;
+        }
+    }
+    return NULL;
+}
+
+static void on_config_reload(void *event_data) {
+    // 重新加载配置文件
+    load_config_file("~/.config/zdwm/config");
+}
+
+static bool config_init(void) {
+    // 加载初始配置
+    load_config_file("~/.config/zdwm/config");
+
+    // 监听配置重载信号
+    wm_hook_register(HOOK_CONFIG_RELOAD, on_config_reload, NULL, 0);
+
+    return true;
+}
+
+static void config_shutdown(void) {
+    // 清理配置资源
+}
+
+wm_plugin_t plugin_config = {
+    .name = "config",
+    .version = "1.0",
+    .init = config_init,
+    .shutdown = config_shutdown
+};
+#+END_SRC
+
+* 核心实现（简化版）
+
+#+BEGIN_SRC c
+// src/core/zdwm.c
+
+// 核心 API：触发钩子
+void wm_hook_trigger_layout_calculate(wm_workspace_t *workspace, rect_t *geometries, size_t count) {
+    wm_hook_t *hook = g_hooks[HOOK_LAYOUT_CALCULATE];
+    while (hook) {
+        wm_hook_layout_calculate_t callback = (wm_hook_layout_calculate_t)hook->callback;
+        callback(workspace, geometries, count, hook->user_data);
+        hook = hook->next;
+    }
+}
+
+bool wm_hook_trigger_key_press(uint32_t keycode, uint32_t modifiers) {
+    wm_hook_t *hook = g_hooks[HOOK_KEY_PRESS];
+    while (hook) {
+        wm_hook_key_press_t callback = (wm_hook_key_press_t)hook->callback;
+        if (callback(keycode, modifiers, hook->user_data)) {
+            return true;  // 事件被消费
+        }
+        hook = hook->next;
+    }
+    return false;
+}
+
+// 主循环（简化版）
+void wm_run(void) {
+    xcb_generic_event_t *event;
+
+    while (g_running) {
+        // 1. 获取事件
+        event = xcb_wait_for_event(g_conn);
+
+        // 2. 处理事件
+        wm_handle_event(event);
+
+        // 3. 更新布局（如果需要）
+        if (g_dirty_layout) {
+            wm_update_layout();
+        }
+
+        // 4. 渲染（如果有状态栏插件）
+        // （通过钩子让状态栏插件自己绘制）
+    }
+}
+
+// 布局更新
+void wm_update_layout(void) {
+    for (size_t i = 0; i < g_state.workspace_count; i++) {
+        wm_workspace_t *ws = &g_state.workspaces[i];
+
+        // 分配几何数组
+        rect_t geometries[ws->window_count];
+
+        // 触发布局钩子（布局插件会计算几何）
+        wm_hook_trigger_layout_calculate(ws, geometries, ws->window_count);
+
+        // 应用几何到窗口
+        for (size_t j = 0; j < ws->window_count; j++) {
+            wm_window_t *win = wm_find_window(ws->windows[j]);
+            win->geometry = geometries[j];
+        }
+    }
+}
+#+END_SRC
+
+* 扩展交互示例
+
+**场景1：状态栏需要显示布局信息**
+
+#+BEGIN_SRC c
+// 状态栏插件订阅布局钩子
+static void on_layout_calculate(wm_workspace_t *workspace,
+                               rect_t *geometries,
+                               size_t count,
+                               void *user_data) {
+    // 更新状态栏显示的布局信息
+    update_layout_indicator(workspace, geometries, count);
+}
+#+END_SRC
+
+**场景2：多个布局算法共存**
+
+#+BEGIN_SRC c
+// 插件1：tile 布局
+wm_plugin_t plugin_tile = { .name = "tile", ... };
+
+// 插件2：monocle 布局
+wm_plugin_t plugin_monocle = { .name = "monocle", ... };
+
+// 运行时切换
+void switch_layout(const char *layout_name) {
+    // 卸载当前布局插件
+    wm_plugin_unload("tile");
+
+    // 加载新布局插件
+    wm_plugin_load(find_plugin(layout_name));
+}
+#+END_SRC
+
+**场景3：插件间通信**
+
+#+BEGIN_SRC c
+// 场景：网络速度插件需要通知状态栏插件更新
+
+// 方案1：通过核心状态
+// network 插件更新核心状态中的某个字段
+// statusbar 插件在 HOOK_LAYOUT_CALCULATE 中读取该字段
+
+// 方案2：直接函数调用（如果两个插件在同一进程中）
+extern void statusbar_update_network_speed(uint64_t speed);
+
+void network_on_speed_update(uint64_t speed) {
+    statusbar_update_network_speed(speed);
+}
+
+// 方案3：自定义事件（如果有事件总线插件）
+event_bus_publish("network.speed_changed", &speed);
+#+END_SRC
+
+* 扩展最佳实践
+
+**✅ 推荐做法**
+
+1. *插件职责单一*
+   - 一个插件做一件事
+   - 例如：tile 布局插件只负责布局计算
+
+2. *使用钩子优先级*
+   - 核心功能（如窗口管理）优先级 = 0
+   - 扩展功能（如状态栏）优先级 = 10
+   - 调试功能优先级 = 100
+
+3. *插件间依赖最小化*
+   - 尽量避免插件间直接调用
+   - 通过核心状态中转
+
+4. *错误处理*
+   - 插件 init 失败应返回 false
+   - 核心会跳过该插件，继续运行
+
+**❌ 避免的做法**
+
+1. *插件直接修改核心结构*
+   #+BEGIN_SRC c
+   // ❌ 不好：插件直接修改核心
+   extern wm_state_t *g_state;
+   g_state->current_workspace = 1;
+
+   // ✅ 好：通过核心 API
+   wm_switch_workspace(1);
+   #+END_SRC
+
+2. *插件阻塞执行*
+   #+BEGIN_SRC c
+   // ❌ 不好：插件中有阻塞操作
+   void statusbar_init(void) {
+       sleep(1);  // 阻塞主循环！
+   }
+
+   // ✅ 好：异步操作
+   void statusbar_init(void) {
+       pthread_create(&thread, NULL, async_init, NULL);
+   }
+   #+END_SRC
+
+3. *插件循环依赖*
+   - 插件A依赖插件B
+   - 插件B依赖插件A
+   - 解决方案：通过核心状态解耦
+
+* 与 mini_core_draft 对比
+
+| 特性 | mini_core_draft | 最小核心 + 插件 |
+|------|-----------------|----------------|
+| 核心代码行数 | ~3000行 | ~1500行 |
+| 抽象层 | 3-4层 | 1层（钩子） |
+| 扩展方式 | 服务注册 | 插件+钩子 |
+| 学习曲线 | 陡峭 | 平缓 |
+| 性能 | 中等 | 最好 |
+| 可扩展性 | 很高 | 高 |
+| 复杂度 | 高 | 低 |
+
+* 核心代码量估算
+
+#+BEGIN_EXAMPLE
+核心：
+  - zdwm.h (核心 API): 200 行
+  - zdwm.c (核心实现): 500 行
+  - hooks.c (钩子系统): 200 行
+  - plugin.c (插件加载): 150 行
+  ------------------------------------
+  核心总计: ~1050 行
+
+插件示例：
+  - layout_tile.c: 100 行
+  - statusbar.c: 300 行
+  - keybindings.c: 150 行
+  - rules.c: 200 行
+  ------------------------------------
+  插件总计: ~750 行
+
+总计: ~1800 行完整功能的窗口管理器
+#+END_EXAMPLE
+
+* 总结
+
+*最小核心 + 插件*方案的优势：
+
+1. *核心真正最小* - 只做窗口管理，1500行代码
+2. *扩展性有保证* - 钩子系统允许任何扩展
+3. *性能最优* - 一层间接，零开销抽象
+4. *易于理解* - 新手也能看懂核心代码
+5. *渐进式开发* - 先核心，后扩展
+
+这个设计比 ~mini_core_draft~ 简单很多，但扩展性并不差。关键是*钩子系统*设计得当，可以实现大部分扩展需求。

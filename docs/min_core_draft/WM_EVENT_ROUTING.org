@@ -1,0 +1,397 @@
+* ZDWM 最小核心事件路由设计
+
+这份文档定义 =wm_event_t= 到 =wm_command_t= 的完整路由规则，确保事件处理链路的每个环节都有明确的行为定义。
+
+* 事件路由总体流程
+
+#+BEGIN_SRC c
+void wm_runtime_process_event(wm_runtime_t *runtime, const wm_event_t *event) {
+    // 1. 元数据事件特殊处理（不经过命令系统）
+    if (is_metadata_event(event)) {
+        runtime_handle_metadata_event(runtime, event);
+        return;
+    }
+
+    // 2. 交互态下的特殊路由
+    if (runtime->interaction.mode != WM_INTERACTION_NONE) {
+        if (route_interaction_event(runtime, event, &runtime->command_buffer)) {
+            return;  // 事件已被交互态消费
+        }
+    }
+
+    // 3. 常规事件路由
+    wm_command_buffer_reset(&runtime->command_buffer);
+    if (!wm_policy_route_event(&runtime->state, event, &runtime->command_buffer)) {
+        return;  // 没有生成命令
+    }
+
+    // 4. 应用命令
+    for (size_t i = 0; i < runtime->command_buffer.count; i++) {
+        wm_policy_apply_command(
+            &runtime->state,
+            &runtime->layouts,
+            &runtime->command_buffer.items[i],
+            &runtime->plan
+        );
+    }
+
+    // 5. 处理副作用
+    if (runtime->plan.dirty_flags) {
+        runtime_apply_plan(runtime);
+    }
+}
+#+END_SRC
+
+* 元数据事件处理规则
+
+元数据事件直接更新 =wm_window_t= 中的元数据字段，不经过命令系统：
+
+**=WM_EVENT_WINDOW_METADATA_CHANGED=**
+
+#+BEGIN_SRC c
+void runtime_handle_metadata_event(wm_runtime_t *runtime, const wm_event_t *event) {
+    const wm_window_metadata_changed_event_t *e = &event->as.window_metadata_changed;
+
+    // 1. 查找窗口
+    wm_window_t *win = wm_state_find_window(&runtime->state, e->window_id);
+    if (!win) {
+        return;  // 窗口已被销毁
+    }
+
+    // 2. 直接更新窗口元数据字段
+    if (e->changed_fields & WM_WINDOW_META_CHANGED_TITLE) {
+        free(win->title);
+        win->title = e->title ? strdup(e->title) : NULL;
+    }
+    if (e->changed_fields & WM_WINDOW_META_CHANGED_APP_ID) {
+        free(win->app_id);
+        win->app_id = e->app_id ? strdup(e->app_id) : NULL;
+    }
+    if (e->changed_fields & WM_WINDOW_META_CHANGED_CLASS) {
+        free(win->class_name);
+        win->class_name = e->class_name ? strdup(e->class_name) : NULL;
+    }
+    if (e->changed_fields & WM_WINDOW_META_CHANGED_INSTANCE) {
+        free(win->instance_name);
+        win->instance_name = e->instance_name ? strdup(e->instance_name) : NULL;
+    }
+
+    // 3. 标记 render 脏（状态栏需要更新）
+    runtime->plan.dirty_flags |= WM_DIRTY_RENDER;
+
+    // 4. 通知订阅的服务（如状态栏组件）
+    wm_service_notify_metadata_changed(&runtime->services,
+                                       e->window_id,
+                                       e->changed_fields);
+}
+#+END_SRC
+
+**=WM_EVENT_STATUS_TICK=**
+
+定时器事件，也不经过命令系统：
+
+#+BEGIN_SRC c
+void runtime_handle_status_tick(wm_runtime_t *runtime, const wm_event_t *event) {
+    // 通知状态服务更新
+    wm_service_notify_status_tick(&runtime->services);
+
+    // 状态服务更新后，如果产生了新的渲染需求，会通过命令系统处理
+}
+#+END_SRC
+
+* 快捷键绑定系统
+
+**配置格式**：
+
+#+BEGIN_SRC c
+// keybindings.conf
+keybindings = [
+    {
+        // 键盘绑定
+        keysym: "Mod4+Return",
+        modifiers: [Mod4],
+        command: {
+            type: WM_COMMAND_LAUNCH_TERMINAL
+        }
+    },
+    {
+        // 快捷键绑定（可带参数）
+        keysym: "Mod4+Shift+q",
+        command: {
+            type: WM_COMMAND_FOCUS_WINDOW,
+            direction: "prev"
+        }
+    },
+    {
+        // 布局切换
+        keysym: "Mod4+space",
+        command: {
+            type: WM_COMMAND_SET_LAYOUT,
+            layout_name: "tile"
+        }
+    },
+    {
+        // 窗口切换到工作区
+        keysym: "Mod4+Shift+1",
+        command: {
+            type: WM_COMMAND_SEND_WINDOW_TO_WORKSPACE,
+            workspace_index: 0
+        }
+    }
+]
+#+END_SRC
+
+**快捷键匹配优先级**：
+
+1. 完全匹配（keysym + 所有 modifiers）
+2. 通配符匹配（keysym + 部分修饰符）
+3. 默认绑定（如 Mod4+Enter 启动终端）
+
+**=wm_policy_route_event()= 实现**：
+
+#+BEGIN_SRC c
+bool wm_policy_route_event(const wm_state_t *state,
+                           const wm_event_t *event,
+                           wm_command_buffer_t *out) {
+    switch (event->type) {
+        case WM_EVENT_KEY_PRESS:
+            return route_key_press(state, &event->as.key_press, out);
+
+        case WM_EVENT_BUTTON_PRESS:
+            return route_button_press(state, &event->as.button_press, out);
+
+        case WM_EVENT_MAP_REQUEST:
+            return route_map_request(state, &event->as.map_request, out);
+
+        case WM_EVENT_UNMAP_NOTIFY:
+            return route_unmap_notify(state, &event->as.unmap_notify, out);
+
+        case WM_EVENT_DESTROY_NOTIFY:
+            return route_destroy_notify(state, &event->as.destroy_notify, out);
+
+        case WM_EVENT_CONFIGURE_REQUEST:
+            return route_configure_request(state, &event->as.configure_request, out);
+
+        case WM_EVENT_OUTPUT_CHANGED:
+            return route_output_changed(state, &event->as.output_changed, out);
+
+        case WM_EVENT_OUTPUT_REMOVED:
+            return route_output_removed(state, &event->as.output_removed, out);
+
+        default:
+            return false;
+    }
+}
+
+// 键盘事件路由
+static bool route_key_press(const wm_state_t *state,
+                            const wm_key_press_event_t *e,
+                            wm_command_buffer_t *out) {
+    // 1. 查找匹配的快捷键绑定
+    const keybinding_t *binding = keybinding_find(
+        e->keycode,
+        e->modifiers
+    );
+
+    if (!binding) {
+        return false;  // 没有匹配的绑定
+    }
+
+    // 2. 将绑定转换为命令
+    wm_command_t cmd = {
+        .type = binding->command_type,
+        // ... 填充命令参数
+    };
+
+    // 3. 添加到命令缓冲
+    return wm_command_buffer_push(out, cmd);
+}
+
+// 窗口映射请求路由
+static bool route_map_request(const wm_state_t *state,
+                              const wm_map_request_event_t *e,
+                              wm_command_buffer_t *out) {
+    // 1. 检查窗口是否已存在
+    if (state_find_window(state, e->window_id)) {
+        return false;  // 窗口已管理，忽略
+    }
+
+    // 2. 生成 MANAGE_WINDOW 命令
+    wm_command_t cmd = {
+        .type = WM_COMMAND_MANAGE_WINDOW,
+        .manage_window = {
+            .window_id = e->window_id,
+            // 应用规则确定初始状态
+        }
+    };
+
+    return wm_command_buffer_push(out, cmd);
+}
+#+END_SRC
+
+* 交互态事件路由
+
+交互态会覆盖正常的事件路由：
+
+**=WM_INTERACTION_MOVE_FLOATING=**
+
+#+BEGIN_SRC c
+static bool route_interaction_event(wm_runtime_t *runtime,
+                                   const wm_event_t *event,
+                                   wm_command_buffer_t *out) {
+    switch (runtime->interaction.mode) {
+        case WM_INTERACTION_MOVE_FLOATING:
+            return route_move_floating_event(runtime, event, out);
+
+        case WM_INTERACTION_RESIZE_FLOATING:
+            return route_resize_floating_event(runtime, event, out);
+
+        default:
+            return false;
+    }
+}
+
+static bool route_move_floating_event(wm_runtime_t *runtime,
+                                     const wm_event_t *event,
+                                     wm_command_buffer_t *out) {
+    switch (event->type) {
+        case WM_EVENT_BUTTON_RELEASE:
+            // 结束移动交互
+            wm_command_t end_cmd = {
+                .type = WM_COMMAND_END_INTERACTION
+            };
+            return wm_command_buffer_push(out, end_cmd);
+
+        case WM_EVENT_POINTER_MOTION:
+            // 生成移动命令
+            wm_command_t move_cmd = {
+                .type = WM_COMMAND_MOVE_FLOATING_WINDOW,
+                .move_floating_window = {
+                    .window_id = runtime->interaction.window_id,
+                    .delta_x = event->as.pointer_motion.root.x -
+                              runtime->interaction.pointer_origin.x,
+                    .delta_y = event->as.pointer_motion.root.y -
+                              runtime->interaction.pointer_origin.y
+                }
+            };
+            return wm_command_buffer_push(out, move_cmd);
+
+        default:
+            return false;
+    }
+}
+#+END_SRC
+
+* 命令生成规则
+
+每种事件类型对应一个或多个命令的生成规则：
+
+**输入事件 → 命令映射**
+
+| 事件类型 | 可能生成的命令 | 条件 |
+|---------|---------------|------|
+| KEY_PRESS | 任意命令（通过快捷键绑定） | 绑定存在 |
+| BUTTON_PRESS | FOCUS_WINDOW, RAISE_WINDOW | 点击窗口 |
+| MAP_REQUEST | MANAGE_WINDOW | 窗口未管理 |
+| UNMAP_NOTIFY | (可能不生成命令) | - |
+| DESTROY_NOTIFY | UNMANAGE_WINDOW | 窗口已管理 |
+| CONFIGURE_REQUEST | (可能不生成命令) | floating 窗口 |
+| OUTPUT_CHANGED | UPSERT_OUTPUT | - |
+| OUTPUT_REMOVED | REMOVE_OUTPUT | - |
+| POINTER_MOTION | MOVE/RESIZE 命令 | 交互态下 |
+
+* 事件处理的边界条件
+
+**1. 元数据事件边界**
+
+元数据事件满足以下条件时直接处理，不经过命令系统：
+- 事件类型是 `WM_EVENT_WINDOW_METADATA_CHANGED`
+- 事件类型是 `WM_EVENT_STATUS_TICK`
+
+**2. 交互态边界**
+
+交互态满足以下条件时，优先路由到交互处理器：
+- `runtime->interaction.mode != WM_INTERACTION_NONE`
+- 事件类型与交互相关（POINTER_MOTION, BUTTON_RELEASE）
+
+**3. 窗口管理边界**
+
+窗口管理的边界条件：
+- `WM_EVENT_MAP_REQUEST`：窗口已存在则忽略
+- `WM_EVENT_DESTROY_NOTIFY`：窗口不存在则忽略
+- `WM_EVENT_CONFIGURE_REQUEST`：只有 floating 窗口才响应
+
+* 事件处理顺序保证
+
+为了保证确定性行为，事件处理必须按以下顺序进行：
+
+1. **元数据事件优先**：状态栏信息更新不触发布局计算
+2. **交互态优先**：拖拽操作优先于快捷键
+3. **快捷键匹配优先级**：完全匹配 → 通配符 → 默认
+4. **命令执行顺序**：命令缓冲中的命令按顺序执行
+
+* 主执行流程实现
+
+#+BEGIN_SRC c
+void wm_runtime_run(wm_runtime_t *runtime) {
+    wm_event_t event;
+
+    while (runtime->running) {
+        // 1. 获取事件
+        if (!wm_backend_next_event(&runtime->backend, &event)) {
+            continue;
+        }
+
+        // 2. 处理事件
+        wm_runtime_process_event(runtime, &event);
+
+        // 3. 如果有副作用，应用它们
+        if (runtime->plan.dirty_flags) {
+            // 3.1 重新计算布局（如果需要）
+            if (runtime->plan.dirty_flags & WM_DIRTY_LAYOUT) {
+                wm_runtime_relayout(runtime);
+            }
+
+            // 3.2 应用平台副作用
+            wm_backend_apply_effects(&runtime->backend, &runtime->plan);
+
+            // 3.3 通知服务层（渲染、状态栏等）
+            if (runtime->plan.dirty_flags & WM_DIRTY_RENDER) {
+                wm_service_notify_render(&runtime->services, &runtime->state);
+            }
+
+            // 3.4 刷新平台
+            wm_backend_flush(&runtime->backend);
+
+            // 3.5 重置 plan
+            wm_plan_reset(&runtime->plan);
+        }
+
+        // 4. 处理定时器（可选，降低 CPU 使用）
+        usleep(1000);  // 1ms
+    }
+}
+#+END_SRC
+
+* 与现有功能的兼容性
+
+这个事件路由设计完全兼容现有 ZDWM 功能：
+
+1. **快捷键系统**：通过 keybindings.conf 配置
+2. **规则系统**：在 MANAGE_WINDOW 命令中应用
+3. **布局切换**：通过 SET_LAYOUT 命令
+4. **拖拽交互**：通过交互态管理
+5. **多显示器**：OUTPUT_CHANGED/REMOVED 事件处理
+
+* 缺失的文档总结
+
+通过补充本文档，mini_core_draft 的事件处理链路就完整了：
+
+1. ✅ 事件定义（wm_event.h）
+2. ✅ 命令定义（wm_command.h + WM_COMMAND_RULES.org）
+3. ✅ 路由接口（wm_policy.h）
+4. ✅ 命令应用（WM_POLICY_APPLY_COMMAND_SKELETON.org）
+5. ✅ **路由规则**（本文档补充）
+6. ✅ **快捷键系统**（本文档补充）
+7. ✅ **交互态处理**（本文档补充）
+8. ✅ **主执行流程**（本文档补充）

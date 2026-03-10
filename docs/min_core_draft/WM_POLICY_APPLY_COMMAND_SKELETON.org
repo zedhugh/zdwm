@@ -43,6 +43,14 @@ bool wm_policy_apply_command(wm_state_t *state,
       changed = apply_unmanage_window(state, command, plan);
       break;
 
+    case WM_COMMAND_UPSERT_OUTPUT:
+      changed = apply_upsert_output(state, command, plan);
+      break;
+
+    case WM_COMMAND_REMOVE_OUTPUT:
+      changed = apply_remove_output(state, command, plan);
+      break;
+
     case WM_COMMAND_FOCUS_WINDOW:
       changed = apply_focus_window(state, command, plan);
       break;
@@ -73,6 +81,10 @@ bool wm_policy_apply_command(wm_state_t *state,
 
     case WM_COMMAND_TOGGLE_FLOATING:
       changed = apply_toggle_floating(state, command, plan);
+      break;
+
+    case WM_COMMAND_TOGGLE_STICKY:
+      changed = apply_toggle_sticky(state, command, plan);
       break;
 
     case WM_COMMAND_TOGGLE_MAXIMIZE:
@@ -122,6 +134,9 @@ static wm_window_t *require_window(wm_state_t *state, wm_window_id_t id);
 static wm_workspace_t *require_workspace(wm_state_t *state, wm_workspace_id_t id);
 static wm_output_t *require_output(wm_state_t *state, wm_output_id_t id);
 
+static bool state_upsert_output(wm_state_t *state, wm_output_t output);
+static bool state_remove_output(wm_state_t *state, wm_output_id_t id);
+
 static bool stack_raise(wm_state_t *state, wm_window_id_t id);
 static bool stack_lower(wm_state_t *state, wm_window_id_t id);
 static bool stack_remove(wm_state_t *state, wm_window_id_t id);
@@ -155,20 +170,63 @@ static bool apply_manage_window(wm_state_t *state,
   wm_window_t win = {
     .id = id,
     .workspace_id = ws_id,
-    .geometry_mode = WM_GEOMETRY_NORMAL,
-    .floating = false,
-    .sticky = false,
-    .urgent = false,
+    .geometry_mode = command->as.manage_window.initial_state.geometry_mode,
+    .floating = command->as.manage_window.initial_state.floating,
+    .sticky = command->as.manage_window.initial_state.sticky,
+    .urgent = command->as.manage_window.initial_state.urgent,
   };
+
+  if (command->as.manage_window.has_initial_float_rect) {
+    win.float_rect = command->as.manage_window.initial_float_rect;
+  }
 
   if (!state_append_window(state, win)) return false;
   if (!stack_append(state, id)) return false;
 
-  ws->focused_window_id = id;
+  if (command->as.manage_window.initial_state.set_focus) {
+    ws->focused_window_id = id;
+  }
 
   plan->dirty_flags |= WM_DIRTY_STATE | WM_DIRTY_LAYOUT |
                        WM_DIRTY_STACK | WM_DIRTY_RENDER;
   push_restack_effect(state, plan);
+  push_render_all_outputs(state, plan);
+  return true;
+}
+#+END_SRC
+
+** =apply_upsert_output()=
+
+#+BEGIN_SRC c
+static bool apply_upsert_output(wm_state_t *state,
+                                const wm_command_t *command,
+                                wm_plan_t *plan) {
+  wm_output_t output = {
+    .id = command->as.upsert_output.output_id,
+    .geometry = command->as.upsert_output.geometry,
+    .workarea = command->as.upsert_output.workarea,
+    .current_workspace_id = command->as.upsert_output.initial_workspace_id,
+  };
+
+  if (!state_upsert_output(state, output)) return false;
+
+  plan->dirty_flags |= WM_DIRTY_OUTPUT | WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
+  push_render_all_outputs(state, plan);
+  return true;
+}
+#+END_SRC
+
+** =apply_remove_output()=
+
+#+BEGIN_SRC c
+static bool apply_remove_output(wm_state_t *state,
+                                const wm_command_t *command,
+                                wm_plan_t *plan) {
+  if (!state_remove_output(state, command->as.remove_output.output_id)) {
+    return false;
+  }
+
+  plan->dirty_flags |= WM_DIRTY_OUTPUT | WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
   push_render_all_outputs(state, plan);
   return true;
 }
@@ -217,6 +275,23 @@ static bool apply_focus_window(wm_state_t *state,
   ws->focused_window_id = id;
 
   plan->dirty_flags |= WM_DIRTY_RENDER;
+  return true;
+}
+#+END_SRC
+
+
+** =apply_toggle_sticky()=
+
+#+BEGIN_SRC c
+static bool apply_toggle_sticky(wm_state_t *state,
+                                const wm_command_t *command,
+                                wm_plan_t *plan) {
+  wm_window_t *win = require_window(state, command->as.toggle_sticky.window_id);
+  if (!win) return false;
+
+  win->sticky = !win->sticky;
+  plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
+  push_render_all_outputs(state, plan);
   return true;
 }
 #+END_SRC
@@ -541,6 +616,7 @@ static bool apply_quit(wm_state_t *state,
 3. 生成 =WM_EFFECT_CONFIGURE_WINDOW= 。
 4. 若有 =WM_DIRTY_STACK= ，生成 =WM_EFFECT_RESTACK_WINDOWS= 。
 5. 若有 =WM_DIRTY_RENDER= ，生成 =WM_EFFECT_RENDER_OUTPUT= 。
+6. =WM_EFFECT_RENDER_OUTPUT= 由 runtime 分发给服务层，而不是直接交给 backend 。
 
 * 为什么要拆成多个 =apply_*()=
 

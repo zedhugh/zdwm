@@ -2,10 +2,20 @@
 
 #include "wm_types.h"
 
+typedef struct wm_manage_window_init_t {
+  wm_window_geometry_mode_t geometry_mode;
+  bool floating;
+  bool sticky;
+  bool urgent;
+  bool set_focus;
+} wm_manage_window_init_t;
+
 typedef enum wm_command_type_t {
   WM_COMMAND_NONE,
   WM_COMMAND_MANAGE_WINDOW,
   WM_COMMAND_UNMANAGE_WINDOW,
+  WM_COMMAND_UPSERT_OUTPUT,
+  WM_COMMAND_REMOVE_OUTPUT,
   WM_COMMAND_FOCUS_WINDOW,
   WM_COMMAND_FOCUS_DIRECTION,
   WM_COMMAND_RAISE_WINDOW,
@@ -14,6 +24,7 @@ typedef enum wm_command_type_t {
   WM_COMMAND_SEND_WINDOW_TO_WORKSPACE,
   WM_COMMAND_SEND_WINDOW_TO_OUTPUT,
   WM_COMMAND_TOGGLE_FLOATING,
+  WM_COMMAND_TOGGLE_STICKY,
   WM_COMMAND_TOGGLE_MAXIMIZE,
   WM_COMMAND_TOGGLE_FULLSCREEN,
   WM_COMMAND_TOGGLE_MINIMIZE,
@@ -30,11 +41,25 @@ typedef struct wm_command_t {
     struct {
       wm_window_id_t window_id;
       wm_workspace_id_t workspace_id;
+      wm_manage_window_init_t initial_state;
+      bool has_initial_float_rect;
+      wm_rect_t initial_float_rect;
     } manage_window;
 
     struct {
       wm_window_id_t window_id;
     } unmanage_window;
+
+    struct {
+      wm_output_id_t output_id;
+      wm_rect_t geometry;
+      wm_rect_t workarea;
+      wm_workspace_id_t initial_workspace_id;
+    } upsert_output;
+
+    struct {
+      wm_output_id_t output_id;
+    } remove_output;
 
     struct {
       wm_window_id_t window_id;
@@ -72,6 +97,10 @@ typedef struct wm_command_t {
     struct {
       wm_window_id_t window_id;
     } toggle_floating;
+
+    struct {
+      wm_window_id_t window_id;
+    } toggle_sticky;
 
     struct {
       wm_window_id_t window_id;
