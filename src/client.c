@@ -366,6 +366,7 @@ void client_update_window_type(client_t *client) {
 
   if (state_reply) {
     xcb_atom_t state = *(xcb_atom_t *)xcb_get_property_value(state_reply);
+    client->skip_taskbar = state == _NET_WM_STATE_SKIP_TASKBAR;
     if (state == _NET_WM_STATE_FULLSCREEN) {
       client_set_fullscreen(client, true);
     }

@@ -350,7 +350,10 @@ static void monitor_draw_tasks(monitor_t *monitor, int16_t right_edge) {
   if (!task_list) return;
 
   uint16_t task_count = 0;
-  for (task_in_tag_t *task = task_list; task; task = task->next) ++task_count;
+  for (task_in_tag_t *task = task_list; task; task = task->next) {
+    if (task->client->skip_taskbar) continue;
+    ++task_count;
+  };
   if (task_count == 0) return;
 
   int16_t x = monitor->layout_symbol_extent.end;
@@ -361,6 +364,8 @@ static void monitor_draw_tasks(monitor_t *monitor, int16_t right_edge) {
   if (task_width < wm.font_size) return;
 
   for (task_in_tag_t *task = task_list; task; task = task->next) {
+    if (task->client->skip_taskbar) continue;
+
     task->bar_extent.start = x;
     task->bar_extent.end = x + task_width;
     x += task_width;
