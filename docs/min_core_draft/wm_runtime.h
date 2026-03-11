@@ -7,6 +7,7 @@
 #include "wm_policy.h"
 #include "wm_service.h"
 #include "wm_state.h"
+#include <stdint.h>
 
 typedef enum wm_interaction_mode_t {
   WM_INTERACTION_NONE,
@@ -51,6 +52,14 @@ typedef struct wm_runtime_bootstrap_t {
   wm_policy_config_t policy;
 
   /*
+   * 全局统一边框宽度。
+   * 它不是窗口真状态。runtime 在提交 configure effect 时：
+   * - fullscreen -> 0
+   * - 其余模式 -> border_width
+   */
+  uint16_t border_width;
+
+  /*
    * Existing windows discovered during startup should be translated into these
    * commands instead of being injected into wm_state_t directly.
    */
@@ -67,6 +76,7 @@ typedef struct wm_runtime_t {
   wm_command_buffer_t command_buffer;
   wm_layout_registry_t layouts;
   wm_policy_config_t policy;
+  uint16_t border_width;
   wm_interaction_state_t interaction;
   wm_backend_t backend;
   wm_service_registry_t services;

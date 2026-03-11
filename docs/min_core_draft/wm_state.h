@@ -17,9 +17,9 @@ typedef struct wm_window_t {
   bool sticky;
   bool urgent;
 
-  // 几何信息
-  wm_rect_t float_rect;   // floating 窗口的矩形
-  wm_rect_t frame_rect;   // 最终应用的矩形（由 layout 计算或 float_rect 决定）
+  // 几何信息（均为包含边框后的外框矩形）
+  wm_rect_t float_rect;   // floating 模式下记忆的外框矩形
+  wm_rect_t frame_rect;   // 当前最终外框矩形（由 layout 或 float_rect 解析）
 
   // 元数据（核心算法不依赖，仅用于规则匹配和服务层展示）
   char *title;

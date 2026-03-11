@@ -11,6 +11,13 @@
 3. 向 =wm_plan_t= 记录脏标记和后端副作用。
 4. 在状态真的发生变化时递增 =state.generation= 。
 
+补充约定：
+
+1. =border_width= 不是 =wm_window_t= 真状态。
+2. =apply_command()= 只负责更新 =frame_rect= / =float_rect= 和脏标记。
+3. runtime 在布局求值和 effect 提交阶段，根据全局边框配置补全
+   =WM_EFFECT_CONFIGURE_WINDOW.border_width= 。
+
 它不负责：
 
 1. 从平台读取事件。

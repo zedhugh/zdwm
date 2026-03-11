@@ -26,7 +26,7 @@
 负责把事件路由为命令，并把命令应用到状态。
 
 5. =layout=
-负责为某个输出上当前显示的工作区中的平铺窗口计算几何。
+负责为某个输出上当前显示的工作区中的平铺窗口计算外框几何。
 
 * ID 分配策略
 
@@ -91,7 +91,8 @@ wm_window_t *win = wm_state_find_window(state, window_id);  // O(n)
 这些服务故意不放进最小核心：
 
 1. =render=
-状态栏、边框、标题、装饰绘制。
+状态栏、标题和其他装饰绘制。窗口边框不是独立服务，而是
+=WM_EFFECT_CONFIGURE_WINDOW= 的一部分。
 
 2. =status=
 网速、内存、CPU、音量、时间等信息采集与聚合。
@@ -107,7 +108,7 @@ wm_window_t *win = wm_state_find_window(state, window_id);  // O(n)
 为了避免再次出现当前全局 =wm= 那样的大对象耦合，最小核心里的所有权再收紧一层：
 
 1. =runtime= 拥有 =state= 、=plan= 、=command_buffer= 和 =layout_registry= 。
-2. =runtime= 也拥有 =policy config= 、交互态和服务注册表。
+2. =runtime= 也拥有 =policy config= 、全局边框配置、交互态和服务注册表。
 3. =backend= 只负责平台事件翻译和平台副作用，不拥有控制状态，不直接拼 bar。
 4. 窗口元数据（title/app_id/class/instance）直接存储在 =wm_window_t= 中，与控制状态一同管理。
 5. 工作区名称存储在 =wm_workspace_t= 中，与控制状态一同管理。
@@ -120,6 +121,7 @@ wm_window_t *win = wm_state_find_window(state, window_id);  // O(n)
    - 工作区数量和初始配置（由用户配置决定）
    - 布局算法注册（由代码或配置决定）
    - 策略配置（focus_raises 等）
+   - 全局统一边框宽度
    - 初始命令（如启动时扫描到的窗口）
 
 2. 启动时扫描到的已有窗口，不直接塞进 =wm_state_t= ，而是翻译成一批 =MANAGE_WINDOW= 命令进入 runtime。
@@ -214,6 +216,17 @@ sticky 窗口是否参与方向焦点搜索。
 5. =minimize_clears_focus=
 最小化当前焦点窗口时是否清空或重选该 workspace 焦点。
 
+* 边框约定
+
+当前最小核心只保留窗口边框，不支持标题栏和其他窗口装饰。
+
+1. =wm_window_t= 不存储 =border_width= ；边框宽度不是窗口真状态。
+2. =wm_runtime_bootstrap_t.border_width= 提供全局统一边框宽度。
+3. =float_rect= 和 =frame_rect= 都表示“包含边框后的外框矩形”。
+4. =runtime= 在提交 =WM_EFFECT_CONFIGURE_WINDOW= 时解析有效边框宽度：
+   - =WM_GEOMETRY_FULLSCREEN= : 边框宽度为 0
+   - 其余模式 : 使用全局边框宽度
+
 * 交互态
 
 move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继续散落在平台分支里。runtime 应维护一个单一交互会话：
@@ -238,6 +251,7 @@ move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继
 =config= 仍然在核心外，但它的输出必须改成 core-native 数据，而不是旧的 =client_t/tag_t= 钩子：
 
 1. 配置加载结果应产出 workspace 描述、policy 配置、layout 注册、规则表、快捷键到 command 的映射和服务设置。
+   以及全局统一边框宽度。
 2. 配置层不得直接持有 =client_t= 、=tag_t= 或直接修改 =wm_state_t= 。
 3. 配置重载的边界是“重建 bootstrap 和服务配置，再显式应用到 runtime”，而不是任意时刻从外部写内存。
 
@@ -273,6 +287,10 @@ move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继
 workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个）。
 使用 =CYCLE_LAYOUT= 命令在可用布局间循环切换。
 
+9. =window rectangles=
+=frame_rect= 是窗口当前最终外框矩形；=float_rect= 是 floating 模式下记忆的外框矩形。
+这两个矩形都包含边框。
+
 * 核心不变量
 
 1. 每个窗口必须且只能属于一个工作区。
@@ -289,6 +307,8 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 12. 窗口标题、类名等元数据存储在 =wm_window_t= 中，与控制状态一同管理。
 13. 工作区名称存储在 =wm_workspace_t= 中，核心算法不应依赖此字段。
 14. 每个 workspace 的可用布局列表在启动时分配，运行时固定，只能通过 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令切换当前活动布局。
+15. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
+16. =border_width= 不是 =wm_window_t= 真状态；它由 runtime 从全局配置和几何模式推导。
 
 * Generation 字段
 
@@ -309,7 +329,7 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 2. runtime 先处理窗口元数据更新这类辅助事件，并直接更新 =wm_window_t= 中的元数据字段
 3. =policy.route_event()=
 4. =policy.apply_command()=
-5. 根据 =dirty_flags= 决定是否重新运行 =layout= 并解析最终矩形
+5. 根据 =dirty_flags= 决定是否重新运行 =layout= 、解析最终外框矩形，并补全 =configure= effect 的边框宽度
 6. 将平台 effect 发送给 =backend=
 7. 将 render 失效通知发送给服务层
 8. =backend.flush()=

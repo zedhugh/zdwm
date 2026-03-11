@@ -18,7 +18,7 @@ typedef struct wm_layout_ctx_t {
 
 typedef struct wm_layout_item_t {
   wm_window_id_t window_id;
-  wm_rect_t rect;
+  wm_rect_t rect;  // 平铺窗口的目标外框矩形（包含边框）
 } wm_layout_item_t;
 
 typedef struct wm_layout_result_t {

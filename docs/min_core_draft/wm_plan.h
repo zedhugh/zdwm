@@ -34,8 +34,8 @@ typedef struct wm_effect_t {
 
     struct {
       wm_window_id_t window_id;
-      wm_rect_t rect;
-      uint16_t border_width;
+      wm_rect_t rect;      // 最终外框矩形（包含边框）
+      uint16_t border_width;  // runtime 解析出的有效边框宽度
     } configure_window;
 
     struct {

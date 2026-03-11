@@ -14,6 +14,9 @@
    =floating = false= 时，基础几何来自 layout 结果。
    =floating = true= 时，基础几何来自 =float_rect= 。
 8. 文档里出现的可选行为，应优先固化到 =wm_policy_config_t= ，而不是继续留在 prose 里。
+9. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
+10. =border_width= 不是 =wm_window_t= 真状态；runtime 在提交
+    =WM_EFFECT_CONFIGURE_WINDOW= 时按全局配置解析它。
 
 * 管理类命令
 
@@ -216,7 +219,7 @@
 
 1. 若原来 =floating == false= ：
    将 =floating= 设为 =true= 。
-   将当前 =frame_rect= 复制到 =float_rect= ，作为浮动基准矩形。
+   将当前 =frame_rect= 复制到 =float_rect= ，作为浮动基准外框矩形。
 2. 若原来 =floating == true= ：
    将 =floating= 设为 =false= 。
    保留 =float_rect= ，供未来再次进入 floating 时恢复。
@@ -257,6 +260,7 @@
 5. 不改变 =floating= 。
 6. 若窗口原本是 floating，退出 maximize 后回到 =float_rect= 。
 7. 若窗口原本不是 floating，退出 maximize 后重新参与 layout。
+8. maximize 不改变全局边框策略；有效边框宽度仍由 runtime 统一解析。
 
 副作用：
 
@@ -273,6 +277,7 @@
    设为 =WM_GEOMETRY_FULLSCREEN= 。
 3. 不改变 =floating= 。
 4. fullscreen 只决定几何占用 =output.geometry= ，不自动改变 =stack_order[]= 。
+5. fullscreen 的有效边框宽度由 runtime 解析为 0 。
 
 副作用：
 
@@ -314,6 +319,7 @@
    依据 =anchor= 找到目标输出。
    再按 =policy= 决定是否修改 =workspace_id= 。
 4. 不改变 =geometry_mode= 。
+5. =float_rect= 是外框矩形，因此移动的是包含边框后的最终窗口外框。
 
 副作用：
 
@@ -333,6 +339,17 @@
 2. 应对宽高做最小值约束，避免得到零或负值。
 3. 不改变 =workspace_id= 。
 4. 不改变 =geometry_mode= 。
+5. =float_rect= 是外框矩形，因此缩放的是包含边框后的最终窗口外框。
+
+* 边框约定
+
+1. 当前最小核心只支持全局统一边框，不支持每窗口边框宽度。
+2. 全局边框宽度由 =wm_runtime_bootstrap_t.border_width= 提供。
+3. =layout= 和 =floating= 都产出包含边框后的外框矩形。
+4. =WM_EFFECT_CONFIGURE_WINDOW.rect= 也是外框矩形。
+5. runtime 在把最终矩形转成 =configure= effect 时解析有效边框宽度：
+   =WM_GEOMETRY_FULLSCREEN= -> 0
+   其余模式 -> 全局边框宽度
 
 副作用：
 
@@ -405,6 +422,8 @@ bool wm_state_window_should_be_visible_on_output(const wm_state_t *state,
 * 几何解析优先级
 
 窗口最终矩形建议按下面的优先级解析：
+
+这里的“最终矩形”统一指包含边框后的外框矩形。
 
 1. =WM_GEOMETRY_MINIMIZED=
 不显示。
