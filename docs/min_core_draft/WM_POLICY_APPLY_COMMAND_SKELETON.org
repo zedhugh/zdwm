@@ -2,6 +2,9 @@
 
 这份文档给出 =wm_policy_apply_command()= 的最小实现骨架。目标是把实际代码的控制流固定住，使其和 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] 中定义的命令规则一一对应。
 
+=sticky= 在多显示器、taskbar 和跨 output 拖动下的补充语义见
+[[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]] 。
+
 * 函数职责
 
 =wm_policy_apply_command()= 只做四件事：
@@ -187,6 +190,10 @@ static bool apply_manage_window(wm_state_t *state,
     .urgent = command->as.manage_window.initial_state.urgent,
   };
 
+  if (win.sticky) {
+    win.floating = true;
+  }
+
   if (command->as.manage_window.has_initial_float_rect) {
     win.float_rect = command->as.manage_window.initial_float_rect;
   }
@@ -300,12 +307,25 @@ static bool apply_toggle_sticky(wm_state_t *state,
   wm_window_t *win = require_window(state, command->as.toggle_sticky.window_id);
   if (!win) return false;
 
-  win->sticky = !win->sticky;
+  if (!win->sticky) {
+    if (!win->floating) {
+      win->float_rect = win->frame_rect;
+      win->floating = true;
+    }
+    win->sticky = true;
+  } else {
+    win->sticky = false;
+    /* 关闭 sticky 时保持 floating 不变，不自动恢复平铺。 */
+  }
+
   plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
   push_render_all_outputs(state, plan);
   return true;
 }
 #+END_SRC
+
+实际实现中，若关闭 =sticky= 后窗口对当前正在查看的 workspace 不再可见，
+且它曾是相关 workspace 的焦点窗口，则应重选该 workspace 的焦点。
 
 ** =apply_focus_direction()=
 
@@ -438,6 +458,7 @@ static bool apply_toggle_floating(wm_state_t *state,
                                   wm_plan_t *plan) {
   wm_window_t *win = require_window(state, command->as.toggle_floating.window_id);
   if (!win) return false;
+  if (win->sticky) return false;
 
   if (!win->floating) {
     win->floating = true;
@@ -529,6 +550,8 @@ static bool apply_move_floating_window(wm_state_t *state,
     require_window(state, command->as.move_floating_window.window_id);
   if (!win || !win->floating) return false;
 
+  wm_workspace_id_t old_ws_id = win->workspace_id;
+
   win->float_rect.x += command->as.move_floating_window.dx;
   win->float_rect.y += command->as.move_floating_window.dy;
 
@@ -539,6 +562,12 @@ static bool apply_move_floating_window(wm_state_t *state,
         command->as.move_floating_window.policy ==
           WM_CROSS_OUTPUT_MOVE_TO_TARGET_WORKSPACE) {
       win->workspace_id = out->current_workspace_id;
+      if (win->workspace_id != old_ws_id) {
+        wm_workspace_t *src = require_workspace(state, old_ws_id);
+        if (src && src->focused_window_id == win->id) {
+          maybe_refocus_workspace(state, src);
+        }
+      }
     }
   }
 
@@ -558,12 +587,12 @@ static bool apply_resize_floating_window(wm_state_t *state,
     require_window(state, command->as.resize_floating_window.window_id);
   if (!win || !win->floating) return false;
 
-  win->float_rect.w =
-    clamp_u16((int)win->float_rect.w + command->as.resize_floating_window.dw,
-              WM_MIN_WINDOW_W, UINT16_MAX);
-  win->float_rect.h =
-    clamp_u16((int)win->float_rect.h + command->as.resize_floating_window.dh,
-              WM_MIN_WINDOW_H, UINT16_MAX);
+  win->float_rect.width =
+    clamp_i32(win->float_rect.width + command->as.resize_floating_window.dw,
+              WM_MIN_WINDOW_WIDTH, INT32_MAX);
+  win->float_rect.height =
+    clamp_i32(win->float_rect.height + command->as.resize_floating_window.dh,
+              WM_MIN_WINDOW_HEIGHT, INT32_MAX);
 
   plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
   push_render_all_outputs(state, plan);
@@ -581,7 +610,9 @@ static bool apply_set_layout(wm_state_t *state,
   wm_workspace_t *ws =
     require_workspace(state, command->as.set_layout.workspace_id);
   if (!ws) return false;
-  if (!wm_layout_lookup(layouts, command->as.set_layout.layout_id)) return false;
+  if (!wm_layout_slot_get(layouts, command->as.set_layout.layout_id)) {
+    return false;
+  }
   if (ws->layout_id == command->as.set_layout.layout_id) return false;
 
   ws->layout_id = command->as.set_layout.layout_id;
@@ -663,6 +694,7 @@ static bool apply_quit(wm_state_t *state,
 
 1. 如果有 =WM_DIRTY_LAYOUT= ，则对每个 output 的当前 workspace 重新计算 layout。
 2. 根据窗口的 =geometry_mode= 、=floating= 和 layout 结果解析最终矩形。
+   =sticky= 窗口由于满足 =sticky => floating= ，因此同样走 =float_rect= 路径。
 3. 生成 =WM_EFFECT_CONFIGURE_WINDOW= 。
 4. 若有 =WM_DIRTY_STACK= ，生成 =WM_EFFECT_RESTACK_WINDOWS= 。
 5. 若有 =WM_DIRTY_RENDER= ，生成 =WM_EFFECT_RENDER_OUTPUT= 。

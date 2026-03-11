@@ -1,0 +1,200 @@
+* Sticky 窗口规则
+
+这份文档补充 =sticky= 窗口在最小核心中的约束，重点覆盖以下问题：
+
+1. =sticky= 与 =floating= 的关系
+2. =sticky= 窗口是否参与自动布局
+3. =sticky= 窗口在 taskbar 中的显示规则
+4. 多显示器下 =sticky= 窗口的可见性与跨屏移动语义
+
+* 核心结论
+
+1. =sticky => floating=
+2. =sticky= 窗口不参与任何自动布局
+3. =sticky= 只放宽 workspace 可见性，不改变窗口的唯一归属 =workspace_id=
+4. =sticky= 窗口不复制到每个 output；是否出现在某个 output 上，只由其最终矩形是否覆盖该 output 决定
+5. 拖动 =sticky= 或普通 =floating= 窗口跨 output 时，默认只修改 =float_rect= ，不隐式修改 =workspace_id=
+6. 只有显式提交跨 output 迁移时，才允许把窗口归属 workspace 改到目标 output 当前显示的 workspace
+
+* 状态约束
+
+** =sticky= 与 =floating=
+
+最小核心中，=sticky= 不是独立于 =floating= 的另一套几何模式，而是附加在 floating 语义之上的可见性扩展。
+
+因此规定：
+
+1. 若窗口进入 =sticky= 状态，则必须满足 =floating == true=
+2. 若窗口原本是平铺窗口，开启 =sticky= 时，应先把当前最终外框矩形写入 =float_rect= ，再设 =floating = true= ，最后设 =sticky = true=
+3. 关闭 =sticky= 时，只清除 =sticky= 标记，不自动恢复到平铺模式
+
+不自动恢复平铺的原因是：否则核心必须额外保存“进入 sticky 前是否为 floating”的历史状态，复杂度不值得。
+
+** 唯一归属 workspace
+
+每个窗口始终只有一个归属 =workspace_id= 。
+
+=sticky= 的作用只是：
+
+- 让窗口在非归属 workspace 上也可见
+
+而不是：
+
+- 把窗口复制到多个 workspace
+- 让窗口同时归属于多个 workspace
+
+因此：
+
+1. =workspace_id= 仍然是窗口的唯一归属
+2. layout、focus 历史、命令目标和后续迁移规则都仍以该归属 workspace 为准
+
+* 布局规则
+
+** 不参与自动布局
+
+=sticky= 窗口不参与任何自动布局。
+
+这条规则在单显示器和多显示器下都成立：
+
+1. 不进入任何 workspace 的平铺输入
+2. 不进入任何 output 的布局输入
+3. 几何始终来自 =float_rect=
+
+原因：
+
+1. 自动布局应是 workspace-local / output-local 的
+2. =sticky= 如果参与布局，会让同一个窗口对多个 workspace 或多个 output 的布局结果产生耦合
+3. 同一个窗口不能同时接受多份独立 layout 结果
+
+** =fn == NULL= 的 floating 布局槽位
+
+若当前 workspace 的活动布局槽位满足 =fn == NULL= ，则该布局表示 =floating= 布局。
+
+这只表示当前 workspace 上的普通窗口不进行平铺计算，不改变 =sticky= 窗口的特殊规则：
+
+1. 普通 floating 窗口：几何来自各自的 =float_rect=
+2. =sticky= 窗口：同样几何来自 =float_rect=
+3. 二者都不参与 layout 函数计算
+
+* Taskbar 规则
+
+** 基本规则
+
+如果 taskbar 表达的是“当前 workspace 上用户可见的窗口列表”，则 =sticky= 窗口应被视为可见窗口，因此应出现在 taskbar 中。
+
+推荐的基础判断是：
+
+1. =skip_taskbar == false=
+2. 窗口在当前上下文中实际可见
+
+** 单显示器
+
+单显示器下，若当前 workspace 与窗口归属 workspace 不同，只要窗口是 =sticky= 且当前几何可见，仍应出现在 taskbar 中。
+
+** 多显示器 / 每 output 一条 taskbar
+
+若系统为每个 output 提供独立 taskbar ，推荐规则是：
+
+1. 只在窗口实际可见的 output 上显示该窗口
+2. 不在所有 output 的 taskbar 中无条件复制显示
+
+也就是说：
+
+1. 窗口只落在左屏，则只显示在左屏 taskbar
+2. 窗口只落在右屏，则只显示在右屏 taskbar
+3. 窗口跨越两个 output ，则可同时出现在两个 output 的 taskbar
+
+这样 taskbar 与屏幕上的真实可见内容保持一致。
+
+* 多显示器规则
+
+** 坐标空间
+
+=float_rect= 和 =frame_rect= 使用全局桌面坐标，而不是某个 output 的局部坐标。
+
+因此：
+
+1. 一个 floating/sticky 窗口可以自然跨越多个 output
+2. output 可见性可以通过“窗口最终矩形是否与 output 矩形相交”来判断
+
+** 可见性
+
+=sticky= 只放宽 workspace 可见性，不提供 output 复制语义。
+
+因此：
+
+1. 窗口不会因为 =sticky= 自动在所有 output 上都出现
+2. 它只会出现在最终矩形实际覆盖到的 output 上
+3. 若窗口完全移到另一块屏幕，则旧屏幕上不再可见
+
+* 跨 output 移动规则
+
+** 拖动过程中
+
+无论窗口是普通 =floating= 还是 =sticky= ，拖动过程中都只更新 =float_rect= 。
+
+不应在拖动过程中频繁修改 =workspace_id= ，否则归属语义会抖动，也不利于测试。
+
+** 拖动结束后的归属处理
+
+拖动结束后，是否迁移窗口归属 workspace，应由显式策略控制，而不是隐式发生。
+
+推荐沿用以下策略：
+
+1. =WM_CROSS_OUTPUT_KEEP_WORKSPACE=
+   - 只更新 =float_rect=
+   - 不修改 =workspace_id=
+2. =WM_CROSS_OUTPUT_MOVE_TO_TARGET_WORKSPACE=
+   - 使用稳定锚点确定目标 output
+   - 若锚点落在另一个 output 上，则把 =workspace_id= 改为该 output 当前显示的 workspace
+
+推荐锚点：
+
+1. 窗口中心点
+2. 或命令中显式提供的 =anchor=
+
+不建议按覆盖面积决定归属，因为该规则在窗口跨屏时不稳定，也不直观。
+
+** =sticky= 下的跨 output 移动
+
+=sticky= 窗口跨屏拖动时，默认也不自动修改 =workspace_id= 。
+
+原因：
+
+1. =sticky= 本来就可以跨 workspace 可见
+2. 若移动几何时顺便修改归属，会让“移动窗口”和“迁移窗口”两个动作发生耦合
+
+因此推荐：
+
+1. 默认只更新 =float_rect=
+2. 若用户明确要求迁移，则再执行归属 workspace 切换
+
+* 关闭 Sticky 的语义
+
+关闭 =sticky= 时：
+
+1. 只清除 =sticky= 标记
+2. 不自动修改 =workspace_id=
+3. 不自动修改 =floating=
+4. 不自动恢复平铺
+
+若当前查看的 workspace 不是窗口归属的 =workspace_id= ，则关闭 =sticky= 后窗口应立即从当前视图消失。
+
+如果该窗口在关闭 =sticky= 前是当前焦点窗口，则需要重新选择当前 workspace 的焦点窗口。
+
+* 设计原则总结
+
+这套规则的目标是把几个概念彻底拆开：
+
+1. =floating= 管几何来源
+2. =sticky= 管跨 workspace 可见性
+3. =workspace_id= 管唯一归属
+4. 跨 output 拖动只改几何
+5. workspace 迁移必须显式提交
+
+这样可以避免以下几类混乱语义：
+
+1. 拖动窗口时归属 workspace 频繁跳变
+2. =sticky= 窗口同时参与多个布局
+3. taskbar 显示内容与实际可见窗口不一致
+4. 关闭 =sticky= 时隐式触发额外状态回滚

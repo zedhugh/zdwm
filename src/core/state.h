@@ -50,7 +50,6 @@ typedef struct wm_output_t {
 } wm_output_t;
 
 typedef struct wm_state_t {
-  /* 内部实现（不透明结构体，实现文件中定义） */
   wm_workspace_t *workspaces;
   size_t workspace_count;
   size_t workspace_capacity;

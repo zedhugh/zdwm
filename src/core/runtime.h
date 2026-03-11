@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core/state.h"
 
 typedef struct wm_runtime_t {

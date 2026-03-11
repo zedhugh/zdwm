@@ -300,10 +300,10 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 5. =geometry_mode= 只负责几何模式，不负责 z-order。
 6. =stack_order[]= 只负责 z-order，不负责几何模式。
 7. =floating= 是二值状态：窗口要么由 layout 决定基础几何，要么由 =float_rect= 决定基础几何。
-8. =sticky= 只影响可见性，不改变窗口归属工作区。
-9. floating 窗口可以跨多个输出显示，但归属工作区仍然只有一个。
-10. 多输出下 floating 窗口是否迁移工作区，由锚点和跨输出策略决定，不由覆盖面积决定。
-11. layout 的 name 字段同时用于状态栏显示，应为 1-2 个字符的简短标识符（如 "T", "M"）。
+8. =sticky => floating= ；=sticky= 只放宽 workspace 可见性，不改变窗口归属工作区。
+9. floating / sticky 窗口都可以跨多个输出显示，但归属工作区仍然只有一个。
+10. 多输出下 floating / sticky 窗口是否迁移工作区，由锚点和跨输出策略决定，不由覆盖面积决定。
+11. layout 的 =symbol= 字段用于状态栏显示，应为 1-2 个字符的简短标识符（如 "T", "M"）；=name= 应保持稳定、可读（如 "tile", "monocle"）。
 12. 窗口标题、类名等元数据存储在 =wm_window_t= 中，与控制状态一同管理。
 13. 工作区名称存储在 =wm_workspace_t= 中，核心算法不应依赖此字段。
 14. 每个 workspace 的可用布局列表在启动时分配，运行时固定，只能通过 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令切换当前活动布局。
@@ -347,7 +347,8 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 
 4. =wm_command.h=
 强类型语义命令。
-命令语义补充见 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] 。
+命令语义补充见 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] ；
+=sticky= 多显示器与跨屏行为补充见 [[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]] 。
 
 5. =wm_plan.h=
 脏标记和后端副作用。
@@ -373,10 +374,13 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 12. [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]]
 关键命令的前置条件、状态转移、可见性和副作用规则。
 
-13. [[file:WM_POLICY_APPLY_COMMAND_SKELETON.org][WM_POLICY_APPLY_COMMAND_SKELETON.org]]
+13. [[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]]
+=sticky= 窗口在 workspace、taskbar、多显示器和跨 output 拖动下的补充规则。
+
+14. [[file:WM_POLICY_APPLY_COMMAND_SKELETON.org][WM_POLICY_APPLY_COMMAND_SKELETON.org]]
 =wm_policy_apply_command()= 的伪代码骨架和实现顺序建议。
 
-14. [[file:WORKSPACE_CONFIG_EXAMPLES.org][WORKSPACE_CONFIG_EXAMPLES.org]]
+15. [[file:WORKSPACE_CONFIG_EXAMPLES.org][WORKSPACE_CONFIG_EXAMPLES.org]]
 Workspace-Output 配置示例和最佳实践。
 
 * 下一步实施顺序

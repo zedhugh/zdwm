@@ -2,6 +2,9 @@
 
 这份文档定义 =wm_policy_apply_command()= 应遵守的最小语义。目标不是覆盖所有未来扩展，而是先把最关键的状态转移规则固定下来，避免后续实现时在 =floating=、=sticky=、=geometry_mode= 和 =stack_order[]= 上出现分叉语义。
 
+=sticky= 在多显示器、taskbar 和跨 output 拖动下的补充语义见
+[[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]] 。
+
 * 通用规则
 
 1. 找不到目标 =window_id=、=workspace_id= 或 =output_id= 时，命令失败，不修改状态。
@@ -9,13 +12,14 @@
 3. 命令成功且造成状态变化时，递增 =state.generation= ，并设置相应 =dirty_flags= 。
 4. =stack_order[]= 是全局 z-order 真相，=raise/lower/focus= 只能通过修改这个数组影响堆叠。
 5. =geometry_mode= 只表示几何显示模式，不表示窗口是否在最上层。
-6. =sticky= 只影响可见性，不改变 =workspace_id= 。
-7. =floating= 决定基础几何来源：
+6. =sticky => floating= 。
+7. =sticky= 只放宽 workspace 可见性，不改变 =workspace_id= 。
+8. =floating= 决定基础几何来源：
    =floating = false= 时，基础几何来自 layout 结果。
    =floating = true= 时，基础几何来自 =float_rect= 。
-8. 文档里出现的可选行为，应优先固化到 =wm_policy_config_t= ，而不是继续留在 prose 里。
-9. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
-10. =border_width= 不是 =wm_window_t= 真状态；runtime 在提交
+9. 文档里出现的可选行为，应优先固化到 =wm_policy_config_t= ，而不是继续留在 prose 里。
+10. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
+11. =border_width= 不是 =wm_window_t= 真状态；runtime 在提交
     =WM_EFFECT_CONFIGURE_WINDOW= 时按全局配置解析它。
 
 * 管理类命令
@@ -32,9 +36,10 @@
 1. 向 =state.windows[]= 添加一个新窗口。
 2. 设定其 =workspace_id= 。
 3. 初始 =floating= 、=sticky= 、=urgent= 、=geometry_mode= 由 =command.as.manage_window.initial_state= 显式给出。
-4. 若 =has_initial_float_rect == true= ，将其复制到 =float_rect= 。
-5. 将窗口追加到 =stack_order[]= 顶部。
-6. 是否将该窗口设为所属 workspace 的 =focused_window_id= ，由 =initial_state.set_focus= 或 =policy.manage_sets_focus= 决定。
+4. 若 =initial_state.sticky == true= ，则结果状态中必须满足 =floating == true= 。
+5. 若 =has_initial_float_rect == true= ，将其复制到 =float_rect= 。
+6. 将窗口追加到 =stack_order[]= 顶部。
+7. 是否将该窗口设为所属 workspace 的 =focused_window_id= ，由 =initial_state.set_focus= 或 =policy.manage_sets_focus= 决定。
 
 副作用：
 
@@ -215,6 +220,11 @@
 
 ** =WM_COMMAND_TOGGLE_FLOATING=
 
+前置条件：
+
+1. 目标窗口存在。
+2. 若目标窗口当前 =sticky == true= ，命令失败。
+
 状态变化：
 
 1. 若原来 =floating == false= ：
@@ -235,10 +245,14 @@
 
 状态变化：
 
-1. 切换目标窗口的 =sticky= 状态。
-2. 不改变 =workspace_id= 。
-3. 不改变 =floating= 。
-4. 不改变 =geometry_mode= 。
+1. 若原来 =sticky == false= ：
+   若当前 =floating == false= ，先将当前 =frame_rect= 复制到 =float_rect= ，再设 =floating = true= 。
+   然后将 =sticky= 设为 =true= 。
+2. 若原来 =sticky == true= ：
+   将 =sticky= 设为 =false= 。
+3. 不改变 =workspace_id= 。
+4. 关闭 =sticky= 时不自动恢复平铺；=floating= 保持原值不变。
+5. 不改变 =geometry_mode= 。
 
 副作用：
 
@@ -318,6 +332,7 @@
 3. 若 =commit_workspace_change == true= ：
    依据 =anchor= 找到目标输出。
    再按 =policy= 决定是否修改 =workspace_id= 。
+   该规则对普通 =floating= 窗口和 =sticky= 窗口一致适用。
 4. 不改变 =geometry_mode= 。
 5. =float_rect= 是外框矩形，因此移动的是包含边框后的最终窗口外框。
 
@@ -335,7 +350,7 @@
 
 状态变化：
 
-1. 按 =dw/dh= 修改 =float_rect.w/h= 。
+1. 按 =dw/dh= 修改 =float_rect.width/height= 。
 2. 应对宽高做最小值约束，避免得到零或负值。
 3. 不改变 =workspace_id= 。
 4. 不改变 =geometry_mode= 。
@@ -414,10 +429,14 @@ bool wm_state_window_should_be_visible_on_output(const wm_state_t *state,
                                                  const wm_window_t *window,
                                                  const wm_output_t *output) {
   if (!wm_state_window_should_be_visible(state, window)) return false;
-  if (window->sticky) return true;
-  return window->workspace_id == output->current_workspace_id;
+  return wm_rect_intersects(window->frame_rect, output->geometry);
 }
 #+END_SRC
+
+若后续存在按 output 渲染的 taskbar ，建议在下列条件同时满足时显示窗口条目：
+
+1. =window->skip_taskbar == false=
+2. =wm_state_window_should_be_visible_on_output(...) == true=
 
 * 几何解析优先级
 
