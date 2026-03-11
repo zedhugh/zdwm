@@ -317,12 +317,7 @@ static void enter_notify(xcb_enter_notify_event_t *ev) {
   if (!client || wm.client_focused == client) return;
 
   client_focus(client);
-}
-
-static void focus_in(xcb_focus_in_event_t *ev) {
-  client_t *client = client_get_by_window(ev->event);
-  if (!client) return;
-  wm_set_current_monitor(client->monitor, ev->mode != XCB_NOTIFY_MODE_NORMAL);
+  wm_set_current_monitor(client->monitor, false);
 }
 
 static void selection_clear(xcb_selection_clear_event_t *ev) {
@@ -353,7 +348,6 @@ static void handle_xcb_event(xcb_generic_event_t *event) {
     EVENT(XCB_UNMAP_NOTIFY, unmap_notify);
     EVENT(XCB_DESTROY_NOTIFY, destroy_notify);
     EVENT(XCB_ENTER_NOTIFY, enter_notify);
-    EVENT(XCB_FOCUS_IN, focus_in);
     EVENT(XCB_SELECTION_CLEAR, selection_clear);
 
 #undef EVENT

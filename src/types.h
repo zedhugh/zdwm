@@ -38,6 +38,7 @@ struct client_t {
   bool minimize;
   bool sticky;
   bool urgent;
+  bool skip_taskbar;
   bool size_freeze; /* 尺寸冻结窗口一定是浮动窗口 */
 
   char *class, *instance;
