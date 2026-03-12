@@ -4,17 +4,20 @@
 
 #include "core/types.h"
 
-typedef struct wm_layout_window_ref_t {
-  wm_window_id_t window_id;
-  wm_window_geometry_mode_t geometry_mode;
-} wm_layout_window_ref_t;
-
 typedef struct wm_layout_ctx_t {
   wm_output_id_t output_id;
   wm_workspace_id_t workspace_id;
   wm_window_id_t focused_window_id;
   wm_rect_t workarea;
-  const wm_layout_window_ref_t *windows;
+  /*
+   * 参与本次布局计算的窗口 ID 列表。
+   *
+   * 调用方负责在进入 layout 前完成筛选；这里不包含 floating、sticky、
+   * fullscreen、minimized 等不参与平铺计算的窗口。
+   *
+   * 数组顺序具有语义，layout 应按该顺序解释窗口排列优先级。
+   */
+  const wm_window_id_t *window_ids;
   size_t window_count;
 } wm_layout_ctx_t;
 
@@ -76,18 +79,48 @@ typedef struct wm_layout_registry_t {
   size_t slot_capacity;
 } wm_layout_registry_t;
 
+/*
+ * 调用约束：
+ * - result 必须是有效的非空指针
+ * - 除 init 之外，其余 result 相关接口都要求 result 已初始化
+ * - 传入空指针或未初始化对象属于调用方错误
+ */
 void wm_layout_result_init(wm_layout_result_t *result);
 void wm_layout_result_reset(wm_layout_result_t *result);
-void wm_layout_result_shutdown(wm_layout_result_t *result);
+void wm_layout_result_cleanup(wm_layout_result_t *result);
 
-bool wm_layout_result_push(wm_layout_result_t *result, wm_layout_item_t item);
+void wm_layout_result_push(wm_layout_result_t *result, wm_layout_item_t item);
 
+/*
+ * 调用约束：
+ * - registry 必须是有效的非空指针
+ * - 除 init 之外，其余 registry 相关接口都要求 registry 已初始化
+ * - 传入空指针或未初始化对象属于调用方错误
+ */
 void wm_layout_registry_init(wm_layout_registry_t *registry);
-void wm_layout_registry_shutdown(wm_layout_registry_t *registry);
+void wm_layout_registry_cleanup(wm_layout_registry_t *registry);
 size_t wm_layout_registry_count(const wm_layout_registry_t *registry);
 const wm_layout_slot_t *wm_layout_registry_at(
   const wm_layout_registry_t *registry, size_t index);
 
+/*
+ * 注册一个布局并返回其稳定 ID。
+ *
+ * 前置条件：
+ * - registry 必须已初始化
+ *
+ * 参数约束：
+ * - name 不可为空，用于稳定配置名、日志和调试展示
+ * - symbol 不可为空，用于状态栏等紧凑展示
+ * - description 可为空
+ * - fn 可为空；fn == NULL 表示 floating 布局，不参与平铺计算
+ *
+ * 返回值：
+ * - 成功时返回新注册布局的 ID
+ * - name 或 symbol 非法时返回 WM_LAYOUT_ID_INVALID
+ *
+ * 注册成功后，布局 ID 与其在 registry 中的槽位索引保持一致。
+ */
 wm_layout_id_t wm_layout_register(wm_layout_registry_t *registry,
                                   const char *name, const char *symbol,
                                   const char *description, wm_layout_fn fn);

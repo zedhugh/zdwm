@@ -28,6 +28,12 @@
 #define unlikely(expr) expr
 #endif
 
+static inline char *p_strdup(const char *text) {
+  char *r = strdup(text);
+  if (!r) abort();
+  return r;
+}
+
 static inline void *__attribute__((malloc)) xmalloc(ssize_t size) {
   void *ptr;
 
@@ -101,3 +107,9 @@ static inline void logger(const char *format, ...) {
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
+
+static constexpr size_t INIT_CAPACITY = 4;
+static inline size_t next_capacity(size_t capacity) {
+  if (capacity) return capacity * 2;
+  return INIT_CAPACITY;
+}
