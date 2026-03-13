@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +13,7 @@
 #define p_new(type, count) ((type *)xmalloc(sizeof(type) * (count)))
 #define p_clear(p, count) ((void)memset((p), 0, sizeof(*(p)) * (count)))
 #define p_realloc(pp, count) xrealloc((void *)(pp), sizeof(**(pp)) * (count))
+#define p_copy(src, count) xmemcopy((src), sizeof(*(src)) * (count))
 
 #define p_delete(mem_p)              \
   do {                               \
@@ -44,6 +46,15 @@ static inline void *__attribute__((malloc)) xmalloc(ssize_t size) {
   if (!ptr) abort();
 
   return ptr;
+}
+
+static inline void *xmemcopy(const void *src, size_t n) {
+  if (!n) return nullptr;
+
+  void *mem = xmalloc(n);
+  void *ret = memcpy(mem, src, n);
+  if (ret != mem) abort();
+  return ret;
 }
 
 static inline void xrealloc(void **ptr, ssize_t newsize) {

@@ -30,9 +30,35 @@ typedef struct wm_window_info_t {
 } wm_window_info_t;
 
 typedef struct wm_workspace_desc_t {
-  wm_output_id_t output_id;
+  size_t output_index; /* 对应 wm_state_init() 中 outputs[] 的索引 */
   const char *name;
   const wm_layout_id_t *layout_ids;
   size_t layout_count;
   wm_layout_id_t initial_layout_id;
 } wm_workspace_desc_t;
+
+/*
+ * workspace 描述校验接口。
+ *
+ * 这组接口只校验描述表自身的一致性，不访问 state。
+ */
+static inline bool
+wm_workspace_desc_layouts_valid(const wm_workspace_desc_t *workspace) {
+  if (!workspace || !workspace->layout_count || !workspace->layout_ids) {
+    return false;
+  }
+
+  for (size_t i = 0; i < workspace->layout_count; i++) {
+    if (workspace->layout_ids[i] == workspace->initial_layout_id) return true;
+  }
+
+  return false;
+}
+
+static inline bool wm_workspace_desc_valid(const wm_workspace_desc_t *workspace,
+                                           size_t output_count) {
+  if (!workspace || !workspace->name) return false;
+  if (workspace->output_index >= output_count) return false;
+
+  return wm_workspace_desc_layouts_valid(workspace);
+}

@@ -57,7 +57,7 @@ wm_workspace_t *ws = &state->workspaces[workspace_id];  // O(1)
 wm_output_t *output = &state->outputs[output_id];      // O(1)
 
 // 动态实体：线性查找（简单且足够）
-wm_window_t *win = wm_state_find_window(state, window_id);  // O(n)
+const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 ```
 
 **设计优势**：

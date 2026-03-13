@@ -177,7 +177,7 @@ static bool apply_manage_window(wm_state_t *state,
   wm_window_id_t id = command->as.manage_window.window_id;
   wm_workspace_id_t ws_id = command->as.manage_window.workspace_id;
 
-  if (wm_state_find_window_const(state, id)) return false;
+  if (wm_state_window_get(state, id)) return false;
   wm_workspace_t *ws = require_workspace(state, ws_id);
   if (!ws) return false;
 

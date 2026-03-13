@@ -53,27 +53,23 @@ void runtime_handle_metadata_event(wm_runtime_t *runtime, const wm_event_t *even
     const wm_window_metadata_changed_event_t *e = &event->as.window_metadata_changed;
 
     // 1. 查找窗口
-    wm_window_t *win = wm_state_find_window(&runtime->state, e->window_id);
+    const wm_window_t *win = wm_state_window_get(&runtime->state, e->window_id);
     if (!win) {
         return;  // 窗口已被销毁
     }
 
-    // 2. 直接更新窗口元数据字段
+    // 2. 通过 state 接口更新窗口元数据字段
     if (e->changed_fields & WM_WINDOW_META_CHANGED_TITLE) {
-        free(win->title);
-        win->title = e->title ? strdup(e->title) : NULL;
+        wm_state_window_set_title(&runtime->state, e->window_id, e->title);
     }
     if (e->changed_fields & WM_WINDOW_META_CHANGED_APP_ID) {
-        free(win->app_id);
-        win->app_id = e->app_id ? strdup(e->app_id) : NULL;
+        wm_state_window_set_app_id(&runtime->state, e->window_id, e->app_id);
     }
     if (e->changed_fields & WM_WINDOW_META_CHANGED_CLASS) {
-        free(win->class_name);
-        win->class_name = e->class_name ? strdup(e->class_name) : NULL;
+        wm_state_window_set_class(&runtime->state, e->window_id, e->class_name);
     }
     if (e->changed_fields & WM_WINDOW_META_CHANGED_INSTANCE) {
-        free(win->instance_name);
-        win->instance_name = e->instance_name ? strdup(e->instance_name) : NULL;
+        wm_state_window_set_instance(&runtime->state, e->window_id, e->instance_name);
     }
 
     // 3. 标记 render 脏（状态栏需要更新）

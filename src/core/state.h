@@ -69,18 +69,25 @@ typedef struct wm_state_t {
 
 } wm_state_t;
 
-/* state 容器生命周期接口 */
-void wm_state_init(wm_state_t *state, const wm_output_info_t *outputs,
-                   size_t output_count);
-void wm_state_cleanup(wm_state_t *state);
 /*
- * 根据 workspace 描述表构建 state.workspaces[]。
+ * 调用约束：
+ * - state 必须是有效的非空指针
+ * - wm_state_init() / wm_state_cleanup() 必须成对调用
+ * - 同一个 state 生命周期内，wm_state_init() 不允许重复调用
+ * - 除 wm_state_init() 外，其余 state 相关接口都要求 state 已初始化
+ * - workspaces[i] 必须满足 wm_workspace_desc_valid(&workspaces[i], output_count)
+ * - 传入空指针、未初始化对象或违反前置条件属于调用方错误
  *
+ * 初始化时根据描述表构建 outputs[] 与 workspaces[]。
  * workspace_id 由 state 按描述表顺序分配并保持稳定，不从 desc 中读取。
+ * 每个 output 的 current_workspace_id 会自动设置为首个归属到该 output 的
+ * workspace；若某个 output 没有任何归属 workspace，wm_state_init() 会失败。
  */
-void wm_state_set_workspaces(wm_state_t *state,
-                             const wm_workspace_desc_t *workspaces,
-                             size_t workspace_count);
+void wm_state_init(wm_state_t *state, const wm_output_info_t *outputs,
+                   size_t output_count,
+                   const wm_workspace_desc_t *workspaces,
+                   size_t workspace_count);
+void wm_state_cleanup(wm_state_t *state);
 
 /*
  * state 持有的 workspace 集合接口
@@ -186,7 +193,3 @@ const wm_window_id_t *wm_state_stack_order(const wm_state_t *state);
 wm_window_id_t wm_state_stack_at(const wm_state_t *state, size_t index);
 bool wm_state_stack_raise(wm_state_t *state, wm_window_id_t window_id);
 bool wm_state_stack_lower(wm_state_t *state, wm_window_id_t window_id);
-
-/* 与 min_core_draft 中的查找命名保持一致 */
-const wm_window_t *wm_state_find_window(const wm_state_t *state,
-                                        wm_window_id_t id);
