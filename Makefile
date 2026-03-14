@@ -39,4 +39,7 @@ build: prepare
 	@cmake --build $(BUILD_DIR)
 	@cp $(BUILD_DIR)/$(TARGET_NAME) $(TARGET)
 
-.PHONY: clean run wm prepare build install uninstall reinstall
+test: build
+	@ctest --test-dir $(BUILD_DIR)
+
+.PHONY: clean run wm prepare build install uninstall reinstall test
