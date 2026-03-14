@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/backend.h"
 #include "core/state.h"
 
 typedef struct wm_runtime_t {
@@ -7,6 +8,7 @@ typedef struct wm_runtime_t {
   bool will_restart;
 
   wm_state_t state;
+  wm_backend_t *backend;
 } wm_runtime_t;
 
 bool wm_runtime_init(wm_runtime_t *runtime);

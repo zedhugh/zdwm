@@ -5,7 +5,7 @@
 #include "core/types.h"
 
 typedef struct wm_output_info_t {
-  const char *name;
+  char *name;
   wm_rect_t geometry;
 } wm_output_info_t;
 
@@ -42,8 +42,8 @@ typedef struct wm_workspace_desc_t {
  *
  * 这组接口只校验描述表自身的一致性，不访问 state。
  */
-static inline bool
-wm_workspace_desc_layouts_valid(const wm_workspace_desc_t *workspace) {
+static inline bool wm_workspace_desc_layouts_valid(
+  const wm_workspace_desc_t *workspace) {
   if (!workspace || !workspace->layout_count || !workspace->layout_ids) {
     return false;
   }
