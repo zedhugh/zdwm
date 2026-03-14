@@ -84,7 +84,7 @@ void _fatal(int line, const char *function, const char *file,
 __attribute__((format(printf, 4, 5)));
 
 #define warn(format, ...) \
-  _fatal(__LINE__, __FUNCTION__, __FILE__, format, ##__VA_ARGS__)
+  _warn(__LINE__, __FUNCTION__, __FILE__, format, ##__VA_ARGS__)
 void _warn(int line, const char *function, const char *file, const char *format,
            ...) __attribute__((format(printf, 4, 5)));
 
