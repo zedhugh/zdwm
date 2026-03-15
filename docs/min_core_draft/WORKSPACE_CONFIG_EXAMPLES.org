@@ -10,7 +10,7 @@
 -- zdwm.lua
 
 outputs = {
-  { id = 0, name = "DP-1", enabled = true, primary = true },
+  { id = 0, name = "DP-1", primary = true },
 }
 
 -- 所有 workspace 都归属 DP-1
@@ -42,8 +42,8 @@ workspaces = auto_generate_workspaces({
 #+BEGIN_SRC lua
 -- 左侧显示器 1-5，右侧显示器 6-10
 outputs = {
-  { id = 0, name = "DP-1",  enabled = true, primary = true },
-  { id = 1, name = "DP-2",  enabled = true },
+  { id = 0, name = "DP-1",  primary = true },
+  { id = 1, name = "DP-2" },
 }
 
 workspaces = {
@@ -112,8 +112,8 @@ workspaces = {
 
 outputs = {
   { id = 0, name = "eDP-1",   primary = true },
-  { id = 1, name = "DP-1",    enabled = true },
-  { id = 2, name = "HDMI-1",  enabled = true },
+  { id = 1, name = "DP-1" },
+  { id = 2, name = "HDMI-1" },
 }
 
 workspaces = {
@@ -134,13 +134,12 @@ workspaces = {
 }
 #+END_SRC
 
-** 动态配置（脚本式）
+** 启动阶段脚本生成
 
-根据实际检测到的输出数量动态生成：
+根据启动阶段检测到的输出数量生成：
 
 #+BEGIN_SRC lua
-function configure_workspaces(runtime)
-  local outputs = runtime:scan_outputs()
+function configure_workspaces(outputs)
   local workspaces = {}
   local ws_id = 1
 
@@ -220,12 +219,13 @@ bool load_workspace_config(const char *path,
 
 #+BEGIN_SRC lua
 -- 声明布局注册表
+-- layout_id 按注册顺序稳定分配：tile=0, monocle=1, floating=2, ...
 layouts = {
-  { id = 0, name = "T", fn = layout_tile },
-  { id = 1, name = "M", fn = layout_monocle },
-  { id = 2, name = "F", fn = layout_floating },
-  { id = 3, name = "S", fn = layout_stack },
-  { id = 4, name = "G", fn = layout_grid },
+  { name = "tile",     symbol = "T", fn = layout_tile },
+  { name = "monocle",  symbol = "M", fn = layout_monocle },
+  { name = "floating", symbol = "F", fn = layout_floating },
+  { name = "stack",    symbol = "S", fn = layout_stack },
+  { name = "grid",     symbol = "G", fn = layout_grid },
 }
 
 -- 单显示器：每个 workspace 可用所有布局
@@ -280,7 +280,7 @@ workspaces = {
 
 1. *固定归属*：workspace.output_id 在创建后不应改变
 2. *输出变化*：显示器配置变化时，WM 会重启，重新扫描和配置
-3. *可见性*：窗口只在归属的 output 上可见
+3. *可见性*：普通非 =sticky= 窗口先受 workspace 可见性约束，再按最终矩形与 output 的相交关系决定具体显示在哪些 output 上；=sticky= 窗口只放宽 workspace 可见性
 4. *独立性*：切换不同 output 的 workspace 互不影响
 5. *布局列表*：workspace.layouts 在启动时分配，运行时固定
-6. *布局切换*：使用 CYCLE_LAYOUT 命令在可用布局间循环切换
+6. *布局切换*：使用 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令在可用布局集合内切换当前布局

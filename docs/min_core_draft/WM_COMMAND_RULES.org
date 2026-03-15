@@ -17,9 +17,11 @@
 8. =floating= 决定基础几何来源：
    =floating = false= 时，基础几何来自 layout 结果。
    =floating = true= 时，基础几何来自 =float_rect= 。
-9. 文档里出现的可选行为，应优先固化到 =wm_policy_config_t= ，而不是继续留在 prose 里。
-10. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
-11. =border_width= 不是 =wm_window_t= 真状态；runtime 在提交
+9. output/workspace/layout registry 以及每个 workspace 的 =available_layouts=
+   都是 bootstrap 后固定集合；运行时不允许增删。
+10. 文档里出现的可选行为，应优先固化到 =wm_policy_config_t= ，而不是继续留在 prose 里。
+11. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
+12. =border_width= 不是 =wm_window_t= 真状态；runtime 在提交
     =WM_EFFECT_CONFIGURE_WINDOW= 时按全局配置解析它。
 
 * 管理类命令
@@ -47,34 +49,6 @@
 2. =WM_DIRTY_LAYOUT=
 3. =WM_DIRTY_STACK=
 4. =WM_DIRTY_RENDER=
-
-** =WM_COMMAND_UPSERT_OUTPUT=
-
-状态变化：
-
-1. 若目标 output 已存在，只更新 =geometry= 和 =workarea= 。
-2. 若目标 output 不存在，则新建 output，并使用 =initial_workspace_id= 作为其 =current_workspace_id= 。
-3. 不修改任何窗口的 =workspace_id= 。
-
-副作用：
-
-1. =WM_DIRTY_OUTPUT=
-2. =WM_DIRTY_LAYOUT=
-3. =WM_DIRTY_RENDER=
-
-** =WM_COMMAND_REMOVE_OUTPUT=
-
-状态变化：
-
-1. 从 =state.outputs[]= 中移除目标 output 。
-2. 不修改任何窗口的 =workspace_id= 。
-3. 若移除后暂时没有 output，允许 runtime 进入“无可见输出”的空闲态，等待后续热插拔恢复。
-
-副作用：
-
-1. =WM_DIRTY_OUTPUT=
-2. =WM_DIRTY_LAYOUT=
-3. =WM_DIRTY_RENDER=
 
 ** =WM_COMMAND_UNMANAGE_WINDOW=
 
@@ -144,6 +118,12 @@
 
 ** =WM_COMMAND_SWITCH_WORKSPACE=
 
+前置条件：
+
+1. 目标 output 存在。
+2. 目标 workspace 存在。
+3. 目标 workspace 的 =output_id= 必须等于目标 =output_id= 。
+
 状态变化：
 
 1. 将目标输出的 =current_workspace_id= 改为指定工作区。
@@ -174,22 +154,41 @@
 
 ** =WM_COMMAND_SEND_WINDOW_TO_OUTPUT=
 
+前置条件：
+
+1. 目标窗口存在。
+2. 目标 output 存在。
+
 状态变化：
 
 1. 这是工作区迁移命令的语法糖。
 2. 取目标 output 当前的 =current_workspace_id= 。
-3. 若 =policy == WM_CROSS_OUTPUT_KEEP_WORKSPACE= ，则不改 =workspace_id= ，只允许调用方随后自行调整几何。
+3. 若 =policy == WM_CROSS_OUTPUT_KEEP_WORKSPACE= ，则该命令本身不修改 core 真状态。
+   仅想保留 =workspace_id= 并跨 output 调整几何时，应使用 =WM_COMMAND_MOVE_FLOATING_WINDOW= 。
 4. 若 =policy == WM_CROSS_OUTPUT_MOVE_TO_TARGET_WORKSPACE= ，则把窗口 =workspace_id= 改成目标 output 当前工作区。
+
+副作用：
+
+1. 若最终没有修改 =workspace_id= ，则不产生状态副作用。
+2. 若最终修改了 =workspace_id= ，则副作用与 =WM_COMMAND_SEND_WINDOW_TO_WORKSPACE= 一致。
 
 * 布局命令
 
 ** =WM_COMMAND_SET_LAYOUT=
+
+前置条件：
+
+1. 目标 workspace 存在。
+2. 目标 =layout_id= 已在 layout registry 中注册。
+3. 目标 =layout_id= 必须出现在该 workspace 的 =available_layouts[]= 中。
 
 状态变化：
 
 1. 设置目标 workspace 的 =layout_id= 。
 2. 不改变窗口的 =workspace_id= 。
 3. 不改变 =stack_order[]= 。
+4. 不影响 floating 窗口的基础几何。
+5. 影响所有 =floating == false= 且 =geometry_mode == WM_GEOMETRY_NORMAL= 的窗口。
 
 副作用：
 
@@ -202,6 +201,7 @@
 
 1. 目标 workspace 存在。
 2. Workspace 的可用布局列表非空（=layout_count > 0=）。
+3. 当前 =layout_id= 必须存在于 =available_layouts[]= 中。
 
 状态变化：
 
@@ -356,6 +356,11 @@
 4. 不改变 =geometry_mode= 。
 5. =float_rect= 是外框矩形，因此缩放的是包含边框后的最终窗口外框。
 
+副作用：
+
+1. =WM_DIRTY_LAYOUT=
+2. =WM_DIRTY_RENDER=
+
 * 边框约定
 
 1. 当前最小核心只支持全局统一边框，不支持每窗口边框宽度。
@@ -365,31 +370,6 @@
 5. runtime 在把最终矩形转成 =configure= effect 时解析有效边框宽度：
    =WM_GEOMETRY_FULLSCREEN= -> 0
    其余模式 -> 全局边框宽度
-
-副作用：
-
-1. =WM_DIRTY_LAYOUT=
-2. =WM_DIRTY_RENDER=
-
-* 布局命令
-
-** =WM_COMMAND_SET_LAYOUT=
-
-前置条件：
-
-1. 目标 workspace 存在。
-2. 目标 =layout_id= 已在 layout registry 中注册。
-
-状态变化：
-
-1. 修改 workspace 的 =layout_id= 。
-2. 不影响 floating 窗口的基础几何。
-3. 影响所有 =floating == false= 且 =geometry_mode == WM_GEOMETRY_NORMAL= 的窗口。
-
-副作用：
-
-1. =WM_DIRTY_LAYOUT=
-2. =WM_DIRTY_RENDER=
 
 * redraw 和 quit
 

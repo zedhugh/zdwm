@@ -18,7 +18,8 @@
 
 3. =state=
 负责保存窗口、工作区、输出和全局堆叠顺序，是唯一真状态。
-采用不透明结构体设计，内部实现完全封装。
+当前头文件级草案先直接展示结构体字段，便于讨论；
+实现阶段再收敛为不透明结构体也不迟。
 窗口元数据（title/app_id/class/instance）直接存储在 =wm_window_t= 中。
 工作区名称存储在 =wm_workspace_t= 中。
 
@@ -65,26 +66,20 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 - 性能：半静态实体零开销访问，动态实体简单线性查找
 - 简单性：无需复杂的映射表，代码更清晰
 
-* 热插拔策略
+* 固定集合约束
 
-**显示器变化时自动重启 WM**：
+以下集合一经 bootstrap 确定，运行时不再增删或重建：
 
-当检测到显示器配置变化（新增/删除/几何改变）时，最简单且可靠的方案是重启整个窗口管理器。
+1. =outputs=
+2. =workspaces=
+3. =layout registry=
+4. 每个 workspace 的 =available_layouts=
 
-理由：
-1. 逻辑简单：无需处理复杂的运行时重配置
-2. 状态一致：避免重配置后的不一致状态
-3. 实现成本低：不需要增量更新逻辑
-4. 可靠性高：从干净状态启动，避免边界情况
+运行时允许变化的只是：
 
-实现方式：
-- 后端检测到 RandR/Output 变化时，退出主循环
-- 由启动脚本（如 systemd user service 或 .xinitrc）自动重启 WM
-- WM 重启前保存必要状态（如当前工作区），启动后恢复
-
-对用户影响：
-- 显示器拔插时窗口会短暂闪烁（~1-2 秒）
-- 但比复杂的增量逻辑更可靠，符合"简单优先"原则
+1. 某个 output 当前显示的 =current_workspace_id=
+2. 某个 workspace 当前选中的 =layout_id=
+3. 窗口集合及窗口运行态
 
 * 非核心但常见的服务
 
@@ -108,6 +103,7 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 为了避免再次出现当前全局 =wm= 那样的大对象耦合，最小核心里的所有权再收紧一层：
 
 1. =runtime= 拥有 =state= 、=plan= 、=command_buffer= 和 =layout_registry= 。
+   其中 workspace/output/layout registry 集合在 init 完成后保持固定。
 2. =runtime= 也拥有 =policy config= 、全局边框配置、交互态和服务注册表。
 3. =backend= 只负责平台事件翻译和平台副作用，不拥有控制状态，不直接拼 bar。
 4. 窗口元数据（title/app_id/class/instance）直接存储在 =wm_window_t= 中，与控制状态一同管理。
@@ -130,14 +126,20 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 
 4. 输出在启动时扫描并分配对应数量的数组，运行时不再增删。
 
+5. layout registry 在启动时注册完成，运行时不再增删。
+
 * 显示器热插拔策略
 
 当检测到显示器配置变化（新增/删除/几何改变）时：
 
-1. 后端检测到 RandR/Output 变化，发送 =WM_EVENT_QUIT= 给 runtime
+1. 后端检测到 RandR/Output 变化，使 =backend.next_event()= 返回 =WM_BACKEND_NEXT_RESTART_REQUIRED=
 2. Runtime 退出主循环，清理资源
 3. 由启动脚本（systemd/xinitrc）自动重启 WM
 4. WM 重启后重新扫描显示器配置，从干净状态启动
+
+注意：
+- core 不处理 =output changed/removed= 这类增量事件
+- core 内不存在运行时增删 output/workspace/layout 集合的命令
 
 **优势**：
 - ✅ 逻辑简单，无需复杂的运行时重配置
@@ -150,7 +152,7 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 
 * Workspace-Output 配置
 
-工作区在启动时根据输出数量动态配置，固定归属到特定输出：
+工作区配置可以在启动阶段根据输出数量生成；一旦 bootstrap 完成，归属关系保持固定：
 
 **配置方式 1：手动指定**
 ```lua
@@ -171,7 +173,7 @@ workspace_distribution = {
 }
 ```
 
-**配置方式 3：脚本式**
+**配置方式 3：启动阶段脚本生成**
 ```lua
 function configure_workspaces(outputs)
   local workspaces = {}
@@ -193,9 +195,10 @@ end
 ```
 
 **可见性规则**：
-- 窗口仅在归属的 output 上可见
-- 窗口可见 iff：窗口的 workspace 是该 output 的当前显示 workspace
-- 切换 workspace 只影响归属的 output
+- 普通非 =sticky= 窗口是否进入可见集，先看它的 =workspace= 是否正被归属 output 选中
+- 多输出下，窗口最终是否出现在某个 output 上，还取决于 =frame_rect= 是否与该 output 的几何相交
+- =sticky= 窗口只放宽 workspace 可见性，不提供 output 复制语义；它同样按最终矩形与 output 的相交关系决定可见性
+- 切换 workspace 只改变归属 output 的 =current_workspace_id= ，不改变 workspace/output 的固定绑定
 
 * 策略配置
 
@@ -283,9 +286,9 @@ move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继
 核心算法不应依赖此字段。
 
 8. =workspace layouts=
-每个 workspace 维护一个可用布局列表（=available_layouts=），在启动时根据配置分配，运行时固定。
-workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个）。
-使用 =CYCLE_LAYOUT= 命令在可用布局间循环切换。
+每个 workspace 维护一个可用布局列表（=available_layouts=），在启动时根据配置分配，之后固定不变。
+workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个），运行时允许切换。
+使用 =CYCLE_LAYOUT= / =SET_LAYOUT= 命令切换当前活动布局。
 
 9. =window rectangles=
 =frame_rect= 是窗口当前最终外框矩形；=float_rect= 是 floating 模式下记忆的外框矩形。
@@ -306,7 +309,7 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 11. layout 的 =symbol= 字段用于状态栏显示，应为 1-2 个字符的简短标识符（如 "T", "M"）；=name= 应保持稳定、可读（如 "tile", "monocle"）。
 12. 窗口标题、类名等元数据存储在 =wm_window_t= 中，与控制状态一同管理。
 13. 工作区名称存储在 =wm_workspace_t= 中，核心算法不应依赖此字段。
-14. 每个 workspace 的可用布局列表在启动时分配，运行时固定，只能通过 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令切换当前活动布局。
+14. 每个 workspace 的可用布局列表在启动时分配，之后固定不变；运行时只允许通过 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令切换当前活动布局。
 15. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
 16. =border_width= 不是 =wm_window_t= 真状态；它由 runtime 从全局配置和几何模式推导。
 
@@ -334,16 +337,19 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 7. 将 render 失效通知发送给服务层
 8. =backend.flush()=
 
+若后端发现显示器配置变化，不进入 output 增量更新分支，而是让 =backend.next_event()=
+返回 =WM_BACKEND_NEXT_RESTART_REQUIRED= ，由外层退出并整机重启。
+
 * 文件说明
 
 1. =wm_types.h=
 通用标量类型、矩形、窗口几何模式和策略枚举。
 
 2. =wm_state.h=
-全局状态容器，完全封装的内部实现，提供统一的访问 API。
+全局状态容器；当前草案同时保留公开字段和统一访问 API，便于先把语义定清楚。
 
 3. =wm_event.h=
-统一后的运行时事件。
+统一后的 runtime 输入事件；不承载 stop/restart 这类控制信号。
 
 4. =wm_command.h=
 强类型语义命令。

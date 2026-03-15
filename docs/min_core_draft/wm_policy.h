@@ -4,6 +4,7 @@
 #include "wm_event.h"
 #include "wm_layout.h"
 #include "wm_plan.h"
+#include "wm_policy_config.h"
 #include "wm_state.h"
 
 typedef struct wm_command_buffer_t {
@@ -22,5 +23,6 @@ bool wm_policy_route_event(const wm_state_t *state, const wm_event_t *event,
                            wm_command_buffer_t *out);
 
 bool wm_policy_apply_command(wm_state_t *state,
+                             const wm_policy_config_t *policy,
                              const wm_layout_registry_t *layouts,
                              const wm_command_t *command, wm_plan_t *plan);

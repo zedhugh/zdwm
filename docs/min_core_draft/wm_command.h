@@ -14,8 +14,6 @@ typedef enum wm_command_type_t {
   WM_COMMAND_NONE,
   WM_COMMAND_MANAGE_WINDOW,
   WM_COMMAND_UNMANAGE_WINDOW,
-  WM_COMMAND_UPSERT_OUTPUT,
-  WM_COMMAND_REMOVE_OUTPUT,
   WM_COMMAND_FOCUS_WINDOW,
   WM_COMMAND_FOCUS_DIRECTION,
   WM_COMMAND_RAISE_WINDOW,
@@ -50,17 +48,6 @@ typedef struct wm_command_t {
     struct {
       wm_window_id_t window_id;
     } unmanage_window;
-
-    struct {
-      wm_output_id_t output_id;
-      wm_rect_t geometry;
-      wm_rect_t workarea;
-      wm_workspace_id_t initial_workspace_id;
-    } upsert_output;
-
-    struct {
-      wm_output_id_t output_id;
-    } remove_output;
 
     struct {
       wm_window_id_t window_id;
