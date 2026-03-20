@@ -1,5 +1,6 @@
 #pragma once
 
+#include "wm_binding.h"
 #include "wm_backend.h"
 #include "wm_layout.h"
 #include "wm_plan.h"
@@ -22,6 +23,11 @@ typedef struct wm_interaction_state_t {
   wm_point_t pointer_origin;
   wm_rect_t window_origin_rect;
 } wm_interaction_state_t;
+
+typedef struct wm_border_palette_t {
+  wm_rgba32_t normal_rgba;
+  wm_rgba32_t focused_rgba;
+} wm_border_palette_t;
 
 typedef struct wm_runtime_bootstrap_t {
   /*
@@ -56,12 +62,32 @@ typedef struct wm_runtime_bootstrap_t {
   wm_policy_config_t policy;
 
   /*
+   * 不可变键盘绑定表。
+   * 当前草案把它视为 bootstrap 提供的只读视图；items 的生命周期必须覆盖 runtime。
+   */
+  wm_key_binding_table_t keybindings;
+
+  /*
+   * 不可变鼠标按键绑定表。
+   * bar / status 点击属于核心外服务，因此这里只覆盖 root / window 目标。
+   */
+  wm_pointer_binding_table_t pointer_bindings;
+
+  /*
    * 全局统一边框宽度。
    * 它不是窗口真状态。runtime 在提交 configure effect 时：
    * - fullscreen -> 0
    * - 其余模式 -> border_width
    */
   uint16_t border_width;
+
+  /*
+   * 全局边框颜色配置。
+   * 它不是窗口真状态。runtime 在提交 configure effect 时根据当前焦点关系解析：
+   * - 当前 workspace 的 focused window -> focused_rgba
+   * - 其余窗口 -> normal_rgba
+   */
+  wm_border_palette_t border_palette;
 
   /*
    * Existing windows discovered during startup should be translated into these
@@ -80,7 +106,10 @@ typedef struct wm_runtime_t {
   wm_command_buffer_t command_buffer;
   wm_layout_registry_t layouts;
   wm_policy_config_t policy;
+  wm_key_binding_table_t keybindings;
+  wm_pointer_binding_table_t pointer_bindings;
   uint16_t border_width;
+  wm_border_palette_t border_palette;
   wm_interaction_state_t interaction;
   wm_backend_t backend;
   wm_service_registry_t services;

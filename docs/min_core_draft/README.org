@@ -14,17 +14,24 @@
 负责主循环、模块装配和固定执行顺序。
 
 2. =backend=
-负责平台交互。它把平台原始事件转成 =wm_event_t= ，并执行 =wm_effect_t= 。
+负责平台交互。它把平台原始事件转成 =wm_event_t= ，执行 =wm_effect_t= ，
+并在需要时根据固定的键盘/鼠标绑定表安装平台侧被动抓键 / 抓按钮。
+像 X11 的 =_NET_ACTIVE_WINDOW= 这类 =ClientMessage= 也应在这里先归一化成
+request event，而不是直接改 core 状态。
 
 3. =state=
 负责保存窗口、工作区、输出和全局堆叠顺序，是唯一真状态。
 当前头文件级草案先直接展示结构体字段，便于讨论；
 实现阶段再收敛为不透明结构体也不迟。
 窗口元数据（title/app_id/class/instance）直接存储在 =wm_window_t= 中。
+窗口 hint / capability（如 =urgent= / =fixed_size= / =skip_taskbar=）也直接存储在
+=wm_window_t= 中。
 工作区名称存储在 =wm_workspace_t= 中。
 
 4. =policy=
 负责把事件路由为命令，并把命令应用到状态。
+=WM_EVENT_KEY_PRESS= / =WM_EVENT_POINTER_BUTTON_PRESS= 的路由都使用 bootstrap
+固定下来的输入绑定表。
 
 5. =layout=
 负责为某个输出上当前显示的工作区中的平铺窗口计算外框几何。
@@ -74,6 +81,8 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 2. =workspaces=
 3. =layout registry=
 4. 每个 workspace 的 =available_layouts=
+5. =key binding table=
+6. =pointer binding table=
 
 运行时允许变化的只是：
 
@@ -104,7 +113,8 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
 
 1. =runtime= 拥有 =state= 、=plan= 、=command_buffer= 和 =layout_registry= 。
    其中 workspace/output/layout registry 集合在 init 完成后保持固定。
-2. =runtime= 也拥有 =policy config= 、全局边框配置、交互态和服务注册表。
+2. =runtime= 也拥有 =policy config= 、键盘/鼠标绑定表视图、全局边框配置、
+   交互态和服务注册表。
 3. =backend= 只负责平台事件翻译和平台副作用，不拥有控制状态，不直接拼 bar。
 4. 窗口元数据（title/app_id/class/instance）直接存储在 =wm_window_t= 中，与控制状态一同管理。
 5. 工作区名称存储在 =wm_workspace_t= 中，与控制状态一同管理。
@@ -117,16 +127,23 @@ const wm_window_t *win = wm_state_window_get(state, window_id);  // O(n)
    - 工作区数量和初始配置（由用户配置决定）
    - 布局算法注册（由代码或配置决定）
    - 策略配置（focus_raises 等）
+   - 键盘绑定表（规范化的 =keysym + modifiers -> wm_command_t= 模板）
+   - 鼠标按键绑定表（规范化的 =button + modifiers + target -> wm_command_t= 模板）
    - 全局统一边框宽度
+   - 全局边框颜色集（普通/焦点）
    - 初始命令（如启动时扫描到的窗口）
 
 2. 启动时扫描到的已有窗口，不直接塞进 =wm_state_t= ，而是翻译成一批 =MANAGE_WINDOW= 命令进入 runtime。
 
-3. 工作区在启动时根据配置分配 N 个，运行时不再增删。
+3. 若 backend 提供 =set_keybindings()= / =set_pointer_bindings()= ，runtime
+   在 init 时把 bootstrap 里的绑定表同步给 backend，供平台侧建立被动抓键 /
+   抓按钮。
 
-4. 输出在启动时扫描并分配对应数量的数组，运行时不再增删。
+4. 工作区在启动时根据配置分配 N 个，运行时不再增删。
 
-5. layout registry 在启动时注册完成，运行时不再增删。
+5. 输出在启动时扫描并分配对应数量的数组，运行时不再增删。
+
+6. layout registry 在启动时注册完成，运行时不再增删。
 
 * 显示器热插拔策略
 
@@ -223,12 +240,17 @@ sticky 窗口是否参与方向焦点搜索。
 
 当前最小核心只保留窗口边框，不支持标题栏和其他窗口装饰。
 
-1. =wm_window_t= 不存储 =border_width= ；边框宽度不是窗口真状态。
+1. =wm_window_t= 不存储 =border_width= 或 =border_color= ；边框样式不是窗口真状态。
 2. =wm_runtime_bootstrap_t.border_width= 提供全局统一边框宽度。
-3. =float_rect= 和 =frame_rect= 都表示“包含边框后的外框矩形”。
-4. =runtime= 在提交 =WM_EFFECT_CONFIGURE_WINDOW= 时解析有效边框宽度：
+3. =wm_runtime_bootstrap_t.border_palette= 提供全局边框颜色集（普通/焦点）。
+4. =float_rect= 和 =frame_rect= 都表示“包含边框后的外框矩形”。
+5. =runtime= 在提交 =WM_EFFECT_CONFIGURE_WINDOW= 时解析有效边框宽度：
    - =WM_GEOMETRY_FULLSCREEN= : 边框宽度为 0
    - 其余模式 : 使用全局边框宽度
+6. =runtime= 在提交 =WM_EFFECT_CONFIGURE_WINDOW= 时解析有效边框颜色：
+   - 当前 workspace 的 focused window : =border_palette.focused_rgba=
+   - 其余窗口 : =border_palette.normal_rgba=
+   - 若有效边框宽度为 0，则 backend 可忽略颜色字段
 
 * 交互态
 
@@ -253,10 +275,18 @@ move/resize 这类拖拽交互不属于 =wm_state_t= 真状态，但也不能继
 
 =config= 仍然在核心外，但它的输出必须改成 core-native 数据，而不是旧的 =client_t/tag_t= 钩子：
 
-1. 配置加载结果应产出 workspace 描述、policy 配置、layout 注册、规则表、快捷键到 command 的映射和服务设置。
-   以及全局统一边框宽度。
+1. 配置加载结果应产出 workspace 描述、policy 配置、layout 注册、规则表、
+   键盘/鼠标绑定到 command 的映射和服务设置。
+   以及全局统一边框宽度和边框颜色集。
+   这里的输入绑定应直接收敛为 =wm_key_binding_table_t= /
+   =wm_pointer_binding_table_t= 。
 2. 配置层不得直接持有 =client_t= 、=tag_t= 或直接修改 =wm_state_t= 。
 3. 配置重载的边界是“重建 bootstrap 和服务配置，再显式应用到 runtime”，而不是任意时刻从外部写内存。
+
+补充约定：
+
+1. 鼠标绑定在最小核心里只区分 =root= / =window= 两类目标。
+2. 状态栏、标签栏、任务栏等点击区域属于核心外服务，不进入 core 的 pointer binding 表。
 
 * 对象关系
 
@@ -300,7 +330,8 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 2. 每个工作区必须且只能固定归属一个输出，运行时不再改变。
 3. 每个输出必须且只能显示一个当前工作区（从归属的工作区中选择）。
 4. 可见性由窗口归属、工作区归属、输出当前工作区和最小化状态共同推导。
-5. =geometry_mode= 只负责几何模式，不负责 z-order。
+5. =geometry_mode= 只负责几何模式，不负责 z-order；其中
+   =WM_GEOMETRY_MINIMIZED= 统一覆盖 X11 =IconicState= 这类“最小化/图标化”状态。
 6. =stack_order[]= 只负责 z-order，不负责几何模式。
 7. =floating= 是二值状态：窗口要么由 layout 决定基础几何，要么由 =float_rect= 决定基础几何。
 8. =sticky => floating= ；=sticky= 只放宽 workspace 可见性，不改变窗口归属工作区。
@@ -311,7 +342,8 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 13. 工作区名称存储在 =wm_workspace_t= 中，核心算法不应依赖此字段。
 14. 每个 workspace 的可用布局列表在启动时分配，之后固定不变；运行时只允许通过 =CYCLE_LAYOUT= 或 =SET_LAYOUT= 命令切换当前活动布局。
 15. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
-16. =border_width= 不是 =wm_window_t= 真状态；它由 runtime 从全局配置和几何模式推导。
+16. =border_width= / =border_color= 都不是 =wm_window_t= 真状态；它们由 runtime
+    从全局配置、几何模式和焦点关系推导。
 
 * Generation 字段
 
@@ -332,7 +364,8 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 2. runtime 先处理窗口元数据更新这类辅助事件，并直接更新 =wm_window_t= 中的元数据字段
 3. =policy.route_event()=
 4. =policy.apply_command()=
-5. 根据 =dirty_flags= 决定是否重新运行 =layout= 、解析最终外框矩形，并补全 =configure= effect 的边框宽度
+5. 根据 =dirty_flags= 决定是否重新运行 =layout= 、解析最终外框矩形，并补全
+   =configure= effect 的边框宽度和边框颜色
 6. 将平台 effect 发送给 =backend=
 7. 将 render 失效通知发送给服务层
 8. =backend.flush()=
@@ -350,50 +383,57 @@ workspace 的 =layout_id= 字段指向当前活动的布局（列表中的一个
 
 3. =wm_event.h=
 统一后的 runtime 输入事件；不承载 stop/restart 这类控制信号。
+像 =_NET_ACTIVE_WINDOW= 这类平台协议请求，也应在这一层归一化为独立的
+request event。
+客户端 property / hint 变化（如 =urgent= / =fixed_size= / =skip_taskbar=）也应在
+这一层归一化为辅助事件，而不是伪装成 configure request。
 
-4. =wm_command.h=
+4. =wm_binding.h=
+=WM_EVENT_KEY_PRESS= / =WM_EVENT_POINTER_BUTTON_PRESS= 使用的输入绑定表和匹配规则。
+
+5. =wm_command.h=
 强类型语义命令。
 命令语义补充见 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] ；
 =sticky= 多显示器与跨屏行为补充见 [[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]] 。
 
-5. =wm_plan.h=
+6. =wm_plan.h=
 脏标记和后端副作用。
 
-6. =wm_layout.h=
+7. =wm_layout.h=
 布局注册表、布局输入和布局输出。
 
-7. =wm_backend.h=
+8. =wm_backend.h=
 后端子系统接口。
 
-8. =wm_policy_config.h=
+9. =wm_policy_config.h=
 显式策略开关，替代散落在文档正文里的"可选策略"。
 
-9. =wm_policy.h=
+10. =wm_policy.h=
 事件路由和命令应用接口。
 
-10. =wm_runtime.h=
+11. =wm_runtime.h=
 运行时上下文和生命周期接口。
 
-11. =wm_service.h=
+12. =wm_service.h=
 核心外服务的注册和事件订阅接口。
 
-12. [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]]
+13. [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]]
 关键命令的前置条件、状态转移、可见性和副作用规则。
 
-13. [[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]]
+14. [[file:WM_STICKY_WINDOW_RULES.org][WM_STICKY_WINDOW_RULES.org]]
 =sticky= 窗口在 workspace、taskbar、多显示器和跨 output 拖动下的补充规则。
 
-14. [[file:WM_POLICY_APPLY_COMMAND_SKELETON.org][WM_POLICY_APPLY_COMMAND_SKELETON.org]]
+15. [[file:WM_POLICY_APPLY_COMMAND_SKELETON.org][WM_POLICY_APPLY_COMMAND_SKELETON.org]]
 =wm_policy_apply_command()= 的伪代码骨架和实现顺序建议。
 
-15. [[file:WORKSPACE_CONFIG_EXAMPLES.org][WORKSPACE_CONFIG_EXAMPLES.org]]
+16. [[file:WORKSPACE_CONFIG_EXAMPLES.org][WORKSPACE_CONFIG_EXAMPLES.org]]
 Workspace-Output 配置示例和最佳实践。
 
 * 下一步实施顺序
 
 当前阶段不建议继续扩展抽象，应该开始把最小核心草案落成可运行骨架。推荐顺序如下：
 
-1. 在 =src/core/= 下建立最小骨架，至少放 =wm_types/state/plan/layout/policy/policy_config/runtime/service= 的头文件和空实现，先不要替换现有 =src/= 逻辑。
+1. 在 =src/core/= 下建立最小骨架，至少放 =wm_types/binding/state/plan/layout/policy/policy_config/runtime/service= 的头文件和空实现，先不要替换现有 =src/= 逻辑。
 
 2. 优先实现 =state + query + plan= 这一层，把动态数组管理、=find_*= 查询函数和 =stack_order[]= 操作补齐。
 
@@ -404,11 +444,15 @@ Workspace-Output 配置示例和最佳实践。
    =SET_LAYOUT=
    =CYCLE_LAYOUT=
    =TOGGLE_FLOATING=
-   =TOGGLE_MAXIMIZE=
+   =SET_MAXIMIZED=
    =MOVE_FLOATING_WINDOW=
+   =BEGIN_MOVE_FLOATING_INTERACTION=
+   =BEGIN_RESIZE_FLOATING_INTERACTION=
 
 4. 给上述命令建立一个无 X11 依赖的测试入口，直接构造 =wm_command_t= ，检查 =wm_state_t= 和 =wm_plan_t= 的变化是否符合文档规则。
 
 5. 等 =event -> command -> state -> plan/effect= 这条链路跑通后，再编写一层很薄的 adapter，把现有事件翻译为 =wm_event_t= ，并把 effect 翻译回当前 X11 操作。
+   其中 fullscreen / maximize / minimize 这类平台请求，应先归一化为
+   =WM_EVENT_WINDOW_STATE_REQUEST= ，再由路由层翻译成 =SET_*= 命令。
 
 6. =status/render/bar= 暂时不要先动。它们属于核心外服务，应在最小核心链路稳定后再迁移。

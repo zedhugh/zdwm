@@ -21,8 +21,8 @@
    都是 bootstrap 后固定集合；运行时不允许增删。
 10. 文档里出现的可选行为，应优先固化到 =wm_policy_config_t= ，而不是继续留在 prose 里。
 11. =frame_rect= 和 =float_rect= 都表示包含边框后的外框矩形。
-12. =border_width= 不是 =wm_window_t= 真状态；runtime 在提交
-    =WM_EFFECT_CONFIGURE_WINDOW= 时按全局配置解析它。
+12. =border_width= / =border_color= 都不是 =wm_window_t= 真状态；runtime 在提交
+    =WM_EFFECT_CONFIGURE_WINDOW= 时按全局配置和焦点关系解析它们。
 
 * 管理类命令
 
@@ -82,6 +82,11 @@
 
 1. 若 =policy.focus_raises == true= ，则在实现中额外执行 =raise_window= 逻辑。
 
+副作用：
+
+1. =WM_DIRTY_DECORATION=
+2. =WM_DIRTY_RENDER=
+
 ** =WM_COMMAND_FOCUS_DIRECTION=
 
 状态变化：
@@ -89,6 +94,23 @@
 1. 只在目标 =output_id= 当前显示的 workspace 内选择焦点。
 2. 候选窗口应排除 =geometry_mode == WM_GEOMETRY_MINIMIZED= 的窗口。
 3. =sticky= 窗口是否参与方向焦点切换，由 =policy.sticky_windows_participate_in_direction_focus= 决定。
+
+副作用：
+
+1. =WM_DIRTY_DECORATION=
+2. =WM_DIRTY_RENDER=
+
+** =WM_COMMAND_SET_WINDOW_URGENT=
+
+状态变化：
+
+1. 将目标窗口的 =urgent= 设为命令给定值。
+2. 不修改 =focused_window_id= 。
+3. 不修改 =stack_order[]= 。
+
+副作用：
+
+1. =WM_DIRTY_RENDER=
 
 ** =WM_COMMAND_RAISE_WINDOW=
 
@@ -259,57 +281,60 @@
 1. =WM_DIRTY_LAYOUT=
 2. =WM_DIRTY_RENDER=
 
-** =WM_COMMAND_TOGGLE_MAXIMIZE=
+** =WM_COMMAND_SET_MAXIMIZED=
 
 状态变化：
 
-1. 若当前 =geometry_mode == WM_GEOMETRY_MAXIMIZED= ：
+1. 若 =enabled == true= 且当前 =geometry_mode != WM_GEOMETRY_MAXIMIZED= ：
+   将 =geometry_mode= 设为 =WM_GEOMETRY_MAXIMIZED= 。
+   这会覆盖此前的 =FULLSCREEN= / =MINIMIZED= 状态。
+2. 若 =enabled == false= 且当前 =geometry_mode == WM_GEOMETRY_MAXIMIZED= ：
    设回 =WM_GEOMETRY_NORMAL= 。
-2. 若当前 =geometry_mode == WM_GEOMETRY_FULLSCREEN= ：
-   直接切换为 =WM_GEOMETRY_MAXIMIZED= 。
-3. 若当前 =geometry_mode == WM_GEOMETRY_MINIMIZED= ：
-   直接切换为 =WM_GEOMETRY_MAXIMIZED= 。
-4. 其余情况：
-   设为 =WM_GEOMETRY_MAXIMIZED= 。
-5. 不改变 =floating= 。
-6. 若窗口原本是 floating，退出 maximize 后回到 =float_rect= 。
-7. 若窗口原本不是 floating，退出 maximize 后重新参与 layout。
-8. maximize 不改变全局边框策略；有效边框宽度仍由 runtime 统一解析。
+3. 其余情况不产生状态变化。
+4. 不改变 =floating= 。
+5. 若窗口原本是 floating，退出 maximize 后回到 =float_rect= 。
+6. 若窗口原本不是 floating，退出 maximize 后重新参与 layout。
+7. maximize 不改变全局边框策略；有效边框宽度仍由 runtime 统一解析。
 
 副作用：
 
 1. =WM_DIRTY_LAYOUT=
 2. =WM_DIRTY_RENDER=
 
-** =WM_COMMAND_TOGGLE_FULLSCREEN=
+** =WM_COMMAND_SET_FULLSCREEN=
 
 状态变化：
 
-1. 若当前 =geometry_mode == WM_GEOMETRY_FULLSCREEN= ：
+1. 若 =enabled == true= 且当前 =geometry_mode != WM_GEOMETRY_FULLSCREEN= ：
+   将 =geometry_mode= 设为 =WM_GEOMETRY_FULLSCREEN= 。
+   这会覆盖此前的 =MAXIMIZED= / =MINIMIZED= 状态。
+2. 若 =enabled == false= 且当前 =geometry_mode == WM_GEOMETRY_FULLSCREEN= ：
    设回 =WM_GEOMETRY_NORMAL= 。
-2. 否则：
-   设为 =WM_GEOMETRY_FULLSCREEN= 。
-3. 不改变 =floating= 。
-4. fullscreen 只决定几何占用 =output.geometry= ，不自动改变 =stack_order[]= 。
-5. fullscreen 的有效边框宽度由 runtime 解析为 0 。
+3. 其余情况不产生状态变化。
+4. 不改变 =floating= 。
+5. fullscreen 只决定几何占用 =output.geometry= ，不自动改变 =stack_order[]= 。
+6. fullscreen 的有效边框宽度由 runtime 解析为 0 。
 
 副作用：
 
 1. =WM_DIRTY_LAYOUT=
 2. =WM_DIRTY_RENDER=
 
-** =WM_COMMAND_TOGGLE_MINIMIZE=
+** =WM_COMMAND_SET_MINIMIZED=
 
 状态变化：
 
-1. 若当前 =geometry_mode == WM_GEOMETRY_MINIMIZED= ：
+1. 若 =enabled == true= 且当前 =geometry_mode != WM_GEOMETRY_MINIMIZED= ：
+   将 =geometry_mode= 设为 =WM_GEOMETRY_MINIMIZED= 。
+   在 X11 后端上，这同时覆盖 ICCCM =IconicState= / =WM_CHANGE_STATE(Iconic)=
+   语义；core 不单独建模 =iconic= 。
+2. 若 =enabled == false= 且当前 =geometry_mode == WM_GEOMETRY_MINIMIZED= ：
    设回 =WM_GEOMETRY_NORMAL= 。
-2. 否则：
-   设为 =WM_GEOMETRY_MINIMIZED= 。
-3. 不改变 =floating= 。
-4. 不改变 =sticky= 。
-5. minimized 后窗口不再参与显示和焦点候选。
-6. 若目标窗口是当前焦点，是否清空或重选焦点由 =policy.minimize_clears_focus= 决定。
+3. 其余情况不产生状态变化。
+4. 不改变 =floating= 。
+5. 不改变 =sticky= 。
+6. minimized 后窗口不再参与显示和焦点候选。
+7. 若本次将目标窗口切入 minimized，且它正是当前焦点，是否清空或重选焦点由 =policy.minimize_clears_focus= 决定。
 
 副作用：
 
@@ -363,15 +388,19 @@
 
 * 边框约定
 
-1. 当前最小核心只支持全局统一边框，不支持每窗口边框宽度。
+1. 当前最小核心只支持全局统一边框宽度和全局边框颜色集，不支持每窗口独立配置。
 2. 全局边框宽度由 =wm_runtime_bootstrap_t.border_width= 提供。
-3. =layout= 和 =floating= 都产出包含边框后的外框矩形。
-4. =WM_EFFECT_CONFIGURE_WINDOW.rect= 也是外框矩形。
-5. runtime 在把最终矩形转成 =configure= effect 时解析有效边框宽度：
+3. 全局边框颜色由 =wm_runtime_bootstrap_t.border_palette= 提供。
+4. =layout= 和 =floating= 都产出包含边框后的外框矩形。
+5. =WM_EFFECT_CONFIGURE_WINDOW.rect= 也是外框矩形。
+6. runtime 在把最终矩形转成 =configure= effect 时解析有效边框宽度：
    =WM_GEOMETRY_FULLSCREEN= -> 0
    其余模式 -> 全局边框宽度
+7. runtime 在把最终矩形转成 =configure= effect 时解析有效边框颜色：
+   focused window -> =border_palette.focused_rgba=
+   其余窗口 -> =border_palette.normal_rgba=
 
-* redraw 和 quit
+* redraw 和 runtime 控制命令
 
 ** =WM_COMMAND_REDRAW=
 
@@ -388,6 +417,43 @@
 状态变化：
 
 1. 不再接收新事件，交由 =runtime= 退出主循环。
+
+副作用：
+
+1. 不产生 =wm_plan_t= 平台 effect。
+
+** =WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION=
+
+状态变化：
+
+1. 不修改 =wm_state_t= 。
+2. 由 =runtime= 在命令应用外层拦截，并把 =interaction.mode= 设为
+   =WM_INTERACTION_MOVE_FLOATING= 。
+3. 只有当当前事件是 =WM_EVENT_POINTER_BUTTON_PRESS= 、目标窗口存在，且窗口
+   满足 =floating == true= 时，交互才真正开始。
+
+副作用：
+
+1. 不产生 =wm_plan_t= 平台 effect。
+
+** =WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION=
+
+状态变化：
+
+1. 不修改 =wm_state_t= 。
+2. 由 =runtime= 在命令应用外层拦截，并把 =interaction.mode= 设为
+   =WM_INTERACTION_RESIZE_FLOATING= 。
+3. 只有当当前事件是 =WM_EVENT_POINTER_BUTTON_PRESS= 、目标窗口存在，且窗口
+   满足 =floating == true= 时，交互才真正开始。
+
+副作用：
+
+1. 不产生 =wm_plan_t= 平台 effect。
+
+补充约定：
+
+1. =WM_COMMAND_QUIT= / =WM_COMMAND_BEGIN_*_INTERACTION= 属于 runtime control commands。
+2. 它们应在 =wm_policy_apply_command()= 外层被 =runtime= 拦截，而不是走状态写入分支。
 
 * 可见性推导建议
 

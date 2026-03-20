@@ -8,7 +8,9 @@ typedef enum wm_dirty_flags_t {
   WM_DIRTY_LAYOUT = 1u << 1,
   WM_DIRTY_STACK = 1u << 2,
   WM_DIRTY_OUTPUT = 1u << 3,
-  WM_DIRTY_RENDER = 1u << 4,
+  // 只影响窗口装饰，不改变 layout 结果；例如焦点切换导致边框颜色变化
+  WM_DIRTY_DECORATION = 1u << 4,
+  WM_DIRTY_RENDER = 1u << 5,
 } wm_dirty_flags_t;
 
 typedef enum wm_effect_type_t {
@@ -36,6 +38,7 @@ typedef struct wm_effect_t {
       wm_window_id_t window_id;
       wm_rect_t rect;      // 最终外框矩形（包含边框）
       uint16_t border_width;  // runtime 解析出的有效边框宽度
+      wm_rgba32_t border_rgba;  // runtime 解析出的有效边框颜色
     } configure_window;
 
     struct {

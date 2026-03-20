@@ -16,6 +16,7 @@ typedef struct wm_window_t {
   bool floating;
   bool sticky;
   bool urgent;
+  bool fixed_size;
 
   // 几何信息（均为包含边框后的外框矩形）
   wm_rect_t float_rect;   // floating 模式下记忆的外框矩形
@@ -164,6 +165,9 @@ void wm_state_window_set_sticky(wm_state_t *state, wm_window_id_t window_id,
                                 bool sticky);
 void wm_state_window_set_urgent(wm_state_t *state, wm_window_id_t window_id,
                                 bool urgent);
+void wm_state_window_set_fixed_size(wm_state_t *state,
+                                    wm_window_id_t window_id,
+                                    bool fixed_size);
 void wm_state_window_set_skip_taskbar(wm_state_t *state,
                                       wm_window_id_t window_id,
                                       bool skip_taskbar);

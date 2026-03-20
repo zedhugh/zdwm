@@ -23,6 +23,11 @@ typedef uint32_t wm_time_ms_t;
  */
 typedef uint32_t wm_keysym_t;
 typedef uint32_t wm_modifier_mask_t;
+/*
+ * 通用 32-bit RGBA 颜色值，编码为 0xRRGGBBAA。
+ * backend 若不支持 alpha，可忽略最低 8 bit 或在提交平台 effect 时自行量化。
+ */
+typedef uint32_t wm_rgba32_t;
 
 // 无效 ID 标记
 #define WM_WINDOW_ID_INVALID     ((wm_window_id_t)0)
@@ -74,6 +79,14 @@ typedef struct wm_rect_t {
   int32_t height;
 } wm_rect_t;
 
+/*
+ * 核心统一使用 geometry_mode 表示窗口的显示几何模式。
+ * 其中 WM_GEOMETRY_MINIMIZED 覆盖所有“被最小化/被图标化”的不可见状态：
+ * - 在 X11 上，它对应 ICCCM 的 IconicState
+ * - 来自 WM_CHANGE_STATE(Iconic) 的请求也应折叠到这个模式
+ *
+ * 最小核心不单独暴露 "iconic" 枚举，避免与 minimized 形成两套并行语义。
+ */
 typedef enum wm_window_geometry_mode_t {
   WM_GEOMETRY_NORMAL,
   WM_GEOMETRY_MAXIMIZED,

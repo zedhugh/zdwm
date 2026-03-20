@@ -24,15 +24,21 @@ void wm_runtime_process_event(wm_runtime_t *runtime, const wm_event_t *event) {
 
     // 3. 常规事件路由
     if (!consumed) {
-        wm_policy_route_event(&runtime->state, event, &runtime->command_buffer);
+        wm_policy_route_event(
+            &runtime->state,
+            &runtime->keybindings,
+            &runtime->pointer_bindings,
+            event,
+            &runtime->command_buffer
+        );
     }
 
     // 4. 应用命令
     for (size_t i = 0; i < runtime->command_buffer.count; i++) {
         const wm_command_t *command = &runtime->command_buffer.items[i];
 
-        if (command->type == WM_COMMAND_QUIT) {
-            quit_requested = true;
+        if (runtime_handle_control_command(runtime, event, command,
+                                           &quit_requested)) {
             continue;
         }
 
@@ -52,6 +58,16 @@ void wm_runtime_process_event(wm_runtime_t *runtime, const wm_event_t *event) {
 }
 #+END_SRC
 
+这里的 runtime control command 至少包括：
+
+1. =WM_COMMAND_QUIT=
+2. =WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION=
+3. =WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION=
+
+=QUIT= 只修改 runtime 主循环状态；
+=BEGIN_*_INTERACTION= 只在当前事件是 =WM_EVENT_POINTER_BUTTON_PRESS= 且目标窗口
+有效时更新 =runtime->interaction= ，不进入 =wm_policy_apply_command()= 。
+
 * 辅助事件处理规则
 
 辅助事件直接更新 runtime 或广播给服务层，不经过命令系统：
@@ -59,7 +75,7 @@ void wm_runtime_process_event(wm_runtime_t *runtime, const wm_event_t *event) {
 #+BEGIN_SRC c
 static bool is_auxiliary_event(const wm_event_t *event) {
     return event->type == WM_EVENT_WINDOW_METADATA_CHANGED ||
-           event->type == WM_EVENT_STATUS_TICK;
+           event->type == WM_EVENT_WINDOW_HINTS_CHANGED;
 }
 
 static void runtime_handle_auxiliary_event(wm_runtime_t *runtime,
@@ -69,8 +85,8 @@ static void runtime_handle_auxiliary_event(wm_runtime_t *runtime,
             runtime_handle_metadata_event(runtime, event);
             return;
 
-        case WM_EVENT_STATUS_TICK:
-            runtime_handle_status_tick(runtime, event);
+        case WM_EVENT_WINDOW_HINTS_CHANGED:
+            runtime_handle_hints_event(runtime, event);
             return;
 
         default:
@@ -120,25 +136,46 @@ void runtime_handle_metadata_event(wm_runtime_t *runtime, const wm_event_t *even
 }
 #+END_SRC
 
-**=WM_EVENT_STATUS_TICK=**
+**=WM_EVENT_WINDOW_HINTS_CHANGED=**
 
-状态服务更新事件，也不经过命令系统：
+客户端属性 / hint 更新事件，也不经过命令系统：
 
 #+BEGIN_SRC c
-void runtime_handle_status_tick(wm_runtime_t *runtime, const wm_event_t *event) {
-    (void)event;
+void runtime_handle_hints_event(wm_runtime_t *runtime, const wm_event_t *event) {
+    const wm_window_hints_changed_event_t *e = &event->data.window_hints_changed;
+    const wm_window_t *win = wm_state_window_get(&runtime->state, e->window);
 
-    // 通知状态服务更新
-    wm_service_event_t service_event = {
-        .type = WM_SERVICE_EVENT_STATUS_TICK,
-    };
-    wm_service_registry_emit(&runtime->services, &service_event, &runtime->state);
+    if (!win) {
+        return;
+    }
+
+    if (e->changed_fields & WM_WINDOW_HINT_CHANGED_URGENT) {
+        wm_state_window_set_urgent(&runtime->state, e->window, e->urgent);
+    }
+    if (e->changed_fields & WM_WINDOW_HINT_CHANGED_FIXED_SIZE) {
+        wm_state_window_set_fixed_size(&runtime->state, e->window, e->fixed_size);
+        runtime->plan.dirty_flags |= WM_DIRTY_LAYOUT;
+    }
+    if (e->changed_fields & WM_WINDOW_HINT_CHANGED_SKIP_TASKBAR) {
+        wm_state_window_set_skip_taskbar(&runtime->state, e->window,
+                                         e->skip_taskbar);
+    }
+
+    runtime->plan.dirty_flags |= WM_DIRTY_RENDER;
 }
 #+END_SRC
 
-* 快捷键绑定系统
+这里的边界是：
 
-**配置格式**：
+1. `window hints changed` 不是 control request，不生成 command。
+2. `fixed_size` 属于 capability hint，不等同于 `floating`；
+   但当前最小实现允许 state setter 在 `fixed_size == true` 时派生出
+   `floating == true` 这种约束。
+3. `skip_taskbar` 主要影响核心外 taskbar/pager 服务的可见性过滤。
+
+* 输入绑定系统
+
+**键盘绑定配置格式**：
 
 #+BEGIN_SRC c
 // keybindings.conf
@@ -180,46 +217,141 @@ keybindings = [
 ]
 #+END_SRC
 
-**快捷键匹配优先级**：
+**鼠标按键绑定配置格式**：
+
+#+BEGIN_SRC c
+// pointer_bindings.conf
+pointer_bindings = [
+    {
+        // 点击窗口聚焦。window_id == INVALID 表示“使用当前点击的窗口”
+        button: "BUTTON1",
+        target: "window",
+        command: {
+            type: WM_COMMAND_FOCUS_WINDOW,
+            window_id: WM_WINDOW_ID_INVALID
+        }
+    },
+    {
+        // SUPER + 左键拖动 floating 窗口
+        button: "SUPER+BUTTON1",
+        target: "window",
+        command: {
+            type: WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION,
+            window_id: WM_WINDOW_ID_INVALID
+        }
+    },
+    {
+        // SUPER + 右键调整 floating 窗口大小
+        button: "SUPER+BUTTON3",
+        target: "window",
+        command: {
+            type: WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION,
+            window_id: WM_WINDOW_ID_INVALID
+        }
+    }
+]
+#+END_SRC
+
+**输入绑定匹配优先级**：
 
 1. 完全匹配（keysym + 所有 modifiers）
 2. 通配符匹配（keysym + 部分修饰符）
-3. 默认绑定（如 SUPER+1 切换到预设工作区）
 
 配置加载阶段应先把 =SUPER+m= 这类字符串解析成规范化按键组合。
 这里的 =keysym= 指规范化后的逻辑主键编码，不是平台原始扫描码：
 事件里的 =keycode= 只是保留 backend 的物理键位信息；
 常规绑定仍以 =keysym + modifiers= 为准。
+像 =SUPER+1= 这类行为也必须显式写成一条绑定，而不是由 core 内建生成。
+鼠标按键绑定只区分 =root= / =window= 两类命中目标，不覆盖 bar/status 点击区域。
 
 #+BEGIN_SRC c
-typedef struct keybinding_t {
+typedef enum wm_binding_match_mode_t {
+    WM_BINDING_MATCH_EXACT,
+    WM_BINDING_MATCH_ALLOW_EXTRA_MODIFIERS,
+} wm_binding_match_mode_t;
+
+typedef struct wm_key_binding_t {
     wm_keysym_t keysym;
     wm_modifier_mask_t modifiers;
-    wm_command_type_t command_type;
-} keybinding_t;
+    wm_binding_match_mode_t match_mode;
+    wm_command_t command;
+} wm_key_binding_t;
+
+typedef struct wm_key_binding_table_t {
+    const wm_key_binding_t *items;
+    size_t count;
+} wm_key_binding_table_t;
+
+typedef enum wm_pointer_binding_target_t {
+    WM_POINTER_BINDING_TARGET_ANY,
+    WM_POINTER_BINDING_TARGET_ROOT,
+    WM_POINTER_BINDING_TARGET_WINDOW,
+} wm_pointer_binding_target_t;
+
+typedef struct wm_pointer_binding_t {
+    wm_button_t button;
+    wm_modifier_mask_t modifiers;
+    wm_binding_match_mode_t match_mode;
+    wm_pointer_binding_target_t target;
+    wm_command_t command;
+} wm_pointer_binding_t;
+
+typedef struct wm_pointer_binding_table_t {
+    const wm_pointer_binding_t *items;
+    size_t count;
+} wm_pointer_binding_table_t;
 #+END_SRC
+
+绑定表属于 bootstrap 固定输入：
+
+#+BEGIN_SRC c
+typedef struct wm_runtime_bootstrap_t {
+    ...
+    wm_key_binding_table_t keybindings;
+    wm_pointer_binding_table_t pointer_bindings;
+    ...
+} wm_runtime_bootstrap_t;
+#+END_SRC
+
+若 backend 需要平台侧被动抓键 / 抓按钮，则通过
+=wm_backend_api_t.set_keybindings()= / =set_pointer_bindings()= 接收同一组表。
 
 **=wm_policy_route_event()= 实现**：
 
 #+BEGIN_SRC c
 bool wm_policy_route_event(const wm_state_t *state,
+                           const wm_key_binding_table_t *keybindings,
+                           const wm_pointer_binding_table_t *pointer_bindings,
                            const wm_event_t *event,
                            wm_command_buffer_t *out) {
     switch (event->type) {
         case WM_EVENT_KEY_PRESS:
-            return route_key_press(state, &event->data.key_press, out);
+            return route_key_press(state, keybindings,
+                                   &event->data.key_press, out);
 
         case WM_EVENT_POINTER_BUTTON_PRESS:
-            return route_pointer_press(state, &event->data.pointer_button_press, out);
+            return route_pointer_press(state, pointer_bindings,
+                                       &event->data.pointer_button_press, out);
 
         case WM_EVENT_WINDOW_MAP_REQUEST:
             return route_map_request(state, &event->data.window_map_request, out);
 
-        case WM_EVENT_WINDOW_UNMAP:
-            return route_unmap_notify(state, &event->data.window_unmap, out);
+        case WM_EVENT_WINDOW_REMOVE:
+            return route_window_remove(state, &event->data.window_remove, out);
 
-        case WM_EVENT_WINDOW_DESTROY:
-            return route_destroy_notify(state, &event->data.window_destroy, out);
+        case WM_EVENT_WINDOW_ACTIVATE_REQUEST:
+            return route_activate_request(
+                state,
+                &event->data.window_activate_request,
+                out
+            );
+
+        case WM_EVENT_WINDOW_STATE_REQUEST:
+            return route_window_state_request(
+                state,
+                &event->data.window_state_request,
+                out
+            );
 
         case WM_EVENT_CONFIGURE_REQUEST:
             return route_configure_request(state, &event->data.configure_request, out);
@@ -231,10 +363,12 @@ bool wm_policy_route_event(const wm_state_t *state,
 
 // 键盘事件路由
 static bool route_key_press(const wm_state_t *state,
+                            const wm_key_binding_table_t *keybindings,
                             const wm_key_press_event_t *e,
                             wm_command_buffer_t *out) {
-    // 1. 查找匹配的快捷键绑定
-    const keybinding_t *binding = keybinding_find(
+    // 1. 查找匹配的键盘绑定
+    const wm_key_binding_t *binding = wm_key_binding_find(
+        keybindings,
         e->keysym,
         e->modifiers
     );
@@ -243,13 +377,140 @@ static bool route_key_press(const wm_state_t *state,
         return false;  // 没有匹配的绑定
     }
 
-    // 2. 将绑定转换为命令
-    wm_command_t cmd = {
-        .type = binding->command_type,
-        // ... 填充命令参数
-    };
+    // 2. 直接复制绑定里的命令模板
+    return wm_command_buffer_push(out, binding->command);
+}
 
-    // 3. 添加到命令缓冲
+static bool resolve_pointer_window_target(wm_command_t *cmd,
+                                          wm_window_id_t event_window) {
+    switch (cmd->type) {
+        case WM_COMMAND_UNMANAGE_WINDOW:
+            if (cmd->as.unmanage_window.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.unmanage_window.window_id = event_window;
+            }
+            return cmd->as.unmanage_window.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_FOCUS_WINDOW:
+            if (cmd->as.focus_window.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.focus_window.window_id = event_window;
+            }
+            return cmd->as.focus_window.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_RAISE_WINDOW:
+            if (cmd->as.raise_window.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.raise_window.window_id = event_window;
+            }
+            return cmd->as.raise_window.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_LOWER_WINDOW:
+            if (cmd->as.lower_window.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.lower_window.window_id = event_window;
+            }
+            return cmd->as.lower_window.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_SEND_WINDOW_TO_WORKSPACE:
+            if (cmd->as.send_window_to_workspace.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.send_window_to_workspace.window_id = event_window;
+            }
+            return cmd->as.send_window_to_workspace.window_id !=
+                   WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_SEND_WINDOW_TO_OUTPUT:
+            if (cmd->as.send_window_to_output.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.send_window_to_output.window_id = event_window;
+            }
+            return cmd->as.send_window_to_output.window_id !=
+                   WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_TOGGLE_FLOATING:
+            if (cmd->as.toggle_floating.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.toggle_floating.window_id = event_window;
+            }
+            return cmd->as.toggle_floating.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_TOGGLE_STICKY:
+            if (cmd->as.toggle_sticky.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.toggle_sticky.window_id = event_window;
+            }
+            return cmd->as.toggle_sticky.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_SET_MAXIMIZED:
+            if (cmd->as.set_maximized.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.set_maximized.window_id = event_window;
+            }
+            return cmd->as.set_maximized.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_SET_FULLSCREEN:
+            if (cmd->as.set_fullscreen.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.set_fullscreen.window_id = event_window;
+            }
+            return cmd->as.set_fullscreen.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_SET_MINIMIZED:
+            if (cmd->as.set_minimized.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.set_minimized.window_id = event_window;
+            }
+            return cmd->as.set_minimized.window_id != WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_MOVE_FLOATING_WINDOW:
+            if (cmd->as.move_floating_window.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.move_floating_window.window_id = event_window;
+            }
+            return cmd->as.move_floating_window.window_id !=
+                   WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_RESIZE_FLOATING_WINDOW:
+            if (cmd->as.resize_floating_window.window_id == WM_WINDOW_ID_INVALID) {
+                cmd->as.resize_floating_window.window_id = event_window;
+            }
+            return cmd->as.resize_floating_window.window_id !=
+                   WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION:
+            if (cmd->as.begin_move_floating_interaction.window_id ==
+                WM_WINDOW_ID_INVALID) {
+                cmd->as.begin_move_floating_interaction.window_id = event_window;
+            }
+            return cmd->as.begin_move_floating_interaction.window_id !=
+                   WM_WINDOW_ID_INVALID;
+
+        case WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION:
+            if (cmd->as.begin_resize_floating_interaction.window_id ==
+                WM_WINDOW_ID_INVALID) {
+                cmd->as.begin_resize_floating_interaction.window_id = event_window;
+            }
+            return cmd->as.begin_resize_floating_interaction.window_id !=
+                   WM_WINDOW_ID_INVALID;
+
+        default:
+            return true;
+    }
+}
+
+static bool route_pointer_press(const wm_state_t *state,
+                                const wm_pointer_binding_table_t *pointer_bindings,
+                                const wm_pointer_button_event_t *e,
+                                wm_command_buffer_t *out) {
+    const wm_pointer_binding_t *binding = wm_pointer_binding_find(
+        pointer_bindings,
+        e->button,
+        e->modifiers,
+        e->window != WM_WINDOW_ID_INVALID
+    );
+
+    wm_command_t cmd;
+
+    (void)state;
+
+    if (!binding) {
+        return false;
+    }
+
+    cmd = binding->command;
+    if (!resolve_pointer_window_target(&cmd, e->window)) {
+        return false;
+    }
+
     return wm_command_buffer_push(out, cmd);
 }
 
@@ -258,7 +519,7 @@ static bool route_map_request(const wm_state_t *state,
                               const wm_window_map_request_event_t *e,
                               wm_command_buffer_t *out) {
     // 1. 检查窗口是否已存在
-    if (wm_state_window_get(state, e->window)) {
+    if (wm_state_window_get(state, e->info.id)) {
         return false;  // 窗口已管理，忽略
     }
 
@@ -266,14 +527,174 @@ static bool route_map_request(const wm_state_t *state,
     wm_command_t cmd = {
         .type = WM_COMMAND_MANAGE_WINDOW,
         .as.manage_window = {
-            .window_id = e->window,
-            // 应用规则确定初始状态
+            .window_id = e->info.id,
+            // route 层结合 e->info / transient_for / is_dialog
+            // 推导 initial_state、workspace_id 和初始 float_rect
         }
     };
 
     return wm_command_buffer_push(out, cmd);
 }
+
+static bool route_window_remove(const wm_state_t *state,
+                                const wm_window_remove_event_t *e,
+                                wm_command_buffer_t *out) {
+    if (!wm_state_window_get(state, e->window)) {
+        return false;
+    }
+
+    // 当前最小核心不区分 withdrawn / destroy，统一转成 unmanage。
+    (void)e->reason;
+
+    return wm_command_buffer_push(out, (wm_command_t){
+        .type = WM_COMMAND_UNMANAGE_WINDOW,
+        .as.unmanage_window = {
+            .window_id = e->window,
+        },
+    });
+}
+
+static bool route_activate_request(const wm_state_t *state,
+                                   const wm_window_activate_request_event_t *e,
+                                   wm_command_buffer_t *out) {
+    const wm_window_t *win = wm_state_window_get(state, e->window);
+    const wm_workspace_t *ws;
+    const wm_output_t *output;
+    wm_command_t cmd;
+
+    if (!win) {
+        return false;
+    }
+
+    if (e->source == WM_WINDOW_ACTIVATION_SOURCE_PAGER) {
+        ws = &state->workspaces[win->workspace_id];
+        output = &state->outputs[ws->output_id];
+
+        if (output->current_workspace_id != ws->id) {
+            cmd = (wm_command_t){
+                .type = WM_COMMAND_SWITCH_WORKSPACE,
+                .as.switch_workspace = {
+                    .output_id = output->id,
+                    .workspace_id = ws->id,
+                },
+            };
+            if (!wm_command_buffer_push(out, cmd)) {
+                return false;
+            }
+        }
+
+        cmd = (wm_command_t){
+            .type = WM_COMMAND_FOCUS_WINDOW,
+            .as.focus_window = {
+                .window_id = win->id,
+            },
+        };
+        return wm_command_buffer_push(out, cmd);
+    }
+
+    cmd = (wm_command_t){
+        .type = WM_COMMAND_SET_WINDOW_URGENT,
+        .as.set_window_urgent = {
+            .window_id = win->id,
+            .urgent = true,
+        },
+    };
+    return wm_command_buffer_push(out, cmd);
+}
+
+static bool route_window_state_request(const wm_state_t *state,
+                                       const wm_window_state_request_event_t *e,
+                                       wm_command_buffer_t *out) {
+    const wm_window_t *win = wm_state_window_get(state, e->window);
+    bool current_enabled;
+    bool enabled;
+    wm_command_t cmd;
+
+    if (!win) {
+        return false;
+    }
+
+    switch (e->kind) {
+        case WM_WINDOW_STATE_REQUEST_FULLSCREEN:
+            current_enabled = win->geometry_mode == WM_GEOMETRY_FULLSCREEN;
+            break;
+
+        case WM_WINDOW_STATE_REQUEST_MAXIMIZED:
+            current_enabled = win->geometry_mode == WM_GEOMETRY_MAXIMIZED;
+            break;
+
+        case WM_WINDOW_STATE_REQUEST_MINIMIZED:
+            current_enabled = win->geometry_mode == WM_GEOMETRY_MINIMIZED;
+            break;
+
+        default:
+            return false;
+    }
+
+    switch (e->action) {
+        case WM_WINDOW_STATE_REQUEST_ACTION_ADD:
+            enabled = true;
+            break;
+
+        case WM_WINDOW_STATE_REQUEST_ACTION_REMOVE:
+            enabled = false;
+            break;
+
+        case WM_WINDOW_STATE_REQUEST_ACTION_TOGGLE:
+            enabled = !current_enabled;
+            break;
+
+        default:
+            return false;
+    }
+
+    switch (e->kind) {
+        case WM_WINDOW_STATE_REQUEST_FULLSCREEN:
+            cmd = (wm_command_t){
+                .type = WM_COMMAND_SET_FULLSCREEN,
+                .as.set_fullscreen = {
+                    .window_id = win->id,
+                    .enabled = enabled,
+                },
+            };
+            break;
+
+        case WM_WINDOW_STATE_REQUEST_MAXIMIZED:
+            cmd = (wm_command_t){
+                .type = WM_COMMAND_SET_MAXIMIZED,
+                .as.set_maximized = {
+                    .window_id = win->id,
+                    .enabled = enabled,
+                },
+            };
+            break;
+
+        case WM_WINDOW_STATE_REQUEST_MINIMIZED:
+            cmd = (wm_command_t){
+                .type = WM_COMMAND_SET_MINIMIZED,
+                .as.set_minimized = {
+                    .window_id = win->id,
+                    .enabled = enabled,
+                },
+            };
+            break;
+
+        default:
+            return false;
+    }
+
+    return wm_command_buffer_push(out, cmd);
+}
 #+END_SRC
+
+这里的最小策略是：
+
+1. `pager` 来源请求可以切到目标窗口所属 workspace，并把焦点交给该窗口。
+2. `application` / `legacy` 来源不直接抢焦点，而是转成 =SET_WINDOW_URGENT(true)= 。
+3. `WM_EVENT_WINDOW_STATE_REQUEST` 保留 add/remove/toggle 语义，不在 backend 侧提前求最终布尔值。
+4. route 层结合当前 =geometry_mode= ，把它翻译成 =SET_FULLSCREEN= / =SET_MAXIMIZED= / =SET_MINIMIZED= 。
+5. 这层抽象可以同时承接 X11 的 =_NET_WM_STATE= 与 Wayland 的窗口状态请求。
+6. 若以后需要更细的 focus-stealing prevention，可以再下沉到 =wm_policy_config_t= 。
 
 * 交互态事件路由
 
@@ -334,13 +755,23 @@ static bool route_move_floating_event(wm_runtime_t *runtime,
 
 | 事件类型 | 可能生成的命令 | 条件 |
 |---------|---------------|------|
-| KEY_PRESS | 任意命令（通过快捷键绑定） | 绑定存在 |
-| POINTER_BUTTON_PRESS | FOCUS_WINDOW, RAISE_WINDOW | 点击窗口 |
+| KEY_PRESS | 任意命令（通过键盘绑定） | 绑定存在 |
+| POINTER_BUTTON_PRESS | 任意窗口命令 / BEGIN_*_INTERACTION（通过鼠标绑定） | 绑定存在 |
 | WINDOW_MAP_REQUEST | MANAGE_WINDOW | 窗口未管理 |
-| WINDOW_UNMAP | (可能不生成命令) | - |
-| WINDOW_DESTROY | UNMANAGE_WINDOW | 窗口已管理 |
+| WINDOW_REMOVE | UNMANAGE_WINDOW | 窗口已管理 |
+| WINDOW_ACTIVATE_REQUEST | SWITCH_WORKSPACE + FOCUS_WINDOW / SET_WINDOW_URGENT | source == pager / source != pager |
+| WINDOW_STATE_REQUEST | SET_FULLSCREEN / SET_MAXIMIZED / SET_MINIMIZED | 窗口已管理 |
 | CONFIGURE_REQUEST | (可能不生成命令) | floating 窗口 |
 | POINTER_MOTION | MOVE/RESIZE 命令 | 交互态下 |
+
+补充约定：
+
+1. `WM_EVENT_CONFIGURE_REQUEST` 只携带稀疏几何字段，不直接镜像 X11 全量协议载荷。
+2. 最小核心当前只会把这些几何请求映射到 floating 窗口的 move/resize 语义。
+3. `border_width` / `sibling` / `stack_mode` 这类协议细节留在 backend / adapter 层。
+4. fullscreen / maximize / minimize 这类窗口模式切换不属于 configure request。
+5. `WM_EVENT_WINDOW_STATE_REQUEST` 表达后端看到的原始 add/remove/toggle 请求；
+   core command 仍保持 =SET_*= 这种最终状态语义。
 
 * 事件处理的边界条件
 
@@ -348,7 +779,7 @@ static bool route_move_floating_event(wm_runtime_t *runtime,
 
 辅助事件满足以下条件时直接处理，不经过命令系统：
 - 事件类型是 `WM_EVENT_WINDOW_METADATA_CHANGED`
-- 事件类型是 `WM_EVENT_STATUS_TICK`
+- 事件类型是 `WM_EVENT_WINDOW_HINTS_CHANGED`
 
 **2. 交互态边界**
 
@@ -366,16 +797,18 @@ static bool route_move_floating_event(wm_runtime_t *runtime,
 
 窗口管理的边界条件：
 - `WM_EVENT_WINDOW_MAP_REQUEST`：窗口已存在则忽略
-- `WM_EVENT_WINDOW_DESTROY`：窗口不存在则忽略
-- `WM_EVENT_CONFIGURE_REQUEST`：只有 floating 窗口才响应
+- `WM_EVENT_WINDOW_REMOVE`：窗口不存在则忽略
+- `WM_EVENT_WINDOW_ACTIVATE_REQUEST`：窗口不存在则忽略
+- `WM_EVENT_WINDOW_STATE_REQUEST`：窗口不存在则忽略
+- `WM_EVENT_CONFIGURE_REQUEST`：只有 floating 窗口的几何请求才进入 core 命令链
 
 * 事件处理顺序保证
 
 为了保证确定性行为，事件处理必须按以下顺序进行：
 
 1. **辅助事件优先**：元数据和状态服务更新不走命令系统
-2. **交互态优先**：拖拽操作优先于快捷键
-3. **快捷键匹配优先级**：完全匹配 → 通配符 → 默认
+2. **交互态优先**：拖拽操作优先于常规输入绑定
+3. **输入绑定匹配优先级**：完全匹配 → 通配符
 4. **命令执行顺序**：命令缓冲中的命令按顺序执行
 
 * 主执行流程实现
@@ -406,6 +839,13 @@ void wm_runtime_run(wm_runtime_t *runtime) {
             // 3.1 重新计算布局（如果需要）
             if (runtime->plan.dirty_flags & WM_DIRTY_LAYOUT) {
                 wm_runtime_relayout(runtime);
+            }
+
+            // 3.1.5 若布局或装饰发生变化，重建 configure effects。
+            // 这里需要同时补全 rect / border_width / border_rgba。
+            if (runtime->plan.dirty_flags &
+                (WM_DIRTY_LAYOUT | WM_DIRTY_DECORATION)) {
+                wm_runtime_rebuild_configure_effects(runtime);
             }
 
             // 3.2 依次提交 effect。RENDER_OUTPUT 留给服务层处理。
@@ -447,7 +887,7 @@ void wm_runtime_run(wm_runtime_t *runtime) {
 
 这个事件路由设计完全兼容现有 ZDWM 功能：
 
-1. **快捷键系统**：通过 keybindings.conf 配置
+1. **输入绑定系统**：通过 keybindings.conf / pointer_bindings.conf 配置
 2. **规则系统**：在 MANAGE_WINDOW 命令中应用
 3. **布局切换**：通过 SET_LAYOUT / CYCLE_LAYOUT 命令
 4. **拖拽交互**：通过交互态管理
@@ -462,6 +902,6 @@ void wm_runtime_run(wm_runtime_t *runtime) {
 3. ✅ 路由接口（wm_policy.h）
 4. ✅ 命令应用（WM_POLICY_APPLY_COMMAND_SKELETON.org）
 5. ✅ **路由规则**（本文档补充）
-6. ✅ **快捷键系统**（本文档补充）
+6. ✅ **输入绑定系统**（本文档补充）
 7. ✅ **交互态处理**（本文档补充）
 8. ✅ **主执行流程**（本文档补充）

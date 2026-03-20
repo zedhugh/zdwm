@@ -4,8 +4,8 @@
 #include <string.h>
 
 #include "core/types.h"
+#include "core/wm_desc.h"
 #include "utils.h"
-#include "wm_desc.h"
 
 void wm_state_init(wm_state_t *state, const wm_output_info_t *outputs,
                    size_t output_count, const wm_workspace_desc_t *workspaces,

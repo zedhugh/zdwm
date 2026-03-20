@@ -16,6 +16,7 @@ typedef enum wm_command_type_t {
   WM_COMMAND_UNMANAGE_WINDOW,
   WM_COMMAND_FOCUS_WINDOW,
   WM_COMMAND_FOCUS_DIRECTION,
+  WM_COMMAND_SET_WINDOW_URGENT,
   WM_COMMAND_RAISE_WINDOW,
   WM_COMMAND_LOWER_WINDOW,
   WM_COMMAND_SWITCH_WORKSPACE,
@@ -23,11 +24,13 @@ typedef enum wm_command_type_t {
   WM_COMMAND_SEND_WINDOW_TO_OUTPUT,
   WM_COMMAND_TOGGLE_FLOATING,
   WM_COMMAND_TOGGLE_STICKY,
-  WM_COMMAND_TOGGLE_MAXIMIZE,
-  WM_COMMAND_TOGGLE_FULLSCREEN,
-  WM_COMMAND_TOGGLE_MINIMIZE,
+  WM_COMMAND_SET_MAXIMIZED,
+  WM_COMMAND_SET_FULLSCREEN,
+  WM_COMMAND_SET_MINIMIZED,
   WM_COMMAND_MOVE_FLOATING_WINDOW,
   WM_COMMAND_RESIZE_FLOATING_WINDOW,
+  WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION,
+  WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION,
   WM_COMMAND_SET_LAYOUT,
   WM_COMMAND_CYCLE_LAYOUT,
   WM_COMMAND_REDRAW,
@@ -57,6 +60,11 @@ typedef struct wm_command_t {
       wm_output_id_t output_id;
       wm_focus_direction_t direction;
     } focus_direction;
+
+    struct {
+      wm_window_id_t window_id;
+      bool urgent;
+    } set_window_urgent;
 
     struct {
       wm_window_id_t window_id;
@@ -92,15 +100,18 @@ typedef struct wm_command_t {
 
     struct {
       wm_window_id_t window_id;
-    } toggle_maximize;
+      bool enabled;
+    } set_maximized;
 
     struct {
       wm_window_id_t window_id;
-    } toggle_fullscreen;
+      bool enabled;
+    } set_fullscreen;
 
     struct {
       wm_window_id_t window_id;
-    } toggle_minimize;
+      bool enabled;
+    } set_minimized;
 
     struct {
       wm_window_id_t window_id;
@@ -116,6 +127,14 @@ typedef struct wm_command_t {
       int16_t dw;
       int16_t dh;
     } resize_floating_window;
+
+    struct {
+      wm_window_id_t window_id;
+    } begin_move_floating_interaction;
+
+    struct {
+      wm_window_id_t window_id;
+    } begin_resize_floating_interaction;
 
     struct {
       wm_workspace_id_t workspace_id;

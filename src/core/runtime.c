@@ -5,8 +5,8 @@
 #include "core/backend.h"
 #include "core/state.h"
 #include "core/types.h"
+#include "core/wm_desc.h"
 #include "utils.h"
-#include "wm_desc.h"
 
 bool wm_runtime_init(wm_runtime_t *runtime) {
   p_clear(runtime, 1);

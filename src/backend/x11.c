@@ -10,8 +10,8 @@
 #include <xcb/xproto.h>
 
 #include "core/backend.h"
+#include "core/wm_desc.h"
 #include "utils.h"
-#include "wm_desc.h"
 
 struct wm_backend_t {
   xcb_connection_t *conn;

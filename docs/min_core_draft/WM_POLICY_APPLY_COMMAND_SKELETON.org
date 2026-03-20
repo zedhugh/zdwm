@@ -16,10 +16,11 @@
 
 补充约定：
 
-1. =border_width= 不是 =wm_window_t= 真状态。
+1. =border_width= / =border_color= 不是 =wm_window_t= 真状态。
 2. =apply_command()= 只负责更新 =frame_rect= / =float_rect= 和脏标记。
 3. runtime 在布局求值和 effect 提交阶段，根据全局边框配置补全
-   =WM_EFFECT_CONFIGURE_WINDOW.border_width= 。
+   =WM_EFFECT_CONFIGURE_WINDOW.border_width= /
+   =WM_EFFECT_CONFIGURE_WINDOW.border_rgba= 。
 
 它不负责：
 
@@ -43,8 +44,11 @@ bool wm_policy_apply_command(wm_state_t *state,
 
   if (!state || !policy || !command || !plan) return false;
 
-  generation_relevant = command->type != WM_COMMAND_REDRAW &&
-                        command->type != WM_COMMAND_QUIT;
+  generation_relevant =
+      command->type != WM_COMMAND_REDRAW &&
+      command->type != WM_COMMAND_QUIT &&
+      command->type != WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION &&
+      command->type != WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION;
 
   switch (command->type) {
     case WM_COMMAND_NONE:
@@ -64,6 +68,10 @@ bool wm_policy_apply_command(wm_state_t *state,
 
     case WM_COMMAND_FOCUS_DIRECTION:
       changed = apply_focus_direction(state, policy, command, plan);
+      break;
+
+    case WM_COMMAND_SET_WINDOW_URGENT:
+      changed = apply_set_window_urgent(state, command, plan);
       break;
 
     case WM_COMMAND_RAISE_WINDOW:
@@ -94,16 +102,16 @@ bool wm_policy_apply_command(wm_state_t *state,
       changed = apply_toggle_sticky(state, command, plan);
       break;
 
-    case WM_COMMAND_TOGGLE_MAXIMIZE:
-      changed = apply_toggle_maximize(state, command, plan);
+    case WM_COMMAND_SET_MAXIMIZED:
+      changed = apply_set_maximized(state, command, plan);
       break;
 
-    case WM_COMMAND_TOGGLE_FULLSCREEN:
-      changed = apply_toggle_fullscreen(state, command, plan);
+    case WM_COMMAND_SET_FULLSCREEN:
+      changed = apply_set_fullscreen(state, command, plan);
       break;
 
-    case WM_COMMAND_TOGGLE_MINIMIZE:
-      changed = apply_toggle_minimize(state, policy, command, plan);
+    case WM_COMMAND_SET_MINIMIZED:
+      changed = apply_set_minimized(state, policy, command, plan);
       break;
 
     case WM_COMMAND_MOVE_FLOATING_WINDOW:
@@ -113,6 +121,11 @@ bool wm_policy_apply_command(wm_state_t *state,
     case WM_COMMAND_RESIZE_FLOATING_WINDOW:
       changed = apply_resize_floating_window(state, command, plan);
       break;
+
+    case WM_COMMAND_BEGIN_MOVE_FLOATING_INTERACTION:
+    case WM_COMMAND_BEGIN_RESIZE_FLOATING_INTERACTION:
+    case WM_COMMAND_QUIT:
+      return false;
 
     case WM_COMMAND_SET_LAYOUT:
       changed = apply_set_layout(state, layouts, command, plan);
@@ -126,9 +139,6 @@ bool wm_policy_apply_command(wm_state_t *state,
       changed = apply_redraw(state, command, plan);
       break;
 
-    case WM_COMMAND_QUIT:
-      changed = apply_quit(state, command, plan);
-      break;
   }
 
   if (changed && generation_relevant) state->generation++;
@@ -264,7 +274,7 @@ static bool apply_focus_window(wm_state_t *state,
     push_restack_effect(state, plan);
   }
 
-  plan->dirty_flags |= WM_DIRTY_RENDER;
+  plan->dirty_flags |= WM_DIRTY_DECORATION | WM_DIRTY_RENDER;
   return true;
 }
 #+END_SRC
@@ -320,7 +330,27 @@ static bool apply_focus_direction(wm_state_t *state,
   if (!next || ws->focused_window_id == next) return false;
 
   ws->focused_window_id = next;
+  plan->dirty_flags |= WM_DIRTY_DECORATION | WM_DIRTY_RENDER;
+  return true;
+}
+#+END_SRC
+
+** =apply_set_window_urgent()=
+
+#+BEGIN_SRC c
+static bool apply_set_window_urgent(wm_state_t *state,
+                                    const wm_command_t *command,
+                                    wm_plan_t *plan) {
+  wm_window_t *win =
+    require_window(state, command->as.set_window_urgent.window_id);
+  bool urgent = command->as.set_window_urgent.urgent;
+
+  if (!win) return false;
+  if (win->urgent == urgent) return false;
+
+  win->urgent = urgent;
   plan->dirty_flags |= WM_DIRTY_RENDER;
+  push_render_all_outputs(state, plan);
   return true;
 }
 #+END_SRC
@@ -452,74 +482,91 @@ static bool apply_toggle_floating(wm_state_t *state,
 }
 #+END_SRC
 
-** =apply_toggle_maximize()=
+** =apply_set_maximized()=
 
 #+BEGIN_SRC c
-static bool apply_toggle_maximize(wm_state_t *state,
-                                  const wm_command_t *command,
-                                  wm_plan_t *plan) {
-  wm_window_t *win = require_window(state, command->as.toggle_maximize.window_id);
+static bool apply_set_maximized(wm_state_t *state,
+                                const wm_command_t *command,
+                                wm_plan_t *plan) {
+  wm_window_t *win = require_window(state, command->as.set_maximized.window_id);
   if (!win) return false;
 
-  if (win->geometry_mode == WM_GEOMETRY_MAXIMIZED) {
-    win->geometry_mode = WM_GEOMETRY_NORMAL;
-  } else {
-    win->geometry_mode = WM_GEOMETRY_MAXIMIZED;
+  wm_window_geometry_mode_t next_mode = win->geometry_mode;
+
+  if (command->as.set_maximized.enabled) {
+    next_mode = WM_GEOMETRY_MAXIMIZED;
+  } else if (win->geometry_mode == WM_GEOMETRY_MAXIMIZED) {
+    next_mode = WM_GEOMETRY_NORMAL;
   }
 
+  if (next_mode == win->geometry_mode) return false;
+
+  win->geometry_mode = next_mode;
   plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
   push_render_all_outputs(state, plan);
   return true;
 }
 #+END_SRC
 
-实际实现中应按 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] 处理与 =FULLSCREEN= 和 =MINIMIZED= 的切换优先级。
+实际实现中应按 [[file:WM_COMMAND_RULES.org][WM_COMMAND_RULES.org]] 处理 =enabled=
+的幂等性，以及与 =FULLSCREEN= / =MINIMIZED= 的互斥切换关系。
 
-** =apply_toggle_fullscreen()=
+** =apply_set_fullscreen()=
 
 #+BEGIN_SRC c
-static bool apply_toggle_fullscreen(wm_state_t *state,
-                                    const wm_command_t *command,
-                                    wm_plan_t *plan) {
+static bool apply_set_fullscreen(wm_state_t *state,
+                                 const wm_command_t *command,
+                                 wm_plan_t *plan) {
   wm_window_t *win =
-    require_window(state, command->as.toggle_fullscreen.window_id);
+    require_window(state, command->as.set_fullscreen.window_id);
   if (!win) return false;
 
-  if (win->geometry_mode == WM_GEOMETRY_FULLSCREEN) {
-    win->geometry_mode = WM_GEOMETRY_NORMAL;
-  } else {
-    win->geometry_mode = WM_GEOMETRY_FULLSCREEN;
+  wm_window_geometry_mode_t next_mode = win->geometry_mode;
+
+  if (command->as.set_fullscreen.enabled) {
+    next_mode = WM_GEOMETRY_FULLSCREEN;
+  } else if (win->geometry_mode == WM_GEOMETRY_FULLSCREEN) {
+    next_mode = WM_GEOMETRY_NORMAL;
   }
 
+  if (next_mode == win->geometry_mode) return false;
+
+  win->geometry_mode = next_mode;
   plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
   push_render_all_outputs(state, plan);
   return true;
 }
 #+END_SRC
 
-** =apply_toggle_minimize()=
+** =apply_set_minimized()=
 
 #+BEGIN_SRC c
-static bool apply_toggle_minimize(wm_state_t *state,
-                                  const wm_policy_config_t *policy,
-                                  const wm_command_t *command,
-                                  wm_plan_t *plan) {
+static bool apply_set_minimized(wm_state_t *state,
+                                const wm_policy_config_t *policy,
+                                const wm_command_t *command,
+                                wm_plan_t *plan) {
   wm_window_t *win =
-    require_window(state, command->as.toggle_minimize.window_id);
+    require_window(state, command->as.set_minimized.window_id);
   if (!win) return false;
 
   wm_workspace_t *ws = require_workspace(state, win->workspace_id);
+  wm_window_geometry_mode_t next_mode = win->geometry_mode;
 
-  if (win->geometry_mode == WM_GEOMETRY_MINIMIZED) {
-    win->geometry_mode = WM_GEOMETRY_NORMAL;
-  } else {
-    win->geometry_mode = WM_GEOMETRY_MINIMIZED;
+  if (command->as.set_minimized.enabled) {
+    next_mode = WM_GEOMETRY_MINIMIZED;
+  } else if (win->geometry_mode == WM_GEOMETRY_MINIMIZED) {
+    next_mode = WM_GEOMETRY_NORMAL;
+  }
 
-    if (policy->minimize_clears_focus &&
-        ws &&
-        ws->focused_window_id == win->id) {
-      maybe_refocus_workspace(state, ws);
-    }
+  if (next_mode == win->geometry_mode) return false;
+
+  win->geometry_mode = next_mode;
+
+  if (command->as.set_minimized.enabled &&
+      policy->minimize_clears_focus &&
+      ws &&
+      ws->focused_window_id == win->id) {
+    maybe_refocus_workspace(state, ws);
   }
 
   plan->dirty_flags |= WM_DIRTY_LAYOUT | WM_DIRTY_RENDER;
@@ -669,29 +716,18 @@ static bool apply_redraw(wm_state_t *state,
 }
 #+END_SRC
 
-** =apply_quit()=
-
-#+BEGIN_SRC c
-static bool apply_quit(wm_state_t *state,
-                       const wm_command_t *command,
-                       wm_plan_t *plan) {
-  (void)state;
-  (void)command;
-  (void)plan;
-  return true;
-}
-#+END_SRC
-
-通常情况下 =WM_COMMAND_QUIT= 会由 runtime 在命令应用外层直接拦截并调用
-=wm_runtime_stop()= 。保留 =apply_quit()= 这个空实现，只是为了让 switch
-结构保持完整。
+通常情况下 =WM_COMMAND_QUIT= / =WM_COMMAND_BEGIN_*_INTERACTION= 都会由
+=runtime= 在命令应用外层直接拦截，因此 =wm_policy_apply_command()= 不应真正看见
+这些 runtime control commands。
 
 * 推荐的后处理步骤
 
 在 =apply_*()= 返回后，建议由上层统一做这些事，而不是在每个分支里直接跑布局：
 
 1. 如果有 =WM_DIRTY_LAYOUT= ，则对每个 output 的当前 workspace 重新计算 layout。
-2. 根据窗口的 =geometry_mode= 、=floating= 和 layout 结果解析最终矩形。
+2. 若有 =WM_DIRTY_LAYOUT= 或 =WM_DIRTY_DECORATION= ，则根据窗口的
+   =geometry_mode= 、=floating= 、焦点关系和全局边框配置解析最终矩形、
+   有效边框宽度与边框颜色。
    =sticky= 窗口由于满足 =sticky => floating= ，因此同样走 =float_rect= 路径。
 3. 生成 =WM_EFFECT_CONFIGURE_WINDOW= 。
 4. 若有 =WM_DIRTY_STACK= ，生成 =WM_EFFECT_RESTACK_WINDOWS= 。

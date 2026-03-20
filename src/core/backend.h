@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "wm_desc.h"
+#include "core/wm_desc.h"
 
 typedef struct wm_backend_t wm_backend_t;
 
