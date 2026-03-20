@@ -57,7 +57,7 @@ add_executable(${APP_NAME}
 add_executable(${TEST_APP_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.c
     ${SOURCE_DIR}/utils.c
-    ${SOURCE_DIR}/backend/x11.c
+    ${SOURCE_DIR}/backend/x11/backend.c
     ${SOURCE_DIR}/core/layout.c
     ${SOURCE_DIR}/core/runtime.c
     ${SOURCE_DIR}/core/state.c
