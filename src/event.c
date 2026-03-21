@@ -313,6 +313,8 @@ static void expose(xcb_expose_event_t *ev) {
 }
 
 static void enter_notify(xcb_enter_notify_event_t *ev) {
+  if (wm_should_ignore_enter_notify(ev)) return;
+
   client_t *client = client_get_by_window(ev->event);
   if (!client || wm.client_focused == client) return;
 

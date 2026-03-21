@@ -28,6 +28,9 @@ typedef struct wm_t {
   client_t *client_focused;
   monitor_t *monitor_list;
   monitor_t *current_monitor;
+  bool ignore_enter_notify;
+  point_t ignored_enter_notify_point;
+  guint clear_ignore_enter_notify_source;
   const layout_t *layout_list;
 
   char *font_family;
@@ -63,6 +66,8 @@ extern wm_t wm;
 void wm_restart(void);
 void wm_quit(void);
 void wm_restack_clients(void);
+void wm_ignore_enter_notify_at_point(point_t point);
+bool wm_should_ignore_enter_notify(const xcb_enter_notify_event_t *ev);
 void wm_set_current_monitor(monitor_t *monitor, bool restore_cursor);
 monitor_t *__attribute__((returns_nonnull)) wm_get_monitor_by_area(area_t area);
 monitor_t *__attribute__((returns_nonnull)) wm_get_monitor_by_point(

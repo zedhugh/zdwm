@@ -8,6 +8,7 @@
 #include "monitor.h"
 #include "types.h"
 #include "wm.h"
+#include "xcursor.h"
 
 void focus_client_in_same_tag(const user_action_arg_t *arg) {
   bool next = arg->b;
@@ -72,9 +73,16 @@ void quit(const user_action_arg_t *arg) {
 void raise_or_run(const user_action_arg_t *arg) {
   const char *class = ((const char **)arg->ptr)[0];
   client_t *client = client_get_next_by_class(wm.client_focused, class);
-  if (client && client == wm.client_focused) return;
 
   if (client) {
+    bool monitor_changed = client->monitor != wm.current_monitor;
+    bool tag_changed = client->tags != client->monitor->selected_tag->mask;
+    if (monitor_changed || tag_changed) {
+      point_t point = monitor_changed ? monitor_get_restore_cursor_point(
+                                        client->monitor)
+                                      : xcursor_query_pointer_position();
+      wm_ignore_enter_notify_at_point(point);
+    }
     wm_set_current_monitor(client->monitor, true);
     monitor_select_tag(client->monitor, client->tags);
     client_stack_raise(client);
