@@ -57,6 +57,7 @@ static void wm_update_status(status_t *status);
 static void wm_run_autostart(const char *const commands[]);
 static void run_once(const char *command);
 static bool command_already_running(const char *command);
+static gboolean clear_ignore_enter_notify(gpointer data);
 
 wm_t wm;
 
@@ -80,6 +81,39 @@ static void signal_fatal(int signal_number) {
 }
 
 static guint sources[3] = {0};
+
+static gboolean clear_ignore_enter_notify(gpointer data) {
+  wm.ignore_enter_notify = false;
+  wm.ignored_enter_notify_point = (point_t){0};
+  wm.clear_ignore_enter_notify_source = 0;
+  return G_SOURCE_REMOVE;
+}
+
+void wm_ignore_enter_notify_at_point(point_t point) {
+  wm.ignore_enter_notify = true;
+  wm.ignored_enter_notify_point = point;
+  if (wm.clear_ignore_enter_notify_source) {
+    g_source_remove(wm.clear_ignore_enter_notify_source);
+  }
+  wm.clear_ignore_enter_notify_source =
+    g_idle_add(clear_ignore_enter_notify, nullptr);
+}
+
+bool wm_should_ignore_enter_notify(const xcb_enter_notify_event_t *ev) {
+  if (!wm.ignore_enter_notify) return false;
+  if (ev->root_x != wm.ignored_enter_notify_point.x ||
+      ev->root_y != wm.ignored_enter_notify_point.y) {
+    return false;
+  }
+
+  if (wm.clear_ignore_enter_notify_source) {
+    g_source_remove(wm.clear_ignore_enter_notify_source);
+    wm.clear_ignore_enter_notify_source = 0;
+  }
+  wm.ignore_enter_notify = false;
+  wm.ignored_enter_notify_point = (point_t){0};
+  return true;
+}
 
 void wm_setup_signal(void) {
   sources[0] = g_unix_signal_add(SIGINT, exit_on_signal, nullptr);
@@ -405,6 +439,12 @@ void wm_clean(void) {
     guint source_id = sources[i];
     if (source_id) g_source_remove(source_id);
   }
+  if (wm.clear_ignore_enter_notify_source) {
+    g_source_remove(wm.clear_ignore_enter_notify_source);
+    wm.clear_ignore_enter_notify_source = 0;
+  }
+  wm.ignore_enter_notify = false;
+  wm.ignored_enter_notify_point = (point_t){0};
 
   xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_ACTIVE_WINDOW);
   xcb_delete_property(wm.xcb_conn, wm.screen->root, _NET_SUPPORTING_WM_CHECK);

@@ -437,7 +437,7 @@ void monitor_save_cursor_point(monitor_t *monitor) {
   monitor->position_inited = true;
 }
 
-void monitor_restore_cursor_point(monitor_t *monitor) {
+point_t monitor_get_restore_cursor_point(monitor_t *monitor) {
   if (!monitor->position_inited) {
     point_t point = xcursor_query_pointer_position();
     monitor_t *m = wm_get_monitor_by_point(point);
@@ -446,5 +446,9 @@ void monitor_restore_cursor_point(monitor_t *monitor) {
     monitor->position_inited = true;
   }
 
-  xcursor_set_pointer_position(monitor->cursor_position);
+  return monitor->cursor_position;
+}
+
+void monitor_restore_cursor_point(monitor_t *monitor) {
+  xcursor_set_pointer_position(monitor_get_restore_cursor_point(monitor));
 }
