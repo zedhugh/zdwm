@@ -1,3 +1,5 @@
+#include "core/backend.h"
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -9,7 +11,7 @@
 #include <xcb/xinerama.h>
 #include <xcb/xproto.h>
 
-#include "core/backend.h"
+#include "backend/output_utils.h"
 #include "core/wm_desc.h"
 #include "utils.h"
 
@@ -215,28 +217,30 @@ static bool detect_monitor_by_xinerama(const wm_backend_t *backend,
 }
 
 wm_backend_detect_t *wm_backend_detect(wm_backend_t *backend) {
-  wm_backend_detect_t *detect = p_new(wm_backend_detect_t, 1);
-
   wm_output_info_t *outputs = nullptr;
   size_t count = 0;
 
   if (detect_monitor_by_randr(backend, &outputs, &count)) {
-    detect->output_count = count;
-    detect->outputs = outputs;
-  } else if (detect_monitor_by_xinerama(backend, &outputs, &count)) {
-    detect->output_count = count;
-    detect->outputs = outputs;
-  } else {
-    wm_output_info_t *output = p_new(wm_output_info_t, 1);
-    output->geometry.x = 0;
-    output->geometry.y = 0;
-    output->geometry.width = backend->screen->width_in_pixels;
-    output->geometry.height = backend->screen->height_in_pixels;
-
-    detect->outputs = output;
-    detect->output_count = 1;
+    wm_backend_detect_t *detect = output_remove_duplication(outputs, count);
+    p_delete(&outputs);
+    return detect;
   }
 
+  if (detect_monitor_by_xinerama(backend, &outputs, &count)) {
+    wm_backend_detect_t *detect = output_remove_duplication(outputs, count);
+    p_delete(&outputs);
+    return detect;
+  }
+
+  wm_output_info_t *output = p_new(wm_output_info_t, 1);
+  output->geometry.x = 0;
+  output->geometry.y = 0;
+  output->geometry.width = backend->screen->width_in_pixels;
+  output->geometry.height = backend->screen->height_in_pixels;
+
+  wm_backend_detect_t *detect = p_new(wm_backend_detect_t, 1);
+  detect->outputs = output;
+  detect->output_count = 1;
   return detect;
 }
 

@@ -6,7 +6,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
 set(APP_NAME "zdwm")
-set(TEST_APP_NAME "zdwm-tests")
 set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
@@ -25,7 +24,7 @@ project(${APP_NAME}
     LANGUAGES C
 )
 
-enable_testing()
+option(BUILD_TESTING "Build tests" OFF)
 
 add_executable(${APP_NAME}
     ${SOURCE_DIR}/wm.c
@@ -52,15 +51,6 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/renderer.c
     ${SOURCE_DIR}/image.c
     ${SOURCE_DIR}/tray.c
-)
-
-add_executable(${TEST_APP_NAME}
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/main.c
-    ${SOURCE_DIR}/utils.c
-    ${SOURCE_DIR}/backend/x11/backend.c
-    ${SOURCE_DIR}/core/layout.c
-    ${SOURCE_DIR}/core/runtime.c
-    ${SOURCE_DIR}/core/state.c
 )
 
 find_package(PkgConfig REQUIRED)
@@ -98,27 +88,9 @@ target_include_directories(${APP_NAME}
     PRIVATE ${BUILD_DIR}
 )
 
-target_include_directories(${TEST_APP_NAME} SYSTEM
-    PRIVATE ${deps_INCLUDE_DIRS}
-)
-target_include_directories(${TEST_APP_NAME}
-    PRIVATE ${SOURCE_DIR}
-    PRIVATE ${BUILD_DIR}
-)
-
 target_link_libraries(${APP_NAME}
     PRIVATE m
     PRIVATE ${deps_LIBRARIES}
-)
-
-target_link_libraries(${TEST_APP_NAME}
-    PRIVATE m
-    PRIVATE ${deps_LIBRARIES}
-)
-
-add_test(NAME ${TEST_APP_NAME} COMMAND $<TARGET_FILE:${TEST_APP_NAME}>)
-set_tests_properties(${TEST_APP_NAME} PROPERTIES
-    ENVIRONMENT "DISPLAY=:3"
 )
 
 ## 配置项
@@ -130,7 +102,6 @@ if(NOT HAS_EXECINFO)
     if(LIB_EXECINFO)
         set(HAS_EXECINFO TRUE)
         target_link_libraries(${APP_NAME} ${LIB_EXECINFO})
-        target_link_libraries(${TEST_APP_NAME} ${LIB_EXECINFO})
     endif()
 endif()
 if(HAS_EXECINFO)
@@ -168,3 +139,8 @@ add_custom_target(generate_atoms
     DEPENDS ${BUILD_DIR}/atoms-extern.h ${BUILD_DIR}/atoms-intern.h
 )
 add_dependencies(${APP_NAME} generate_atoms)
+
+if(BUILD_TESTING)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

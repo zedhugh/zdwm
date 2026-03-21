@@ -39,7 +39,9 @@ build: prepare
 	@cmake --build $(BUILD_DIR)
 	@cp $(BUILD_DIR)/$(TARGET_NAME) $(TARGET)
 
-test: build
-	@ctest --test-dir $(BUILD_DIR)
+test:
+	cmake -S $(SRC_DIR) -B $(BUILD_DIR) -DBUILD_TESTING=ON
+	cmake --build $(BUILD_DIR)
+	ctest --test-dir $(BUILD_DIR)
 
 .PHONY: clean run wm prepare build install uninstall reinstall test
