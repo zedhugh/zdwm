@@ -31,7 +31,8 @@ request event，而不是直接改 core 状态。
 4. =policy=
 负责把事件路由为命令，并把命令应用到状态。
 =WM_EVENT_KEY_PRESS= / =WM_EVENT_POINTER_BUTTON_PRESS= 的路由都使用 bootstrap
-固定下来的输入绑定表。
+固定下来的输入绑定表；像 =WM_EVENT_POINTER_ENTER= 这种不经绑定的输入事实，
+则由 policy 配置决定是否转换为 =FOCUS_WINDOW=。
 
 5. =layout=
 负责为某个输出上当前显示的工作区中的平铺窗口计算外框几何。
@@ -224,16 +225,19 @@ end
 1. =focus_raises=
 焦点切换时是否隐式执行 raise。
 
-2. =sticky_windows_participate_in_direction_focus=
+2. =pointer_enter_focuses_window=
+收到 =WM_EVENT_POINTER_ENTER= 时是否切换焦点（focus-follows-mouse）。
+
+3. =sticky_windows_participate_in_direction_focus=
 sticky 窗口是否参与方向焦点搜索。
 
-3. =manage_sets_focus=
+4. =manage_sets_focus=
 新受管窗口是否默认夺取所属 workspace 的焦点。
 
-4. =switch_workspace_restores_last_focus=
+5. =switch_workspace_restores_last_focus=
 切换工作区时是否恢复该 workspace 的最近焦点。
 
-5. =minimize_clears_focus=
+6. =minimize_clears_focus=
 最小化当前焦点窗口时是否清空或重选该 workspace 焦点。
 
 * 边框约定

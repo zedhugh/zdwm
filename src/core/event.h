@@ -9,6 +9,7 @@ typedef enum wm_event_type_t {
   WM_EVENT_POINTER_BUTTON_PRESS,
   WM_EVENT_POINTER_BUTTON_RELEASE,
   WM_EVENT_POINTER_MOTION,
+  WM_EVENT_POINTER_ENTER,
   WM_EVENT_WINDOW_MAP_REQUEST,
   WM_EVENT_WINDOW_REMOVE,
   WM_EVENT_WINDOW_METADATA_CHANGED,
@@ -53,6 +54,12 @@ typedef struct wm_pointer_motion_event_t {
   wm_point_t root;
   wm_point_t local;
 } wm_pointer_motion_event_t;
+
+typedef struct wm_pointer_enter_event_t {
+  wm_window_id_t window;
+  wm_point_t root;
+  wm_point_t local;
+} wm_pointer_enter_event_t;
 
 typedef struct wm_window_map_request_event_t {
   wm_window_info_t info;
@@ -155,6 +162,7 @@ typedef struct wm_event_t {
     wm_pointer_button_event_t pointer_button_press;
     wm_pointer_button_event_t pointer_button_release;
     wm_pointer_motion_event_t pointer_motion;
+    wm_pointer_enter_event_t pointer_enter;
     wm_window_map_request_event_t window_map_request;
     wm_window_remove_event_t window_remove;
     wm_window_metadata_change_event_t window_metadata_change;

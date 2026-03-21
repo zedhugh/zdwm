@@ -26,6 +26,7 @@ void wm_runtime_process_event(wm_runtime_t *runtime, const wm_event_t *event) {
     if (!consumed) {
         wm_policy_route_event(
             &runtime->state,
+            &runtime->policy,
             &runtime->keybindings,
             &runtime->pointer_bindings,
             event,
@@ -320,6 +321,7 @@ typedef struct wm_runtime_bootstrap_t {
 
 #+BEGIN_SRC c
 bool wm_policy_route_event(const wm_state_t *state,
+                           const wm_policy_config_t *policy,
                            const wm_key_binding_table_t *keybindings,
                            const wm_pointer_binding_table_t *pointer_bindings,
                            const wm_event_t *event,
@@ -332,6 +334,10 @@ bool wm_policy_route_event(const wm_state_t *state,
         case WM_EVENT_POINTER_BUTTON_PRESS:
             return route_pointer_press(state, pointer_bindings,
                                        &event->data.pointer_button_press, out);
+
+        case WM_EVENT_POINTER_ENTER:
+            return route_pointer_enter(state, policy,
+                                       &event->data.pointer_enter, out);
 
         case WM_EVENT_WINDOW_MAP_REQUEST:
             return route_map_request(state, &event->data.window_map_request, out);
@@ -512,6 +518,43 @@ static bool route_pointer_press(const wm_state_t *state,
     }
 
     return wm_command_buffer_push(out, cmd);
+}
+
+static bool route_pointer_enter(const wm_state_t *state,
+                                const wm_policy_config_t *policy,
+                                const wm_pointer_enter_event_t *e,
+                                wm_command_buffer_t *out) {
+    const wm_window_t *win;
+    const wm_workspace_t *ws;
+
+    if (!policy->pointer_enter_focuses_window) {
+        return false;
+    }
+
+    if (e->window == WM_WINDOW_ID_INVALID) {
+        return false;
+    }
+
+    win = wm_state_window_get(state, e->window);
+    if (!win) {
+        return false;
+    }
+
+    if (win->workspace_id >= state->workspace_count) {
+        return false;
+    }
+    ws = &state->workspaces[win->workspace_id];
+
+    if (ws->focused_window_id == win->id) {
+        return false;
+    }
+
+    return wm_command_buffer_push(out, (wm_command_t){
+        .type = WM_COMMAND_FOCUS_WINDOW,
+        .as.focus_window = {
+            .window_id = win->id,
+        },
+    });
 }
 
 // 窗口映射请求路由
@@ -757,6 +800,7 @@ static bool route_move_floating_event(wm_runtime_t *runtime,
 |---------|---------------|------|
 | KEY_PRESS | 任意命令（通过键盘绑定） | 绑定存在 |
 | POINTER_BUTTON_PRESS | 任意窗口命令 / BEGIN_*_INTERACTION（通过鼠标绑定） | 绑定存在 |
+| POINTER_ENTER | FOCUS_WINDOW | policy.pointer_enter_focuses_window == true 且窗口已管理 |
 | WINDOW_MAP_REQUEST | MANAGE_WINDOW | 窗口未管理 |
 | WINDOW_REMOVE | UNMANAGE_WINDOW | 窗口已管理 |
 | WINDOW_ACTIVATE_REQUEST | SWITCH_WORKSPACE + FOCUS_WINDOW / SET_WINDOW_URGENT | source == pager / source != pager |
@@ -768,9 +812,11 @@ static bool route_move_floating_event(wm_runtime_t *runtime,
 
 1. `WM_EVENT_CONFIGURE_REQUEST` 只携带稀疏几何字段，不直接镜像 X11 全量协议载荷。
 2. 最小核心当前只会把这些几何请求映射到 floating 窗口的 move/resize 语义。
-3. `border_width` / `sibling` / `stack_mode` 这类协议细节留在 backend / adapter 层。
-4. fullscreen / maximize / minimize 这类窗口模式切换不属于 configure request。
-5. `WM_EVENT_WINDOW_STATE_REQUEST` 表达后端看到的原始 add/remove/toggle 请求；
+3. `WM_EVENT_POINTER_ENTER` 是“pointer focus 进入窗口”的输入事实，不经过 pointer binding 表。
+4. 类似 `raise_or_run` 这类程序化恢复鼠标位置导致的单次 crossing 抑制，应由 runtime 维护瞬时状态后在路由前过滤，而不是下沉到 backend 业务逻辑。
+5. `border_width` / `sibling` / `stack_mode` 这类协议细节留在 backend / adapter 层。
+6. fullscreen / maximize / minimize 这类窗口模式切换不属于 configure request。
+7. `WM_EVENT_WINDOW_STATE_REQUEST` 表达后端看到的原始 add/remove/toggle 请求；
    core command 仍保持 =SET_*= 这种最终状态语义。
 
 * 事件处理的边界条件

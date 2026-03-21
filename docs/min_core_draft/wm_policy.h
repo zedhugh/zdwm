@@ -21,6 +21,7 @@ void wm_command_buffer_shutdown(wm_command_buffer_t *buffer);
 bool wm_command_buffer_push(wm_command_buffer_t *buffer, wm_command_t command);
 
 bool wm_policy_route_event(const wm_state_t *state,
+                           const wm_policy_config_t *policy,
                            const wm_key_binding_table_t *keybindings,
                            const wm_pointer_binding_table_t *pointer_bindings,
                            const wm_event_t *event,
