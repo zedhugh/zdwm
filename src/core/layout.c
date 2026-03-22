@@ -52,6 +52,21 @@ void wm_layout_registry_cleanup(wm_layout_registry_t *registry) {
   registry->slot_capacity = 0;
 }
 
+bool wm_layout_registry_move(wm_layout_registry_t *src,
+                             wm_layout_registry_t *dest) {
+  if (!src || !dest) return false;
+
+  dest->slots = src->slots;
+  dest->slot_count = src->slot_count;
+  dest->slot_capacity = src->slot_capacity;
+
+  src->slots = nullptr;
+  src->slot_count = 0;
+  src->slot_capacity = 0;
+
+  return true;
+}
+
 size_t wm_layout_registry_count(const wm_layout_registry_t *registry) {
   return registry->slot_count;
 }

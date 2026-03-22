@@ -99,6 +99,8 @@ void wm_layout_result_push(wm_layout_result_t *result, wm_layout_item_t item);
  */
 void wm_layout_registry_init(wm_layout_registry_t *registry);
 void wm_layout_registry_cleanup(wm_layout_registry_t *registry);
+bool wm_layout_registry_move(wm_layout_registry_t *src,
+                             wm_layout_registry_t *dest);
 size_t wm_layout_registry_count(const wm_layout_registry_t *registry);
 const wm_layout_slot_t *wm_layout_registry_at(
   const wm_layout_registry_t *registry, size_t index);
