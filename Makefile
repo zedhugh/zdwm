@@ -44,4 +44,8 @@ test:
 	cmake --build $(BUILD_DIR)
 	ctest --test-dir $(BUILD_DIR)
 
-.PHONY: clean run wm prepare build install uninstall reinstall test
+install-hooks:
+	chmod +x $(MAKEFILE_DIR).githooks/pre-commit
+	git -C $(MAKEFILE_DIR) config core.hooksPath $(MAKEFILE_DIR).githooks
+
+.PHONY: clean run wm prepare build install uninstall reinstall test install-hooks

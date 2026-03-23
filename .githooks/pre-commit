@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if ! command -v clang-format >/dev/null 2>&1; then
+  echo "pre-commit: clang-format not found in PATH" >&2
+  exit 1
+fi
+
+if ! git clang-format -h >/dev/null 2>&1; then
+  echo "pre-commit: git clang-format is not available" >&2
+  exit 1
+fi
+
+mapfile -d '' staged_files < <(
+  git diff --cached --name-only --diff-filter=ACMR -z -- \
+    '*.c' '*.h' '*.cc' '*.cpp' '*.cxx' '*.hh' '*.hpp' '*.hxx'
+)
+
+if ((${#staged_files[@]} == 0)); then
+  exit 0
+fi
+
+if git rev-parse --verify HEAD >/dev/null 2>&1; then
+  base_commit=HEAD
+else
+  empty_tree="$(git hash-object -t tree /dev/null)"
+  base_commit="$(
+    printf 'pre-commit empty base\n' | \
+      GIT_AUTHOR_NAME=pre-commit \
+      GIT_AUTHOR_EMAIL=pre-commit@example.invalid \
+      GIT_COMMITTER_NAME=pre-commit \
+      GIT_COMMITTER_EMAIL=pre-commit@example.invalid \
+      git commit-tree "$empty_tree"
+  )"
+fi
+
+set +e
+git clang-format --staged --binary clang-format --quiet "$base_commit" -- \
+  "${staged_files[@]}"
+status=$?
+set -e
+
+if [[ $status -ne 0 && $status -ne 1 ]]; then
+  exit "$status"
+fi
+
+git add -- "${staged_files[@]}"
