@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "base/memory.h"
 #include "core/types.h"
 
 /*
@@ -31,6 +32,28 @@ typedef struct workspace_desc_t {
   size_t layout_count;
   layout_id_t initial_layout_id;
 } workspace_desc_t;
+
+static inline void workspace_desc_cleanup(workspace_desc_t *workspace) {
+  if (!workspace) return;
+
+  p_delete(&workspace->name);
+  p_delete(&workspace->layout_ids);
+  workspace->output_index = 0;
+  workspace->layout_count = 0;
+  workspace->initial_layout_id = ZDWM_LAYOUT_ID_INVALID;
+}
+
+static inline void workspace_desc_list_cleanup(workspace_desc_t **list,
+                                               size_t *count) {
+  if (!list || !count) return;
+
+  for (size_t i = 0; i < *count; i++) {
+    workspace_desc_cleanup(&(*list)[i]);
+  }
+
+  p_delete(list);
+  *count = 0;
+}
 
 /*
  * workspace 描述校验接口。

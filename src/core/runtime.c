@@ -1,6 +1,6 @@
 #include "core/runtime.h"
 
-#include <stddef.h>
+#include <dlfcn.h>
 
 #include "base/memory.h"
 #include "core/backend.h"
@@ -36,35 +36,22 @@ static bool runtime_init_desc_valid(const runtime_init_desc_t *desc) {
   return true;
 }
 
-static void runtime_workspace_desc_list_cleanup(workspace_desc_t **list,
-                                                size_t *count) {
-  if (!list || !count) return;
-
-  for (size_t i = 0; i < *count; i++) {
-    workspace_desc_t *workspace = &(*list)[i];
-    p_delete(&workspace->name);
-    p_delete(&workspace->layout_ids);
-  }
-
-  p_delete(list);
-  *count = 0;
-}
-
 bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   if (!runtime || !runtime_init_desc_valid(desc)) return false;
 
   p_clear(runtime, 1);
   runtime->backend = desc->backend;
   runtime->layouts = desc->layouts;
+  runtime->config_module_handle = desc->config_module_handle;
 
   desc->backend = nullptr;
   p_clear(&desc->layouts, 1);
+  desc->config_module_handle = nullptr;
 
   state_init(&runtime->state, desc->outputs, desc->output_count,
              desc->workspaces, desc->workspace_count);
 
-  runtime_workspace_desc_list_cleanup(&desc->workspaces,
-                                      &desc->workspace_count);
+  workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
   desc->outputs = nullptr;
   desc->output_count = 0;
 
@@ -84,10 +71,11 @@ void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
     layout_registry_cleanup(&desc->layouts);
   }
 
-  runtime_workspace_desc_list_cleanup(&desc->workspaces,
-                                      &desc->workspace_count);
+  workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
   desc->outputs = nullptr;
   desc->output_count = 0;
+  if (desc->config_module_handle) dlclose(desc->config_module_handle);
+  desc->config_module_handle = nullptr;
 }
 
 void runtime_shutdown(runtime_t *runtime) {
@@ -99,4 +87,6 @@ void runtime_shutdown(runtime_t *runtime) {
   state_cleanup(&runtime->state);
   backend_destroy(runtime->backend);
   runtime->backend = nullptr;
+  if (runtime->config_module_handle) dlclose(runtime->config_module_handle);
+  runtime->config_module_handle = nullptr;
 }
