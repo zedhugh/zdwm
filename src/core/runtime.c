@@ -4,48 +4,99 @@
 
 #include "core/backend.h"
 #include "core/state.h"
-#include "core/types.h"
 #include "core/wm_desc.h"
 #include "utils.h"
 
-bool wm_runtime_init(wm_runtime_t *runtime) {
-  p_clear(runtime, 1);
+static bool runtime_workspace_desc_has_valid_layouts(
+  const layout_registry_t *layouts, const workspace_desc_t *workspace) {
+  if (!layouts || !workspace) return false;
 
-  wm_backend_t *backend = wm_backend_create(nullptr);
-  if (!backend) return false;
-
-  runtime->backend = backend;
-
-  wm_backend_detect_t *detect = wm_backend_detect(backend);
-  if (!detect || detect->output_count <= 0) {
-    wm_backend_destroy(backend);
-    return false;
+  for (size_t i = 0; i < workspace->layout_count; i++) {
+    if (!layout_slot_get(layouts, workspace->layout_ids[i])) return false;
   }
-
-  wm_workspace_desc_t *workspaces =
-    p_new(wm_workspace_desc_t, detect->output_count);
-  static wm_layout_id_t ids[] = {0, 1, 2};
-  for (size_t i = 0; i < detect->output_count; i++) {
-    wm_workspace_desc_t *desc = &workspaces[i];
-    desc->output_index = i;
-    desc->name = "web";
-    desc->layout_ids = ids;
-    desc->layout_count = countof(ids);
-    desc->initial_layout_id = 1;
-  }
-
-  wm_state_init(&runtime->state, detect->outputs, detect->output_count,
-                workspaces, detect->output_count);
-  p_delete(&workspaces);
-  wm_backend_detect_destroy(detect);
-  detect = nullptr;
 
   return true;
 }
 
-void wm_runtime_shutdown(wm_runtime_t *runtime) {
+static bool runtime_init_desc_valid(const runtime_init_desc_t *desc) {
+  if (!desc || !desc->backend || !desc->outputs || desc->output_count == 0) {
+    return false;
+  }
+  if (!desc->layouts.slots || desc->layouts.slot_count == 0) return false;
+  if (!desc->workspaces || desc->workspace_count == 0) return false;
+
+  for (size_t i = 0; i < desc->workspace_count; i++) {
+    const workspace_desc_t *workspace = &desc->workspaces[i];
+    if (!workspace_desc_valid(workspace, desc->output_count)) return false;
+    if (!runtime_workspace_desc_has_valid_layouts(&desc->layouts, workspace)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+static void runtime_workspace_desc_list_cleanup(workspace_desc_t **list,
+                                                size_t *count) {
+  if (!list || !count) return;
+
+  for (size_t i = 0; i < *count; i++) {
+    workspace_desc_t *workspace = &(*list)[i];
+    p_delete(&workspace->name);
+    p_delete(&workspace->layout_ids);
+  }
+
+  p_delete(list);
+  *count = 0;
+}
+
+bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
+  if (!runtime || !runtime_init_desc_valid(desc)) return false;
+
+  p_clear(runtime, 1);
+  runtime->backend = desc->backend;
+  runtime->layouts = desc->layouts;
+
+  desc->backend = nullptr;
+  p_clear(&desc->layouts, 1);
+
+  state_init(&runtime->state, desc->outputs, desc->output_count,
+             desc->workspaces, desc->workspace_count);
+
+  runtime_workspace_desc_list_cleanup(&desc->workspaces,
+                                      &desc->workspace_count);
+  desc->outputs = nullptr;
+  desc->output_count = 0;
+
+  return true;
+}
+
+void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
+  if (!desc) return;
+
+  if (desc->backend) {
+    backend_destroy(desc->backend);
+    desc->backend = nullptr;
+  }
+
+  if (desc->layouts.slots || desc->layouts.slot_count ||
+      desc->layouts.slot_capacity) {
+    layout_registry_cleanup(&desc->layouts);
+  }
+
+  runtime_workspace_desc_list_cleanup(&desc->workspaces,
+                                      &desc->workspace_count);
+  desc->outputs = nullptr;
+  desc->output_count = 0;
+}
+
+void runtime_shutdown(runtime_t *runtime) {
   runtime->running = false;
-  wm_state_cleanup(&runtime->state);
-  wm_backend_destroy(runtime->backend);
+  if (runtime->layouts.slots || runtime->layouts.slot_count ||
+      runtime->layouts.slot_capacity) {
+    layout_registry_cleanup(&runtime->layouts);
+  }
+  state_cleanup(&runtime->state);
+  backend_destroy(runtime->backend);
   runtime->backend = nullptr;
 }

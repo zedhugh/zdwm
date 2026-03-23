@@ -5,6 +5,10 @@ add_executable(${OUTPUT_UTILS_TEST_APP_NAME}
     ${SOURCE_DIR}/backend/output_utils.c
 )
 
+target_include_directories(${OUTPUT_UTILS_TEST_APP_NAME} SYSTEM
+    PRIVATE ${INCLUDE_DIR}
+)
+
 target_include_directories(${OUTPUT_UTILS_TEST_APP_NAME}
     PRIVATE ${SOURCE_DIR}
     PRIVATE ${BUILD_DIR}

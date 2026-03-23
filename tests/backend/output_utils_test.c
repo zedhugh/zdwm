@@ -1,12 +1,13 @@
+#include "backend/output_utils.h"
+
 #include <assert.h>
 #include <stdint.h>
 
-#include "backend/output_utils.h"
+#include "core/types.h"
 #include "utils.h"
 
-static void assert_output_geometry(const wm_output_info_t *output, int32_t x,
-                                   int32_t y, int32_t width,
-                                   int32_t height) {
+static void assert_output_geometry(const output_info_t *output, int32_t x,
+                                   int32_t y, int32_t width, int32_t height) {
   assert(output);
   assert(output->geometry.x == x);
   assert(output->geometry.y == y);
@@ -14,7 +15,7 @@ static void assert_output_geometry(const wm_output_info_t *output, int32_t x,
   assert(output->geometry.height == height);
 }
 
-static void destroy_detect_result(wm_backend_detect_t *detect) {
+static void destroy_detect_result(backend_detect_t *detect) {
   assert(detect);
   for (size_t i = 0; i < detect->output_count; i++) {
     p_delete(&detect->outputs[i].name);
@@ -24,14 +25,14 @@ static void destroy_detect_result(wm_backend_detect_t *detect) {
 }
 
 static void test_output_remove_duplication_invalid_input(void) {
-  wm_output_info_t output = {0};
+  output_info_t output = {0};
 
   assert(output_remove_duplication(nullptr, 0) == nullptr);
   assert(output_remove_duplication(&output, 0) == nullptr);
 }
 
 static void test_output_remove_duplication_keeps_non_nested_outputs(void) {
-  wm_output_info_t outputs[] = {
+  output_info_t outputs[] = {
     {
       .geometry = {.x = 0, .y = 0, .width = 3840, .height = 1080},
     },
@@ -46,7 +47,7 @@ static void test_output_remove_duplication_keeps_non_nested_outputs(void) {
     },
   };
 
-  wm_backend_detect_t *detect =
+  backend_detect_t *detect =
     output_remove_duplication(outputs, countof(outputs));
   assert(detect);
   assert(detect->output_count == 2);

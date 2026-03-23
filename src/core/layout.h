@@ -1,49 +1,17 @@
 #pragma once
 
 #include <stddef.h>
+#include <zdwm/layout.h>
 
 #include "core/types.h"
 
-typedef struct wm_layout_ctx_t {
-  wm_output_id_t output_id;
-  wm_workspace_id_t workspace_id;
-  wm_window_id_t focused_window_id;
-  wm_rect_t workarea;
-  /*
-   * 参与本次布局计算的窗口 ID 列表。
-   *
-   * 调用方负责在进入 layout 前完成筛选；这里不包含 floating、sticky、
-   * fullscreen、minimized 等不参与平铺计算的窗口。
-   *
-   * 数组顺序具有语义，layout 应按该顺序解释窗口排列优先级。
-   */
-  const wm_window_id_t *window_ids;
-  size_t window_count;
-} wm_layout_ctx_t;
+typedef zdwm_layout_ctx_t layout_ctx_t;
+typedef zdwm_layout_item_t layout_item_t;
+typedef zdwm_layout_result_t layout_result_t;
+typedef zdwm_layout_fn layout_fn;
 
-typedef struct wm_layout_item_t {
-  wm_window_id_t window_id;
-  wm_rect_t rect; /* 平铺窗口的目标外框矩形（包含边框） */
-} wm_layout_item_t;
-
-typedef struct wm_layout_result_t {
-  wm_layout_item_t *items;
-  size_t item_count;
-  size_t item_capacity;
-} wm_layout_result_t;
-
-/*
- * 返回 true 表示成功生成合法的布局结果。
- * 返回 false 表示布局计算失败，调用方应丢弃本次结果。
- *
- * 该返回值不表示窗口最终几何是否发生变化；
- * 是否有改动应由调用方在比较当前状态与布局结果后决定。
- */
-typedef bool (*wm_layout_fn)(const wm_layout_ctx_t *ctx,
-                             wm_layout_result_t *out);
-
-typedef struct wm_layout_slot_t {
-  wm_layout_id_t id;
+typedef struct layout_slot_t {
+  layout_id_t id;
   /*
    * 布局名称，用于：
    * - 配置引用
@@ -70,14 +38,14 @@ typedef struct wm_layout_slot_t {
    *
    * fn == NULL 表示 floating 布局，即该布局不参与平铺计算。
    */
-  wm_layout_fn fn;
-} wm_layout_slot_t;
+  layout_fn fn;
+} layout_slot_t;
 
-typedef struct wm_layout_registry_t {
-  wm_layout_slot_t *slots;
+typedef struct layout_registry_t {
+  layout_slot_t *slots;
   size_t slot_count;
   size_t slot_capacity;
-} wm_layout_registry_t;
+} layout_registry_t;
 
 /*
  * 调用约束：
@@ -85,11 +53,10 @@ typedef struct wm_layout_registry_t {
  * - 除 init 之外，其余 result 相关接口都要求 result 已初始化
  * - 传入空指针或未初始化对象属于调用方错误
  */
-void wm_layout_result_init(wm_layout_result_t *result);
-void wm_layout_result_reset(wm_layout_result_t *result);
-void wm_layout_result_cleanup(wm_layout_result_t *result);
+void layout_result_init(layout_result_t *result);
+void layout_result_cleanup(layout_result_t *result);
 
-void wm_layout_result_push(wm_layout_result_t *result, wm_layout_item_t item);
+void layout_result_push(layout_result_t *result, layout_item_t item);
 
 /*
  * 调用约束：
@@ -97,13 +64,12 @@ void wm_layout_result_push(wm_layout_result_t *result, wm_layout_item_t item);
  * - 除 init 之外，其余 registry 相关接口都要求 registry 已初始化
  * - 传入空指针或未初始化对象属于调用方错误
  */
-void wm_layout_registry_init(wm_layout_registry_t *registry);
-void wm_layout_registry_cleanup(wm_layout_registry_t *registry);
-bool wm_layout_registry_move(wm_layout_registry_t *src,
-                             wm_layout_registry_t *dest);
-size_t wm_layout_registry_count(const wm_layout_registry_t *registry);
-const wm_layout_slot_t *wm_layout_registry_at(
-  const wm_layout_registry_t *registry, size_t index);
+void layout_registry_init(layout_registry_t *registry);
+void layout_registry_cleanup(layout_registry_t *registry);
+bool layout_registry_move(layout_registry_t *src, layout_registry_t *dest);
+size_t layout_registry_count(const layout_registry_t *registry);
+const layout_slot_t *layout_registry_at(const layout_registry_t *registry,
+                                        size_t index);
 
 /*
  * 注册一个布局并返回其稳定 ID。
@@ -119,13 +85,13 @@ const wm_layout_slot_t *wm_layout_registry_at(
  *
  * 返回值：
  * - 成功时返回新注册布局的 ID
- * - name 或 symbol 非法时返回 WM_LAYOUT_ID_INVALID
+ * - name 或 symbol 非法时返回 ZDWM_LAYOUT_ID_INVALID
  *
  * 注册成功后，布局 ID 与其在 registry 中的槽位索引保持一致。
  */
-wm_layout_id_t wm_layout_register(wm_layout_registry_t *registry,
-                                  const char *name, const char *symbol,
-                                  const char *description, wm_layout_fn fn);
+layout_id_t layout_register(layout_registry_t *registry, const char *name,
+                            const char *symbol, const char *description,
+                            layout_fn fn);
 /*
  * 获取可执行的布局函数。
  *
@@ -134,7 +100,6 @@ wm_layout_id_t wm_layout_register(wm_layout_registry_t *registry,
  * - id 对应的 slot 不存在
  * - slot 存在，但 fn == NULL（表示 floating 布局）
  */
-wm_layout_fn wm_layout_get(const wm_layout_registry_t *registry,
-                           wm_layout_id_t id);
-const wm_layout_slot_t *wm_layout_slot_get(const wm_layout_registry_t *registry,
-                                           wm_layout_id_t id);
+layout_fn layout_get(const layout_registry_t *registry, layout_id_t id);
+const layout_slot_t *layout_slot_get(const layout_registry_t *registry,
+                                     layout_id_t id);

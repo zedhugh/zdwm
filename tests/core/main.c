@@ -1,10 +1,10 @@
 #include "core/runtime.h"
 
 int main(void) {
-  wm_runtime_t runtime = {0};
-  wm_runtime_init(&runtime);
+  runtime_t runtime = {0};
+  runtime_init(&runtime, nullptr);
 
-  wm_runtime_shutdown(&runtime);
+  runtime_shutdown(&runtime);
 
   return 0;
 }

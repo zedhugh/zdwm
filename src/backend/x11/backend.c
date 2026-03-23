@@ -12,17 +12,17 @@
 #include <xcb/xproto.h>
 
 #include "backend/output_utils.h"
-#include "core/wm_desc.h"
+#include "core/types.h"
 #include "utils.h"
 
-struct wm_backend_t {
+struct backend_t {
   xcb_connection_t *conn;
   xcb_screen_t *screen;
   int screenp;
   bool have_xfixes;
 };
 
-wm_backend_t *wm_backend_create(const char *display_name) {
+backend_t *backend_create(const char *display_name) {
   int screen_num = 0;
   xcb_connection_t *conn = xcb_connect(display_name, &screen_num);
   int xcb_conn_error = xcb_connection_has_error(conn);
@@ -46,7 +46,7 @@ wm_backend_t *wm_backend_create(const char *display_name) {
       "SubstructureRedirect)");
   }
 
-  wm_backend_t *backend = p_new(wm_backend_t, 1);
+  backend_t *backend = p_new(backend_t, 1);
   backend->conn = conn;
   backend->screen = screen;
   backend->screenp = screen_num;
@@ -71,7 +71,7 @@ wm_backend_t *wm_backend_create(const char *display_name) {
   return backend;
 }
 
-void wm_backend_destroy(wm_backend_t *backend) {
+void backend_destroy(backend_t *backend) {
   if (!backend) return;
 
   xcb_disconnect(backend->conn);
@@ -79,8 +79,8 @@ void wm_backend_destroy(wm_backend_t *backend) {
   free(backend);
 }
 
-static bool detect_monitor_by_randr(const wm_backend_t *backend,
-                                    wm_output_info_t **outputs, size_t *count) {
+static bool detect_monitor_by_randr(const backend_t *backend,
+                                    output_info_t **outputs, size_t *count) {
   xcb_prefetch_extension_data(backend->conn, &xcb_randr_id);
   const xcb_query_extension_reply_t *query =
     xcb_get_extension_data(backend->conn, &xcb_randr_id);
@@ -116,11 +116,11 @@ static bool detect_monitor_by_randr(const wm_backend_t *backend,
     return false;
   }
 
-  wm_output_info_t *output_list = p_new(wm_output_info_t, len);
+  output_info_t *output_list = p_new(output_info_t, len);
   xcb_randr_monitor_info_iterator_t iter =
     xcb_randr_get_monitors_monitors_iterator(monitors_reply);
   for (int i = 0; iter.rem; xcb_randr_monitor_info_next(&iter), i++) {
-    wm_output_info_t *output = &output_list[i];
+    output_info_t *output = &output_list[i];
     output->geometry.x = iter.data->x;
     output->geometry.y = iter.data->y;
     output->geometry.width = iter.data->width;
@@ -152,9 +152,8 @@ static bool detect_monitor_by_randr(const wm_backend_t *backend,
   return true;
 }
 
-static bool detect_monitor_by_xinerama(const wm_backend_t *backend,
-                                       wm_output_info_t **outputs,
-                                       size_t *count) {
+static bool detect_monitor_by_xinerama(const backend_t *backend,
+                                       output_info_t **outputs, size_t *count) {
   xcb_prefetch_extension_data(backend->conn, &xcb_xinerama_id);
   const xcb_query_extension_reply_t *query =
     xcb_get_extension_data(backend->conn, &xcb_xinerama_id);
@@ -195,9 +194,9 @@ static bool detect_monitor_by_xinerama(const wm_backend_t *backend,
     return false;
   }
 
-  wm_output_info_t *output_list = p_new(wm_output_info_t, len);
+  output_info_t *output_list = p_new(output_info_t, len);
   for (int i = 0; i < len; i++) {
-    wm_output_info_t *output = &output_list[i];
+    output_info_t *output = &output_list[i];
     output->geometry.x = screen_info[i].x_org;
     output->geometry.y = screen_info[i].y_org;
     output->geometry.width = screen_info[i].width;
@@ -216,35 +215,35 @@ static bool detect_monitor_by_xinerama(const wm_backend_t *backend,
   return true;
 }
 
-wm_backend_detect_t *wm_backend_detect(wm_backend_t *backend) {
-  wm_output_info_t *outputs = nullptr;
+backend_detect_t *backend_detect(backend_t *backend) {
+  output_info_t *outputs = nullptr;
   size_t count = 0;
 
   if (detect_monitor_by_randr(backend, &outputs, &count)) {
-    wm_backend_detect_t *detect = output_remove_duplication(outputs, count);
+    backend_detect_t *detect = output_remove_duplication(outputs, count);
     p_delete(&outputs);
     return detect;
   }
 
   if (detect_monitor_by_xinerama(backend, &outputs, &count)) {
-    wm_backend_detect_t *detect = output_remove_duplication(outputs, count);
+    backend_detect_t *detect = output_remove_duplication(outputs, count);
     p_delete(&outputs);
     return detect;
   }
 
-  wm_output_info_t *output = p_new(wm_output_info_t, 1);
+  output_info_t *output = p_new(output_info_t, 1);
   output->geometry.x = 0;
   output->geometry.y = 0;
   output->geometry.width = backend->screen->width_in_pixels;
   output->geometry.height = backend->screen->height_in_pixels;
 
-  wm_backend_detect_t *detect = p_new(wm_backend_detect_t, 1);
+  backend_detect_t *detect = p_new(backend_detect_t, 1);
   detect->outputs = output;
   detect->output_count = 1;
   return detect;
 }
 
-void wm_backend_detect_destroy(wm_backend_detect_t *detect) {
+void backend_detect_destroy(backend_detect_t *detect) {
   if (!detect) return;
 
   for (size_t i = 0; i < detect->output_count; i++) {

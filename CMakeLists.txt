@@ -7,6 +7,7 @@ set(CMAKE_C_EXTENSIONS ON)
 
 set(APP_NAME "zdwm")
 set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
+set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 add_compile_definitions(LOG_FILE="$ENV{HOME}/${APP_NAME}-log.txt")
@@ -82,6 +83,7 @@ pkg_check_modules(deps REQUIRED
 
 target_include_directories(${APP_NAME} SYSTEM
     PRIVATE ${deps_INCLUDE_DIRS}
+    PRIVATE ${INCLUDE_DIR}
 )
 target_include_directories(${APP_NAME}
     PRIVATE ${SOURCE_DIR}

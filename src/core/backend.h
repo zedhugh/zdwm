@@ -2,17 +2,17 @@
 
 #include <stddef.h>
 
-#include "core/wm_desc.h"
+#include "core/types.h"
 
-typedef struct wm_backend_t wm_backend_t;
+typedef struct backend_t backend_t;
 
-typedef struct wm_backend_detect_t {
-  wm_output_info_t *outputs;
+typedef struct backend_detect_t {
+  output_info_t *outputs;
   size_t output_count;
-} wm_backend_detect_t;
+} backend_detect_t;
 
-wm_backend_t *wm_backend_create(const char *display_name);
-void wm_backend_destroy(wm_backend_t *backend);
+backend_t *backend_create(const char *display_name);
+void backend_destroy(backend_t *backend);
 
-wm_backend_detect_t *wm_backend_detect(wm_backend_t *backend);
-void wm_backend_detect_destroy(wm_backend_detect_t *detect);
+backend_detect_t *backend_detect(backend_t *backend);
+void backend_detect_destroy(backend_detect_t *detect);

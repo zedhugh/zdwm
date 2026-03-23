@@ -5,18 +5,17 @@
 
 #include "core/backend.h"
 #include "core/types.h"
-#include "core/wm_desc.h"
 #include "utils.h"
 
-static inline int32_t right(wm_rect_t a) { return a.x + a.width; }
-static inline int32_t bottom(wm_rect_t a) { return a.y + a.height; }
-static inline bool fully_contains(wm_rect_t outer, wm_rect_t inner) {
+static inline int32_t right(rect_t a) { return a.x + a.width; }
+static inline int32_t bottom(rect_t a) { return a.y + a.height; }
+static inline bool fully_contains(rect_t outer, rect_t inner) {
   return inner.x >= outer.x && inner.y >= outer.y &&
          right(inner) <= right(outer) && bottom(inner) <= bottom(outer);
 }
 
-wm_backend_detect_t *output_remove_duplication(const wm_output_info_t *output,
-                                               const size_t count) {
+backend_detect_t *output_remove_duplication(const output_info_t *output,
+                                            const size_t count) {
   if (!output || count < 1) return nullptr;
 
   bool *remove = p_new(bool, count);
@@ -42,14 +41,14 @@ wm_backend_detect_t *output_remove_duplication(const wm_output_info_t *output,
     return nullptr;
   }
 
-  wm_output_info_t *list = p_new(wm_output_info_t, amount);
+  output_info_t *list = p_new(output_info_t, amount);
   amount = 0;
   for (size_t i = 0; i < count; i++) {
     if (remove[i]) continue;
     list[amount++] = output[i];
   }
   p_delete(&remove);
-  wm_backend_detect_t *detect = p_new(wm_backend_detect_t, 1);
+  backend_detect_t *detect = p_new(backend_detect_t, 1);
   detect->outputs = list;
   detect->output_count = amount;
   return detect;

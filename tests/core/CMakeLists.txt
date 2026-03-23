@@ -12,6 +12,7 @@ add_executable(${TEST_APP_NAME}
 
 target_include_directories(${TEST_APP_NAME} SYSTEM
     PRIVATE ${deps_INCLUDE_DIRS}
+    PRIVATE ${INCLUDE_DIR}
 )
 target_include_directories(${TEST_APP_NAME}
     PRIVATE ${SOURCE_DIR}
