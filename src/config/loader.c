@@ -55,26 +55,22 @@ bool config_loader_load(config_loader_t *loader, const char *override_path) {
   if (!loader) return false;
   config_loader_cleanup(loader);
 
-  char *path = nullptr;
   bool is_explicit = false;
-  if (!config_loader_resolve_path(&path, &is_explicit, override_path)) {
+  if (!config_loader_resolve_path(&loader->path, &is_explicit, override_path)) {
     return false;
   }
 
-  loader->path = path;
+  if (access(loader->path, F_OK) != 0) {
+    if (!is_explicit) return true;
 
-  if (access(path, F_OK) != 0) {
-    if (is_explicit) {
-      warn("config library not found: %s", path);
-      config_loader_cleanup(loader);
-      return false;
-    }
-    return true;
+    warn("config library not found: %s", loader->path);
+    config_loader_cleanup(loader);
+    return false;
   }
 
-  loader->handle = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+  loader->handle = dlopen(loader->path, RTLD_NOW | RTLD_LOCAL);
   if (!loader->handle) {
-    warn("failed to load config library %s: %s", path, dlerror());
+    warn("failed to load config library %s: %s", loader->path, dlerror());
     config_loader_cleanup(loader);
     return false;
   }
@@ -82,13 +78,11 @@ bool config_loader_load(config_loader_t *loader, const char *override_path) {
   dlerror();
   loader->setup = (zdwm_config_setup_fn *)dlsym(loader->handle, "setup");
   const char *error = dlerror();
-  if (error) {
-    warn("failed to resolve setup from %s: %s", path, error);
-    config_loader_cleanup(loader);
-    return false;
-  }
+  if (!error) return true;
 
-  return true;
+  warn("failed to resolve setup from %s: %s", loader->path, error);
+  config_loader_cleanup(loader);
+  return false;
 }
 
 void config_loader_cleanup(config_loader_t *loader) {

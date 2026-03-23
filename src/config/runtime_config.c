@@ -1,0 +1,178 @@
+#include "config/runtime_config.h"
+
+#include <dlfcn.h>
+#include <zdwm/config.h>
+
+#include "base/memory.h"
+#include "config/defaults.h"
+#include "config/loader.h"
+#include "core/layout.h"
+#include "core/runtime.h"
+#include "core/wm_desc.h"
+
+struct zdwm_config_builder_t {
+  layout_registry_t layouts;
+  workspace_desc_t *workspaces;
+  size_t workspace_count;
+  size_t workspace_capacity;
+  size_t output_count;
+};
+
+void runtime_config_cleanup(runtime_init_desc_t *desc) {
+  if (!desc) return;
+
+  if (desc->layouts.slots || desc->layouts.slot_count ||
+      desc->layouts.slot_capacity) {
+    layout_registry_cleanup(&desc->layouts);
+  }
+  workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
+  if (desc->config_module_handle) dlclose(desc->config_module_handle);
+  desc->config_module_handle = nullptr;
+}
+
+static void config_builder_cleanup(zdwm_config_builder_t *builder) {
+  if (!builder) return;
+
+  if (builder->layouts.slots || builder->layouts.slot_count ||
+      builder->layouts.slot_capacity) {
+    layout_registry_cleanup(&builder->layouts);
+  }
+  workspace_desc_list_cleanup(&builder->workspaces, &builder->workspace_count);
+  builder->workspace_capacity = 0;
+  builder->output_count = 0;
+}
+
+static bool config_builder_init(zdwm_config_builder_t *builder,
+                                size_t output_count) {
+  if (!builder || output_count == 0) return false;
+
+  p_clear(builder, 1);
+  builder->output_count = output_count;
+  layout_registry_init(&builder->layouts);
+  return true;
+}
+
+static bool config_builder_ensure_workspace_capacity(
+  zdwm_config_builder_t *builder) {
+  if (!builder) return false;
+  if (builder->workspace_count < builder->workspace_capacity) return true;
+
+  size_t capacity = next_capacity(builder->workspace_capacity);
+  if (!builder->workspaces) {
+    builder->workspaces = p_new(workspace_desc_t, capacity);
+  } else {
+    p_realloc(&builder->workspaces, capacity);
+  }
+  builder->workspace_capacity = capacity;
+  return true;
+}
+
+static layout_id_t runtime_config_register_layout(
+  zdwm_config_builder_t *builder, const char *name, const char *symbol,
+  const char *description, layout_fn fn) {
+  if (!builder || !name || !symbol) return ZDWM_LAYOUT_ID_INVALID;
+
+  return layout_register(&builder->layouts, name, symbol, description, fn);
+}
+
+static workspace_id_t runtime_config_define_workspace(
+  zdwm_config_builder_t *builder, size_t output_index, const char *name,
+  const layout_id_t *layout_ids, size_t layout_count,
+  layout_id_t initial_layout_id) {
+  if (!builder) return ZDWM_WORKSPACE_ID_INVALID;
+  if (output_index >= builder->output_count) return ZDWM_WORKSPACE_ID_INVALID;
+  if (builder->workspace_count >= (size_t)ZDWM_WORKSPACE_ID_INVALID) {
+    return ZDWM_WORKSPACE_ID_INVALID;
+  }
+
+  workspace_desc_t desc = {
+    .output_index = output_index,
+    .name = name,
+    .layout_ids = layout_ids,
+    .layout_count = layout_count,
+    .initial_layout_id = initial_layout_id,
+  };
+  if (!workspace_desc_valid(&desc, builder->output_count)) {
+    return ZDWM_WORKSPACE_ID_INVALID;
+  }
+
+  for (size_t i = 0; i < layout_count; i++) {
+    if (!layout_slot_get(&builder->layouts, layout_ids[i])) {
+      return ZDWM_WORKSPACE_ID_INVALID;
+    }
+  }
+  if (!config_builder_ensure_workspace_capacity(builder)) {
+    return ZDWM_WORKSPACE_ID_INVALID;
+  }
+
+  workspace_id_t workspace_id = (workspace_id_t)builder->workspace_count;
+  workspace_desc_t *slot = &builder->workspaces[builder->workspace_count];
+  slot->output_index = output_index;
+  slot->name = p_strdup(name);
+  slot->layout_ids = p_copy(layout_ids, layout_count);
+  slot->layout_count = layout_count;
+  slot->initial_layout_id = initial_layout_id;
+  builder->workspace_count++;
+  return workspace_id;
+}
+
+static bool config_builder_finish(zdwm_config_builder_t *builder,
+                                  runtime_init_desc_t *out) {
+  if (!builder || !out) return false;
+
+  if (!builder->layouts.slot_count || !builder->workspace_count) return false;
+
+  if (!layout_registry_move(&builder->layouts, &out->layouts)) return false;
+  out->workspaces = builder->workspaces;
+  out->workspace_count = builder->workspace_count;
+  builder->workspaces = nullptr;
+  builder->workspace_count = 0;
+  builder->workspace_capacity = 0;
+  builder->output_count = 0;
+  return true;
+}
+
+static bool runtime_config_build(zdwm_config_setup_fn *setup,
+                                 const output_info_t *outputs,
+                                 size_t output_count,
+                                 runtime_init_desc_t *out) {
+  if (!setup || !out) return false;
+  zdwm_config_builder_t builder = {0};
+  if (!config_builder_init(&builder, output_count)) return false;
+
+  zdwm_api_t api = {
+    .abi_version = ZDWM_CONFIG_ABI_VERSION,
+    .builtin_layouts =
+      {
+        .tile = nullptr,
+        .monocle = nullptr,
+      },
+    .register_layout = runtime_config_register_layout,
+    .define_workspace = runtime_config_define_workspace,
+  };
+  bool ok = setup(&api, &builder, outputs, output_count) &&
+            config_builder_finish(&builder, out);
+  config_builder_cleanup(&builder);
+  return ok;
+}
+
+bool runtime_config_load(const char *override_path, runtime_init_desc_t *out) {
+  if (!out || !out->outputs || out->output_count == 0) return false;
+  runtime_config_cleanup(out);
+
+  config_loader_t loader = {0};
+  bool ok = false;
+  if (!config_loader_load(&loader, override_path)) goto cleanup;
+
+  zdwm_config_setup_fn *setup =
+    loader.setup ? loader.setup : config_defaults_build;
+  ok = runtime_config_build(setup, out->outputs, out->output_count, out);
+  if (ok) {
+    out->config_module_handle = loader.handle;
+    loader.handle = nullptr;
+  }
+
+cleanup:
+  config_loader_cleanup(&loader);
+  return ok;
+}
