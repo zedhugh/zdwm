@@ -1,0 +1,30 @@
+# -*- mode: yaml; -*-
+
+Checks: >-
+  -*,
+  clang-analyzer-*,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
+  cert-err34-c,
+  bugprone-assert-side-effect,
+  bugprone-assignment-in-if-condition,
+  bugprone-branch-clone,
+  bugprone-infinite-loop,
+  bugprone-macro-parentheses,
+  bugprone-macro-repeated-side-effects,
+  bugprone-misplaced-operator-in-strlen-in-alloc,
+  bugprone-misplaced-pointer-arithmetic-in-alloc,
+  bugprone-not-null-terminated-result,
+  bugprone-posix-return,
+  bugprone-sizeof-expression,
+  bugprone-suspicious-memory-comparison,
+  bugprone-suspicious-memset-usage,
+  bugprone-suspicious-missing-comma,
+  bugprone-suspicious-semicolon,
+  bugprone-swapped-arguments,
+  bugprone-undefined-memory-manipulation,
+  bugprone-unsafe-functions,
+  bugprone-unused-return-value
+WarningsAsErrors: ''
+HeaderFilterRegex: '^(src|include|tests)/'
+FormatStyle: file
+SystemHeaders: false
