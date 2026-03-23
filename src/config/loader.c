@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "utils.h"
+#include "base/log.h"
+#include "base/memory.h"
 
 static char *config_loader_join_path(const char *base, const char *suffix) {
   if (!base || !suffix) return nullptr;

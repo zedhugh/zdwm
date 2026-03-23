@@ -2,10 +2,10 @@
 
 #include <stddef.h>
 
+#include "base/memory.h"
 #include "core/backend.h"
 #include "core/state.h"
 #include "core/wm_desc.h"
-#include "utils.h"
 
 static bool runtime_workspace_desc_has_valid_layouts(
   const layout_registry_t *layouts, const workspace_desc_t *workspace) {

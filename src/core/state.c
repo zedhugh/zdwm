@@ -3,9 +3,10 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "base/log.h"
+#include "base/memory.h"
 #include "core/types.h"
 #include "core/wm_desc.h"
-#include "utils.h"
 
 void state_init(state_t *state, const output_info_t *outputs,
                 size_t output_count, const workspace_desc_t *workspaces,

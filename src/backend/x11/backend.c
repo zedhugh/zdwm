@@ -12,8 +12,9 @@
 #include <xcb/xproto.h>
 
 #include "backend/output_utils.h"
+#include "base/log.h"
+#include "base/memory.h"
 #include "core/types.h"
-#include "utils.h"
 
 struct backend_t {
   xcb_connection_t *conn;

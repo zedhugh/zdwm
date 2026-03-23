@@ -85,8 +85,8 @@ typedef struct state_t {
  * workspace；若某个 output 没有任何归属 workspace，state_init() 会失败。
  */
 void state_init(state_t *state, const output_info_t *outputs,
-                   size_t output_count, const workspace_desc_t *workspaces,
-                   size_t workspace_count);
+                size_t output_count, const workspace_desc_t *workspaces,
+                size_t workspace_count);
 void state_cleanup(state_t *state);
 
 /*
@@ -95,20 +95,18 @@ void state_cleanup(state_t *state);
  * 这组接口对外只提供只读访问。
  * workspace 的运行期可变状态必须通过专门的 state 级更新接口修改。
  */
-const workspace_t *state_workspace_get(const state_t *state,
-                                          workspace_id_t id);
+const workspace_t *state_workspace_get(const state_t *state, workspace_id_t id);
 const workspace_t *state_workspace_at(const state_t *state, size_t index);
-bool state_workspace_cycle_layout(state_t *state,
-                                     workspace_id_t workspace_id);
+bool state_workspace_cycle_layout(state_t *state, workspace_id_t workspace_id);
 bool state_workspace_set_layout_by_index(state_t *state,
-                                            workspace_id_t workspace_id,
-                                            size_t index);
-bool state_workspace_set_layout_by_id(state_t *state,
                                          workspace_id_t workspace_id,
-                                         layout_id_t layout_id);
+                                         size_t index);
+bool state_workspace_set_layout_by_id(state_t *state,
+                                      workspace_id_t workspace_id,
+                                      layout_id_t layout_id);
 void state_workspace_set_focused_window(state_t *state,
-                                           workspace_id_t workspace_id,
-                                           window_id_t window_id);
+                                        workspace_id_t workspace_id,
+                                        window_id_t window_id);
 size_t state_workspace_count(const state_t *state);
 bool state_workspace_valid(const state_t *state, workspace_id_t id);
 
@@ -121,10 +119,9 @@ bool state_workspace_valid(const state_t *state, workspace_id_t id);
 const output_t *state_output_get(const state_t *state, output_id_t id);
 const output_t *state_output_at(const state_t *state, size_t index);
 void state_output_set_workarea(state_t *state, output_id_t output_id,
-                                  rect_t workarea);
-void state_output_set_current_workspace(state_t *state,
-                                           output_id_t output_id,
-                                           workspace_id_t workspace_id);
+                               rect_t workarea);
+void state_output_set_current_workspace(state_t *state, output_id_t output_id,
+                                        workspace_id_t workspace_id);
 size_t state_output_count(const state_t *state);
 bool state_output_valid(const state_t *state, output_id_t id);
 
@@ -142,8 +139,7 @@ bool state_output_valid(const state_t *state, output_id_t id);
  * info 提供 backend 已探测到的窗口基础信息。
  * workspace 归属与其他策略相关字段由后续 state_window_* 接口设置。
  */
-const window_t *state_window_add(state_t *state,
-                                    const window_info_t *info);
+const window_t *state_window_add(state_t *state, const window_info_t *info);
 const window_t *state_window_get(const state_t *state, window_id_t id);
 const window_t *state_window_at(const state_t *state, size_t index);
 /* 删除窗口，并同步从 stack_order[] 中移除。 */
@@ -152,31 +148,31 @@ size_t state_window_count(const state_t *state);
 
 /* state 持有的单个 window 状态更新接口 */
 void state_window_set_workspace(state_t *state, window_id_t window_id,
-                                   workspace_id_t workspace_id);
+                                workspace_id_t workspace_id);
 void state_window_set_geometry_mode(state_t *state, window_id_t window_id,
-                                       window_geometry_mode_t geometry_mode);
+                                    window_geometry_mode_t geometry_mode);
 void state_window_set_floating(state_t *state, window_id_t window_id,
-                                  bool floating);
+                               bool floating);
 void state_window_set_sticky(state_t *state, window_id_t window_id,
-                                bool sticky);
+                             bool sticky);
 void state_window_set_urgent(state_t *state, window_id_t window_id,
-                                bool urgent);
+                             bool urgent);
 void state_window_set_fixed_size(state_t *state, window_id_t window_id,
-                                    bool fixed_size);
+                                 bool fixed_size);
 void state_window_set_skip_taskbar(state_t *state, window_id_t window_id,
-                                      bool skip_taskbar);
+                                   bool skip_taskbar);
 void state_window_set_float_rect(state_t *state, window_id_t window_id,
-                                    rect_t float_rect);
+                                 rect_t float_rect);
 void state_window_set_frame_rect(state_t *state, window_id_t window_id,
-                                    rect_t frame_rect);
+                                 rect_t frame_rect);
 bool state_window_set_title(state_t *state, window_id_t window_id,
-                               const char *title);
+                            const char *title);
 bool state_window_set_app_id(state_t *state, window_id_t window_id,
-                                const char *app_id);
+                             const char *app_id);
 bool state_window_set_class(state_t *state, window_id_t window_id,
-                               const char *class_name);
+                            const char *class_name);
 bool state_window_set_instance(state_t *state, window_id_t window_id,
-                                  const char *instance_name);
+                               const char *instance_name);
 
 /*
  * state 持有的堆叠顺序接口

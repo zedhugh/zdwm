@@ -29,7 +29,7 @@ option(BUILD_TESTING "Build tests" OFF)
 
 add_executable(${APP_NAME}
     ${SOURCE_DIR}/wm.c
-    ${SOURCE_DIR}/utils.c
+    ${SOURCE_DIR}/base/log.c
     ${SOURCE_DIR}/buffer.c
     ${SOURCE_DIR}/backtrace.c
     ${SOURCE_DIR}/monitor.c

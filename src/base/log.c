@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "base/log.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -19,9 +19,6 @@ const char *current_time_str(void) {
   return buffer;
 }
 
-/**
- * Print error and exit with EXIT_FAILURE code.
- */
 void _fatal(int line, const char *fct, const char *file, const char *fmt, ...) {
   va_list ap;
 
@@ -34,9 +31,6 @@ void _fatal(int line, const char *fct, const char *file, const char *fmt, ...) {
   exit(EXIT_FAILURE);
 }
 
-/**
- * Print error message on stderr
- */
 void _warn(int line, const char *fct, const char *file, const char *fmt, ...) {
   va_list ap;
 

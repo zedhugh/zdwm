@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "utils.h"
+#include "base/memory.h"
 
 void layout_result_init(layout_result_t *result) {
   result->item_count = 0;

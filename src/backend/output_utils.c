@@ -3,9 +3,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "base/memory.h"
 #include "core/backend.h"
 #include "core/types.h"
-#include "utils.h"
 
 static inline int32_t right(rect_t a) { return a.x + a.width; }
 static inline int32_t bottom(rect_t a) { return a.y + a.height; }

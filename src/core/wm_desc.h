@@ -51,7 +51,7 @@ static inline bool workspace_desc_layouts_valid(
 }
 
 static inline bool workspace_desc_valid(const workspace_desc_t *workspace,
-                                           size_t output_count) {
+                                        size_t output_count) {
   if (!workspace || !workspace->name) return false;
   if (workspace->output_index >= output_count) return false;
 
