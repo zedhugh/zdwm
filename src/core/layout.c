@@ -93,7 +93,7 @@ wm_layout_id_t wm_layout_register(wm_layout_registry_t *registry,
   r->id = id;
   r->name = p_strdup(name);
   r->symbol = p_strdup(symbol);
-  r->description = description ? p_strdup(description) : nullptr;
+  r->description = p_strdup_nullable(description);
   r->fn = fn;
 
   registry->slot_count++;

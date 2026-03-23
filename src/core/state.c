@@ -19,7 +19,7 @@ void wm_state_init(wm_state_t *state, const wm_output_info_t *outputs,
 
     output->id = (wm_output_id_t)i;
     output->current_workspace_id = WM_WORKSPACE_ID_INVALID;
-    output->name = p_strdup(output_info->name);
+    output->name = p_strdup_nullable(output_info->name);
     output->geometry = output_info->geometry;
     output->workarea = output_info->geometry;
   }
@@ -451,7 +451,7 @@ bool wm_state_window_set_title(wm_state_t *state, wm_window_id_t window_id,
   if (!window) return false;
 
   p_delete(&window->title);
-  if (title) window->title = p_strdup(title);
+  window->title = p_strdup_nullable(title);
 
   return true;
 }
@@ -462,7 +462,7 @@ bool wm_state_window_set_app_id(wm_state_t *state, wm_window_id_t window_id,
   if (!window) return false;
 
   p_delete(&window->app_id);
-  if (app_id) window->app_id = p_strdup(app_id);
+  window->app_id = p_strdup_nullable(app_id);
 
   return true;
 }
@@ -472,7 +472,7 @@ bool wm_state_window_set_class(wm_state_t *state, wm_window_id_t window_id,
   if (!window) return false;
 
   p_delete(&window->class_name);
-  if (class_name) window->class_name = p_strdup(class_name);
+  window->class_name = p_strdup_nullable(class_name);
 
   return true;
 }
@@ -482,7 +482,7 @@ bool wm_state_window_set_instance(wm_state_t *state, wm_window_id_t window_id,
   if (!window) return false;
 
   p_delete(&window->instance_name);
-  if (instance_name) window->instance_name = p_strdup(instance_name);
+  window->instance_name = p_strdup_nullable(instance_name);
 
   return true;
 }

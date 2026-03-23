@@ -36,6 +36,11 @@ static inline char *p_strdup(const char *text) {
   return r;
 }
 
+static inline char *p_strdup_nullable(const char *text) {
+  if (!text) return nullptr;
+  return p_strdup(text);
+}
+
 static inline void *__attribute__((malloc)) xmalloc(ssize_t size) {
   void *ptr;
 
