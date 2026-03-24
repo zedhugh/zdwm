@@ -47,24 +47,10 @@ typedef struct layout_registry_t {
   size_t slot_capacity;
 } layout_registry_t;
 
-/*
- * 调用约束：
- * - result 必须是有效的非空指针
- * - 除 init 之外，其余 result 相关接口都要求 result 已初始化
- * - 传入空指针或未初始化对象属于调用方错误
- */
-void layout_result_init(layout_result_t *result);
 void layout_result_cleanup(layout_result_t *result);
 
 void layout_result_push(layout_result_t *result, layout_item_t item);
 
-/*
- * 调用约束：
- * - registry 必须是有效的非空指针
- * - 除 init 之外，其余 registry 相关接口都要求 registry 已初始化
- * - 传入空指针或未初始化对象属于调用方错误
- */
-void layout_registry_init(layout_registry_t *registry);
 void layout_registry_cleanup(layout_registry_t *registry);
 bool layout_registry_move(layout_registry_t *src, layout_registry_t *dest);
 size_t layout_registry_count(const layout_registry_t *registry);

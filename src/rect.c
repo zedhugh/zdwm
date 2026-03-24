@@ -1,6 +1,7 @@
 #include "rect.h"
 
-#include "utils.h"
+#include "base/macros.h"
+#include "base/memory.h"
 
 static inline bool rect_valid(rect_t rect) {
   return rect.x1 < rect.x2 && rect.y1 < rect.y2;

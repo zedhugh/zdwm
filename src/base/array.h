@@ -5,6 +5,12 @@
 
 #include "base/memory.h"
 
+static constexpr size_t INIT_CAPACITY = 4;
+static inline size_t next_capacity(size_t capacity) {
+  if (capacity) return capacity * 2;
+  return INIT_CAPACITY;
+}
+
 /**
  * @file array.h
  * @brief 动态数组基础操作。

@@ -3,6 +3,7 @@
 #include <dlfcn.h>
 #include <zdwm/config.h>
 
+#include "base/array.h"
 #include "base/memory.h"
 #include "config/defaults.h"
 #include "config/loader.h"
@@ -42,31 +43,6 @@ static void config_builder_cleanup(zdwm_config_builder_t *builder) {
   builder->output_count = 0;
 }
 
-static bool config_builder_init(zdwm_config_builder_t *builder,
-                                size_t output_count) {
-  if (!builder || output_count == 0) return false;
-
-  p_clear(builder, 1);
-  builder->output_count = output_count;
-  layout_registry_init(&builder->layouts);
-  return true;
-}
-
-static bool config_builder_ensure_workspace_capacity(
-  zdwm_config_builder_t *builder) {
-  if (!builder) return false;
-  if (builder->workspace_count < builder->workspace_capacity) return true;
-
-  size_t capacity = next_capacity(builder->workspace_capacity);
-  if (!builder->workspaces) {
-    builder->workspaces = p_new(workspace_desc_t, capacity);
-  } else {
-    p_realloc(&builder->workspaces, capacity);
-  }
-  builder->workspace_capacity = capacity;
-  return true;
-}
-
 static layout_id_t runtime_config_register_layout(
   zdwm_config_builder_t *builder, const char *name, const char *symbol,
   const char *description, layout_fn fn) {
@@ -101,18 +77,15 @@ static workspace_id_t runtime_config_define_workspace(
       return ZDWM_WORKSPACE_ID_INVALID;
     }
   }
-  if (!config_builder_ensure_workspace_capacity(builder)) {
-    return ZDWM_WORKSPACE_ID_INVALID;
-  }
 
   workspace_id_t workspace_id = (workspace_id_t)builder->workspace_count;
-  workspace_desc_t *slot = &builder->workspaces[builder->workspace_count];
+  workspace_desc_t *slot = array_push(
+    builder->workspaces, builder->workspace_count, builder->workspace_capacity);
   slot->output_index = output_index;
   slot->name = p_strdup(name);
   slot->layout_ids = p_copy(layout_ids, layout_count);
   slot->layout_count = layout_count;
   slot->initial_layout_id = initial_layout_id;
-  builder->workspace_count++;
   return workspace_id;
 }
 
@@ -138,7 +111,7 @@ static bool runtime_config_build(zdwm_config_setup_fn *setup,
                                  runtime_init_desc_t *out) {
   if (!setup || !out) return false;
   zdwm_config_builder_t builder = {0};
-  if (!config_builder_init(&builder, output_count)) return false;
+  builder.output_count = output_count;
 
   zdwm_api_t api = {
     .abi_version = ZDWM_CONFIG_ABI_VERSION,

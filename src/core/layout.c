@@ -4,13 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "base/array.h"
 #include "base/memory.h"
-
-void layout_result_init(layout_result_t *result) {
-  result->item_count = 0;
-  result->item_capacity = INIT_CAPACITY;
-  result->items = p_new(layout_item_t, result->item_capacity);
-}
+#include "core/types.h"
 
 void layout_result_cleanup(layout_result_t *result) {
   p_delete(&result->items);
@@ -19,19 +15,9 @@ void layout_result_cleanup(layout_result_t *result) {
 }
 
 void layout_result_push(layout_result_t *result, layout_item_t item) {
-  if (result->item_count == result->item_capacity) {
-    size_t new_capacity = next_capacity(result->item_capacity);
-    p_realloc(&result->items, new_capacity);
-    result->item_capacity = new_capacity;
-  }
-
-  result->items[result->item_count++] = item;
-}
-
-void layout_registry_init(layout_registry_t *registry) {
-  registry->slot_count = 0;
-  registry->slot_capacity = INIT_CAPACITY;
-  registry->slots = p_new(layout_slot_t, registry->slot_capacity);
+  layout_item_t *slot =
+    array_push(result->items, result->item_count, result->item_capacity);
+  *slot = item;
 }
 
 void layout_registry_cleanup(layout_registry_t *registry) {
@@ -77,22 +63,16 @@ layout_id_t layout_register(layout_registry_t *registry, const char *name,
                             layout_fn fn) {
   if (!name || !symbol) return ZDWM_LAYOUT_ID_INVALID;
 
-  if (registry->slot_count == registry->slot_capacity) {
-    size_t new_capacity = next_capacity(registry->slot_capacity);
-    p_realloc(&registry->slots, new_capacity);
-    registry->slot_capacity = new_capacity;
-  }
   layout_id_t id = (layout_id_t)registry->slot_count;
-
-  layout_slot_t *r = &registry->slots[registry->slot_count];
+  layout_slot_t *r =
+    array_push(registry->slots, registry->slot_count, registry->slot_capacity);
   r->id = id;
   r->name = p_strdup(name);
   r->symbol = p_strdup(symbol);
   r->description = p_strdup_nullable(description);
   r->fn = fn;
 
-  registry->slot_count++;
-  return id;
+  return r->id;
 }
 
 layout_fn layout_get(const layout_registry_t *registry, layout_id_t id) {

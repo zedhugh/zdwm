@@ -98,7 +98,6 @@ static void test_runtime_config_keeps_module_loaded_after_runtime_init(
   assert(layout != nullptr);
 
   layout_result_t result = {0};
-  layout_result_init(&result);
 
   layout_ctx_t ctx = {
     .workspace_id = 0,
@@ -120,7 +119,8 @@ static void test_runtime_config_keeps_module_loaded_after_runtime_init(
   assert(runtime.config_module_handle == nullptr);
 }
 
-static void test_runtime_config_falls_back_to_defaults_when_implicit_library_is_missing(
+static void
+test_runtime_config_falls_back_to_defaults_when_implicit_library_is_missing(
   void) {
   config_test_clear_env();
 

@@ -5,8 +5,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "base/macros.h"
-
 #define p_alloc_nr(x) (((x) + 16) * 3 / 2)
 #define p_new(type, count) ((type *)xmalloc(sizeof(type) * (count)))
 #define p_clear(p, count) ((void)memset((p), 0, sizeof(*(p)) * (count)))
@@ -65,9 +63,3 @@ static inline void xrealloc(void **ptr, ssize_t newsize) {
  * Unlike strlen(), a_strlen() accepts nullptr and returns 0 in that case.
  */
 static inline ssize_t a_strlen(const char *s) { return s ? strlen(s) : 0; }
-
-static constexpr size_t INIT_CAPACITY = 4;
-static inline size_t next_capacity(size_t capacity) {
-  if (capacity) return capacity * 2;
-  return INIT_CAPACITY;
-}

@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
 #include "core/types.h"
@@ -257,19 +258,19 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
   window_id_t id = info->id;
   window_t *window = (window_t *)state_window_get(state, id);
   if (!window) {
-    if (state->window_count == state->window_capacity) {
-      size_t capacity = next_capacity(state->window_capacity);
-      p_realloc(&state->windows, capacity);
-      p_realloc(&state->stack_order, capacity);
-      state->window_capacity = capacity;
+    size_t index = state->window_count;
+    size_t old_capacity = state->window_capacity;
+    window =
+      array_push(state->windows, state->window_count, state->window_capacity);
+    if (old_capacity != state->window_capacity) {
+      p_realloc(&state->stack_order, state->window_capacity);
     }
-    window = &state->windows[state->window_count];
+
     p_clear(window, 1);
     window->id = id;
     window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
 
-    state->stack_order[state->window_count] = id;
-    state->window_count++;
+    state->stack_order[index] = id;
   }
 
   state_window_set_geometry_mode(state, id, info->geometry_mode);
