@@ -2,14 +2,17 @@
 
 #include <stddef.h>
 
+#include "core/layer.h"
 #include "core/types.h"
 #include "core/wm_desc.h"
 
 /* 核心实体定义 */
 typedef struct window_t {
   window_id_t id;
+  window_id_t transient_for;
   workspace_id_t workspace_id;
 
+  layer_type_t layer;
   window_geometry_mode_t geometry_mode;
   bool floating;
   bool sticky;
@@ -64,9 +67,11 @@ typedef struct state_t {
   size_t window_count;
   size_t window_capacity;
 
-  /* 与 windows[] 一一对应的堆叠顺序视图，长度等于 window_count */
+  /* TODO: 过渡期全局 z-order 视图，后续由 layer stack 替代 */
   window_id_t *stack_order;
 
+  /* TODO: 分层堆叠顺序：每层内部从低到高排列 */
+  layer_stack_t stacks[ZDWM_WINDOW_LAYER_COUNT];
 } state_t;
 
 /*
@@ -128,13 +133,13 @@ bool state_output_valid(const state_t *state, output_id_t id);
 /*
  * state 持有的 window 集合接口
  *
- * 这组接口负责管理 state_t.windows[] 容器本身，并保持
- * stack_order[] 与 windows[] 同步。
+ * TODO: 这组接口负责管理 state_t.windows[] 容器本身，并维护当前过渡期的
+ * stack_order[] 视图；后续会切换到 layer stack 为主。
  * 对外只提供只读访问。
  * window 的运行期可变状态必须通过专门的 state 级更新接口修改。
  */
 /*
- * 添加窗口，并将其追加到 stack_order[] 顶部。
+ * TODO: 添加窗口，并将其追加到当前过渡期的 stack_order[] 顶部。
  *
  * info 提供 backend 已探测到的窗口基础信息。
  * workspace 归属与其他策略相关字段由后续 state_window_* 接口设置。
@@ -142,7 +147,7 @@ bool state_output_valid(const state_t *state, output_id_t id);
 const window_t *state_window_add(state_t *state, const window_info_t *info);
 const window_t *state_window_get(const state_t *state, window_id_t id);
 const window_t *state_window_at(const state_t *state, size_t index);
-/* 删除窗口，并同步从 stack_order[] 中移除。 */
+/* TODO: 删除窗口，并同步从当前过渡期的 stack_order[] 中移除。 */
 void state_window_remove(state_t *state, window_id_t id);
 size_t state_window_count(const state_t *state);
 
@@ -175,10 +180,11 @@ bool state_window_set_instance(state_t *state, window_id_t window_id,
                                const char *instance_name);
 
 /*
- * state 持有的堆叠顺序接口
+ * TODO: state 持有的过渡期堆叠顺序接口
  *
- * stack_order[] 是全局 z-order 的唯一真相，从下到上排列。
- * 其长度恒等于 state_window_count(state)，因此不提供单独的 count 接口。
+ * 这组接口服务于当前保留的全局 stack_order[] 视图；后续会由 layer stack
+ * 取代。stack_order[] 从下到上排列，其长度恒等于 state_window_count(state)，
+ * 因此不提供单独的 count 接口。
  */
 const window_id_t *state_stack_order(const state_t *state);
 window_id_t state_stack_at(const state_t *state, size_t index);

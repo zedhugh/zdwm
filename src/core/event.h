@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include "core/types.h"
-#include "core/wm_desc.h"
+#include "core/window.h"
 
 typedef enum event_type_t {
   ZDWM_EVENT_KEY_PRESS,
@@ -63,9 +63,9 @@ typedef struct pointer_enter_event_t {
 } pointer_enter_event_t;
 
 typedef struct window_map_request_event_t {
-  window_info_t info;
-  window_id_t transient_for;
-  bool is_dialog;
+  window_id_t id;
+  window_props_t props;
+  window_metadata_t metadata;
 } window_map_request_event_t;
 
 typedef enum window_remove_reason_t {
@@ -88,10 +88,7 @@ typedef enum window_metadata_change_flags_t {
 typedef struct window_metadata_change_event_t {
   window_id_t window;
   uint32_t changed_fields;
-  const char *title;
-  const char *app_id;
-  const char *class_name;
-  const char *instance_name;
+  window_metadata_t metadata;
 } window_metadata_change_event_t;
 
 typedef enum window_hint_changed_flags_t {
