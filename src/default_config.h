@@ -105,6 +105,8 @@ static const char browser[] = "firefox-bin";
 static const char browser_class[] = "firefox";
 static const char chrome[] = "google-chrome-stable";
 static const char chrome_class[] = "Google-chrome";
+static const char mpv[] = "mpv";
+static const char mpv_class[] = "mpv";
 static const keyboard_t key_list[] = {
   {modifier_super, XK_r, spawn, {.ptr = launcher}},
   {modifier_super, XK_Return, spawn, {.ptr = terminal}},
@@ -131,6 +133,12 @@ static const keyboard_t key_list[] = {
     XK_a,
     raise_or_run,
     {.ptr = (const char *[]){chrome_class, chrome}},
+  },
+  {
+    modifier_super,
+    XK_v,
+    raise_or_run,
+    {.ptr = (const char *[]){mpv_class, mpv}},
   },
   {modifier_super | modifier_shift, XK_q, quit, {.b = false}},
   {modifier_super | modifier_control, XK_r, quit, {.b = true}},
