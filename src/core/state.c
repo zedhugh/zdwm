@@ -6,6 +6,7 @@
 #include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
+#include "core/layer.h"
 #include "core/types.h"
 #include "core/wm_desc.h"
 
@@ -69,8 +70,14 @@ void state_cleanup(state_t *state) {
   }
   state->window_count = 0;
   p_delete(&state->windows);
-  p_delete(&state->stack_order);
   state->window_capacity = 0;
+
+  for (size_t i = 0; i < ZDWM_WINDOW_LAYER_COUNT; ++i) {
+    layer_stack_t *layer = &state->stacks[i];
+    p_delete(&layer->order);
+    layer->order = 0;
+    layer->capacity = 0;
+  }
 
   for (size_t i = 0; i < state->workspace_count; i++) {
     workspace_t *workspace = &state->workspaces[i];
@@ -112,12 +119,15 @@ static void state_workspace_adjust_focused_window(const state_t *state,
     state_window_get(state, workspace->focused_window_id);
   if (window && window->workspace_id == workspace_id) return;
 
-  for (size_t i = state->window_count; i > 0; i--) {
-    window_id_t window_id = state->stack_order[i - 1];
-    const window_t *window = state_window_get(state, window_id);
-    if (window && window->workspace_id == workspace_id) {
-      workspace->focused_window_id = window_id;
-      return;
+  for (size_t i = ZDWM_WINDOW_LAYER_TOP; i >= ZDWM_WINDOW_LAYER_NORMAL; --i) {
+    const layer_stack_t *layer = &state->stacks[i];
+    for (size_t i = layer->count; i > 0; --i) {
+      window_id_t window_id = layer->order[i - 1];
+      window = state_window_get(state, window_id);
+      if (window && window->workspace_id == workspace_id) {
+        workspace->focused_window_id = window_id;
+        return;
+      }
     }
   }
 
