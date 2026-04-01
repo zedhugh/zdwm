@@ -1,0 +1,74 @@
+#include <stdio.h>
+#include <xcb/xcb.h>
+#include <xcb/xcb_event.h>
+#include <xcb/xproto.h>
+
+#include "base/memory.h"
+#include "core/backend.h"
+#include "internal.h" /* IWYU pragma: keep */
+
+static bool handle_map_request(event_t *event,
+                               const xcb_map_request_event_t *xcb_event) {
+  p_clear(event, 1);
+  event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
+  /* TODO: */
+  return true;
+}
+
+static bool handle_unmap_notify(event_t *event,
+                                const xcb_unmap_notify_event_t *xcb_event) {
+  p_clear(event, 1);
+  event->type = ZDWM_EVENT_WINDOW_REMOVE;
+  /* TODO: */
+  return true;
+}
+
+static bool handle_destroy_notify(event_t *event,
+                                  const xcb_destroy_notify_event_t *xcb_event) {
+  p_clear(event, 1);
+  event->type = ZDWM_EVENT_WINDOW_REMOVE;
+  /* TODO: */
+  return true;
+}
+
+static bool handle_configure_request(
+  event_t *event, const xcb_configure_request_event_t *xcb_event) {
+  p_clear(event, 1);
+  event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
+  /* TODO: */
+  return true;
+}
+
+bool backend_next_event(backend_t *backend, event_t *event) {
+  if (!backend || !backend->conn || !event) return false;
+
+  for (;;) {
+    xcb_generic_event_t *raw_event = xcb_wait_for_event(backend->conn);
+    if (!raw_event) return false;
+
+    uint8_t response_type = XCB_EVENT_RESPONSE_TYPE(raw_event);
+    bool handled = false;
+
+    printf("xcb event type: %u\n", response_type);
+
+    switch (response_type) {
+#define EVENT(type, handler)                     \
+  case type:                                     \
+    handled = handler(event, (void *)raw_event); \
+    break
+
+      EVENT(XCB_MAP_REQUEST, handle_map_request);
+      EVENT(XCB_UNMAP_NOTIFY, handle_unmap_notify);
+      EVENT(XCB_DESTROY_NOTIFY, handle_destroy_notify);
+      EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
+
+#undef EVENT
+
+      default:
+        break;
+    }
+
+    p_delete(&raw_event);
+    if (handled) return true;
+  }
+}

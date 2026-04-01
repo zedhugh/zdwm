@@ -4,6 +4,7 @@
 
 #include "base/memory.h"
 #include "core/backend.h"
+#include "core/event.h"
 #include "core/state.h"
 #include "core/wm_desc.h"
 
@@ -89,4 +90,13 @@ void runtime_shutdown(runtime_t *runtime) {
   runtime->backend = nullptr;
   if (runtime->config_module_handle) dlclose(runtime->config_module_handle);
   runtime->config_module_handle = nullptr;
+}
+
+void runtime_run(runtime_t *runtime) {
+  for (;;) {
+    event_t event = {0};
+    if (!backend_next_event(runtime->backend, &event)) {
+      break;
+    }
+  }
 }

@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 
+#include "core/event.h"
 #include "core/types.h"
 
 typedef struct backend_t backend_t;
@@ -16,3 +17,5 @@ void backend_destroy(backend_t *backend);
 
 backend_detect_t *backend_detect(backend_t *backend);
 void backend_detect_destroy(backend_detect_t *detect);
+
+bool backend_next_event(backend_t *backend, event_t *event);

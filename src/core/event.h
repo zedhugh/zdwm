@@ -63,9 +63,10 @@ typedef struct pointer_enter_event_t {
 } pointer_enter_event_t;
 
 typedef struct window_map_request_event_t {
-  window_id_t id;
+  window_id_t window;
   window_props_t props;
   window_metadata_t metadata;
+  window_geometry_mode_t geometry;
 } window_map_request_event_t;
 
 typedef enum window_remove_reason_t {
@@ -154,7 +155,6 @@ typedef struct configure_request_event_t {
 
 typedef struct event_t {
   event_type_t type;
-  uint32_t time_ms;
   union {
     key_press_event_t key_press;
     pointer_button_event_t pointer_button_press;

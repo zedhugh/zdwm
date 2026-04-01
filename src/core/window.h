@@ -34,6 +34,8 @@ typedef struct window_props_t {
   window_id_t transient_for;
 
   bool override_redirect;
+  bool skip_taskbar;
+  bool urgent;
 
   window_type_t *types;
   size_t type_count;
@@ -48,3 +50,9 @@ typedef struct window_metadata_t {
   const char *class_name;
   const char *instance_name;
 } window_metadata_t;
+
+typedef struct window_geometry_t {
+  window_geometry_mode_t mode;
+  rect_t rect;
+  bool fixed_size;
+} window_geometry_t;

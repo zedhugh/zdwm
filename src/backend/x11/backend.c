@@ -15,13 +15,7 @@
 #include "base/log.h"
 #include "base/memory.h"
 #include "core/types.h"
-
-struct backend_t {
-  xcb_connection_t *conn;
-  xcb_screen_t *screen;
-  int screenp;
-  bool have_xfixes;
-};
+#include "internal.h" /* IWYU pragma: keep */
 
 backend_t *backend_create(const char *display_name) {
   int screen_num = 0;

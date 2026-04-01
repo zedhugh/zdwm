@@ -36,6 +36,7 @@ int main(void) {
   runtime_t runtime = {0};
 
   bootstrap(&runtime);
+  runtime_run(&runtime);
   runtime_shutdown(&runtime);
 
   return 0;

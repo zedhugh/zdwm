@@ -16,6 +16,12 @@ struct backend_t {
 
 void backend_destroy(backend_t *backend) { free(backend); }
 
+bool backend_next_event(backend_t *backend, event_t *event) {
+  (void)backend;
+  (void)event;
+  return false;
+}
+
 static backend_t *test_backend_create(void) {
   return calloc(1, sizeof(backend_t));
 }
