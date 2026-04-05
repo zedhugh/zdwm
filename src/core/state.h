@@ -130,21 +130,20 @@ bool state_output_valid(const state_t *state, output_id_t id);
 /*
  * state 持有的 window 集合接口
  *
- * TODO: 这组接口负责管理 state_t.windows[] 容器本身，并维护当前过渡期的
- * stack_order[] 视图；后续会切换到 layer stack 为主。
- * 对外只提供只读访问。
+ * 这组接口负责管理 state_t.windows[] 容器本身，并维护分层的堆叠顺序。
+ * 接口返回的 window 对象仅提供只读访问。
  * window 的运行期可变状态必须通过专门的 state 级更新接口修改。
  */
 /*
- * TODO: 添加窗口，并将其追加到当前过渡期的 stack_order[] 顶部。
+ * 添加窗口，并将其追加到对应堆栈顶部
  *
- * info 提供 backend 已探测到的窗口基础信息。
+ * info 提供窗口的基础信息
  * workspace 归属与其他策略相关字段由后续 state_window_* 接口设置。
  */
 const window_t *state_window_add(state_t *state, const window_info_t *info);
 const window_t *state_window_get(const state_t *state, window_id_t id);
 const window_t *state_window_at(const state_t *state, size_t index);
-/* TODO: 删除窗口，并同步从当前过渡期的 stack_order[] 中移除。 */
+/* 删除窗口，并同步将其从对应的堆叠栈中移除 */
 void state_window_remove(state_t *state, window_id_t id);
 size_t state_window_count(const state_t *state);
 
