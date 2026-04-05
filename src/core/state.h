@@ -67,10 +67,7 @@ typedef struct state_t {
   size_t window_count;
   size_t window_capacity;
 
-  /* TODO: 过渡期全局 z-order 视图，后续由 layer stack 替代 */
-  window_id_t *stack_order;
-
-  /* TODO: 分层堆叠顺序：每层内部从低到高排列 */
+  /* 分层堆叠顺序：每层内部从低到高排列 */
   layer_stack_t stacks[ZDWM_WINDOW_LAYER_COUNT];
 } state_t;
 
@@ -179,14 +176,5 @@ bool state_window_set_class(state_t *state, window_id_t window_id,
 bool state_window_set_instance(state_t *state, window_id_t window_id,
                                const char *instance_name);
 
-/*
- * TODO: state 持有的过渡期堆叠顺序接口
- *
- * 这组接口服务于当前保留的全局 stack_order[] 视图；后续会由 layer stack
- * 取代。stack_order[] 从下到上排列，其长度恒等于 state_window_count(state)，
- * 因此不提供单独的 count 接口。
- */
-const window_id_t *state_stack_order(const state_t *state);
-window_id_t state_stack_at(const state_t *state, size_t index);
 bool state_stack_raise(state_t *state, window_id_t window_id);
 bool state_stack_lower(state_t *state, window_id_t window_id);

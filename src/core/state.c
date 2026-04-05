@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <zdwm/types.h>
 
 #include "base/array.h"
 #include "base/log.h"
@@ -268,19 +269,15 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
   window_id_t id = info->id;
   window_t *window = (window_t *)state_window_get(state, id);
   if (!window) {
-    size_t index = state->window_count;
-    size_t old_capacity = state->window_capacity;
     window =
       array_push(state->windows, state->window_count, state->window_capacity);
-    if (old_capacity != state->window_capacity) {
-      p_realloc(&state->stack_order, state->window_capacity);
-    }
+
+    layer_stack_t *layer = &state->stacks[info->layer_type];
+    layer_stack_append(layer, id);
 
     p_clear(window, 1);
     window->id = id;
     window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-
-    state->stack_order[index] = id;
   }
 
   state_window_set_geometry_mode(state, id, info->geometry_mode);
@@ -323,6 +320,7 @@ void state_window_remove(state_t *state, window_id_t id) {
   if (!matched) return;
 
   window_t *window = &state->windows[index];
+  layer_type_t layer_type = window->layer;
   workspace_id_t workspace_id = window->workspace_id;
   p_delete(&window->title);
   p_delete(&window->app_id);
@@ -336,23 +334,12 @@ void state_window_remove(state_t *state, window_id_t id) {
   p_clear(window, 1);
   window->id = ZDWM_WINDOW_ID_INVALID;
   window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-
-  matched = false;
-  for (size_t i = 0; i < state->window_count; i++) {
-    if (state->stack_order[i] == id) {
-      matched = true;
-      index = i;
-      break;
-    }
-  }
-  if (matched) {
-    for (size_t i = index + 1; i < state->window_count; i++) {
-      state->stack_order[i - 1] = state->stack_order[i];
-    }
-    state->stack_order[state->window_count - 1] = ZDWM_WINDOW_ID_INVALID;
-  }
-
   state->window_count--;
+
+  layer_stack_t *layer = &state->stacks[layer_type];
+  if (layer) {
+    layer_stack_remove(layer, id);
+  }
 
   workspace_t *workspace =
     (workspace_t *)state_workspace_get(state, workspace_id);
@@ -487,53 +474,22 @@ bool state_window_set_instance(state_t *state, window_id_t window_id,
   return true;
 }
 
-const window_id_t *state_stack_order(const state_t *state) {
-  return state->stack_order;
-}
-
-window_id_t state_stack_at(const state_t *state, size_t index) {
-  if (index >= state->window_count) return ZDWM_WINDOW_ID_INVALID;
-  return state->stack_order[index];
-}
-
 bool state_stack_raise(state_t *state, window_id_t window_id) {
-  bool matched = false;
-  size_t index = 0;
-  for (size_t i = 0; i < state->window_count; i++) {
-    if (state->stack_order[i] == window_id) {
-      matched = true;
-      index = i;
-      break;
-    }
-  }
+  const window_t *window = state_window_get(state, window_id);
+  if (!window) return false;
 
-  if (!matched) return false;
+  layer_stack_t *layer = &state->stacks[window->layer];
+  if (!layer) return false;
 
-  for (size_t i = index + 1; i < state->window_count; i++) {
-    state->stack_order[i - 1] = state->stack_order[i];
-  }
-  state->stack_order[state->window_count - 1] = window_id;
-
-  return true;
+  return layer_stack_raise(layer, window_id);
 }
 
 bool state_stack_lower(state_t *state, window_id_t window_id) {
-  bool matched = false;
-  size_t index = 0;
-  for (size_t i = 0; i < state->window_count; i++) {
-    if (state->stack_order[i] == window_id) {
-      matched = true;
-      index = i;
-      break;
-    }
-  }
+  const window_t *window = state_window_get(state, window_id);
+  if (!window) return false;
 
-  if (!matched) return false;
+  layer_stack_t *layer = &state->stacks[window->layer];
+  if (!layer) return false;
 
-  for (size_t i = index; i > 0; i--) {
-    state->stack_order[i] = state->stack_order[i - 1];
-  }
-  state->stack_order[0] = window_id;
-
-  return true;
+  return layer_stack_lower(layer, window_id);
 }
