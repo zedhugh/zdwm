@@ -1,9 +1,11 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include "core/layer.h"
 #include "core/types.h"
+#include "core/window.h"
 #include "core/wm_desc.h"
 
 /* 核心实体定义 */
@@ -167,6 +169,23 @@ void state_window_set_float_rect(state_t *state, window_id_t window_id,
                                  rect_t float_rect);
 void state_window_set_frame_rect(state_t *state, window_id_t window_id,
                                  rect_t frame_rect);
+/**
+ * @brief 按字段掩码转移窗口元数据的所有权
+ * @param state 状态实例指针
+ * @param window_id 目标窗口 id
+ * @param metadata 元数据来源；成功时仅被转移字段会被置空
+ * @param changed_fields 需要转移的字段掩码
+ * @return 成功返回 true；若目标窗口不存在则返回 false
+ * @details
+ * 成功时，仅转移 changed_fields 指定的字段到目标 window，并将 metadata 中对应
+ * 字段置空；未置位字段保持在 metadata 中，所有权仍归调用方。
+ *
+ * 失败时，不接管 metadata 中任何字段的所有权，metadata 保持不变，仍由调用方负
+ * 责后续访问与释放。
+ */
+bool state_window_take_metadata(state_t *state, window_id_t window_id,
+                                window_metadata_t *metadata,
+                                uint32_t changed_fields);
 bool state_window_set_title(state_t *state, window_id_t window_id,
                             const char *title);
 bool state_window_set_app_id(state_t *state, window_id_t window_id,

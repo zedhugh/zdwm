@@ -7,6 +7,7 @@
 #include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
+#include "core/event.h"
 #include "core/layer.h"
 #include "core/types.h"
 #include "core/wm_desc.h"
@@ -433,6 +434,31 @@ void state_window_set_frame_rect(state_t *state, window_id_t window_id,
   if (!window) return;
 
   window->frame_rect = frame_rect;
+}
+
+bool state_window_take_metadata(state_t *state, window_id_t window_id,
+                                window_metadata_t *metadata,
+                                uint32_t changed_fields) {
+  window_t *window = (window_t *)state_window_get(state, window_id);
+  if (!window) return false;
+
+  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_TITLE) {
+    p_take(&window->title, &metadata->title);
+  }
+  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_APP_ID) {
+    p_take(&window->app_id, &metadata->app_id);
+  }
+  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_ROLE) {
+    p_take(&window->role, &metadata->role);
+  }
+  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_CLASS) {
+    p_take(&window->class_name, &metadata->class_name);
+  }
+  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_INSTANCE) {
+    p_take(&window->instance_name, &metadata->instance_name);
+  }
+
+  return true;
 }
 
 bool state_window_set_title(state_t *state, window_id_t window_id,

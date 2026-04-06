@@ -18,6 +18,13 @@
     *(void **)__ptr = nullptr;       \
   } while (0)
 
+#define p_take(dst_p, src_p) \
+  do {                       \
+    p_delete(dst_p);         \
+    *(dst_p) = *(src_p);     \
+    *(src_p) = nullptr;      \
+  } while (0)
+
 static inline char *p_strdup(const char *text) {
   char *r = strdup(text);
   if (!r) abort();
