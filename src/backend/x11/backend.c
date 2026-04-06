@@ -13,9 +13,46 @@
 
 #include "backend/output_utils.h"
 #include "base/log.h"
+#include "base/macros.h"
 #include "base/memory.h"
 #include "core/types.h"
 #include "internal.h" /* IWYU pragma: keep */
+
+typedef struct atom_item_t {
+  const char *name;
+  size_t len;
+  xcb_atom_t *atom;
+} atom_item_t;
+
+static void atoms_init(backend_t *backend) {
+  xcb_connection_t *conn = backend->conn;
+  atoms_t *atoms = &backend->atoms;
+
+  atom_item_t atom_list[] = {
+    {"COMPOUND_TEXT", sizeof("COMPOUND_TEXT") - 1, &atoms->COMPOUND_TEXT},
+    {"UTF8_STRING", sizeof("UTF8_STRING") - 1, &atoms->UTF8_STRING},
+
+    {"WM_WINDOW_ROLE", sizeof("WM_WINDOW_ROLE") - 1, &atoms->WM_WINDOW_ROLE},
+    {"WM_NAME", sizeof("WM_NAME") - 1, &atoms->WM_NAME},
+    {"_NET_WM_NAME", sizeof("_NET_WM_NAME") - 1, &atoms->_NET_WM_NAME},
+  };
+
+  xcb_intern_atom_cookie_t cookies[countof(atom_list)];
+  for (size_t i = 0; i < countof(atom_list); ++i) {
+    const atom_item_t *atom = &atom_list[i];
+    cookies[i] = xcb_intern_atom_unchecked(conn, false, atom->len, atom->name);
+  }
+
+  xcb_intern_atom_reply_t *reply = nullptr;
+  for (size_t i = 0; i < countof(atom_list); ++i) {
+    reply = xcb_intern_atom_reply(conn, cookies[i], nullptr);
+    if (!reply) continue;
+
+    atom_item_t *atom = &atom_list[i];
+    *atom->atom = reply->atom;
+    p_delete(&reply);
+  }
+}
 
 backend_t *backend_create(const char *display_name) {
   int screen_num = 0;
@@ -62,6 +99,8 @@ backend_t *backend_create(const char *display_name) {
   } else {
     backend->have_xfixes = false;
   }
+
+  atoms_init(backend);
 
   return backend;
 }

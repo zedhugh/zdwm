@@ -1,21 +1,32 @@
+#include "core/event.h"
+
 #include <stdio.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xproto.h>
 
+#include "backend/x11/window.h"
 #include "base/memory.h"
 #include "core/backend.h"
+#include "core/window.h"
 #include "internal.h" /* IWYU pragma: keep */
 
-static bool handle_map_request(event_t *event,
+static bool handle_map_request(backend_t *backend, event_t *event,
                                const xcb_map_request_event_t *xcb_event) {
   p_clear(event, 1);
+  xcb_window_t window = xcb_event->window;
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
+  event->data.window_map_request.window = window;
+  window_metadata_t *metadata = &event->data.window_map_request.metadata;
+  metadata->app_id = window_get_role(backend, window);
+  metadata->title = window_get_title(backend, window);
+  window_get_class(backend, window, &metadata->class_name,
+                   &metadata->instance_name);
   /* TODO: */
   return true;
 }
 
-static bool handle_unmap_notify(event_t *event,
+static bool handle_unmap_notify(backend_t *backend, event_t *event,
                                 const xcb_unmap_notify_event_t *xcb_event) {
   p_clear(event, 1);
   event->type = ZDWM_EVENT_WINDOW_REMOVE;
@@ -23,7 +34,7 @@ static bool handle_unmap_notify(event_t *event,
   return true;
 }
 
-static bool handle_destroy_notify(event_t *event,
+static bool handle_destroy_notify(backend_t *backend, event_t *event,
                                   const xcb_destroy_notify_event_t *xcb_event) {
   p_clear(event, 1);
   event->type = ZDWM_EVENT_WINDOW_REMOVE;
@@ -32,7 +43,8 @@ static bool handle_destroy_notify(event_t *event,
 }
 
 static bool handle_configure_request(
-  event_t *event, const xcb_configure_request_event_t *xcb_event) {
+  backend_t *backend, event_t *event,
+  const xcb_configure_request_event_t *xcb_event) {
   p_clear(event, 1);
   event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
   /* TODO: */
@@ -52,9 +64,9 @@ bool backend_next_event(backend_t *backend, event_t *event) {
     printf("xcb event type: %u\n", response_type);
 
     switch (response_type) {
-#define EVENT(type, handler)                     \
-  case type:                                     \
-    handled = handler(event, (void *)raw_event); \
+#define EVENT(type, handler)                              \
+  case type:                                              \
+    handled = handler(backend, event, (void *)raw_event); \
     break
 
       EVENT(XCB_MAP_REQUEST, handle_map_request);

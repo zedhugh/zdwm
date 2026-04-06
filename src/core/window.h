@@ -45,10 +45,10 @@ typedef struct window_props_t {
 } window_props_t;
 
 typedef struct window_metadata_t {
-  const char *title;
-  const char *app_id;
-  const char *class_name;
-  const char *instance_name;
+  char *title;
+  char *app_id; /* X11 中将其当 role 用 */
+  char *class_name;
+  char *instance_name;
 } window_metadata_t;
 
 typedef struct window_geometry_t {

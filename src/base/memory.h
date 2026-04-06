@@ -24,6 +24,12 @@ static inline char *p_strdup(const char *text) {
   return r;
 }
 
+static inline char *p_strndup(const char *text, size_t n) {
+  char *r = strndup(text, n);
+  if (!r) abort();
+  return r;
+}
+
 static inline char *p_strdup_nullable(const char *text) {
   if (!text) return nullptr;
   return p_strdup(text);
