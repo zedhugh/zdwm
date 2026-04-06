@@ -24,10 +24,11 @@ typedef struct window_t {
   rect_t frame_rect; /* 当前外框矩形（由 layout 或 float_rect 解析） */
 
   /* 元数据（核心算法不依赖，仅用于规则匹配和信息展示） */
-  const char *title;
-  const char *app_id;
-  const char *class_name;
-  const char *instance_name;
+  char *title;
+  char *app_id;
+  char *role;
+  char *class_name;
+  char *instance_name;
 
   bool skip_taskbar;
 } window_t;
@@ -170,6 +171,8 @@ bool state_window_set_title(state_t *state, window_id_t window_id,
                             const char *title);
 bool state_window_set_app_id(state_t *state, window_id_t window_id,
                              const char *app_id);
+bool state_window_set_role(state_t *state, window_id_t window_id,
+                           const char *role);
 bool state_window_set_class(state_t *state, window_id_t window_id,
                             const char *class_name);
 bool state_window_set_instance(state_t *state, window_id_t window_id,

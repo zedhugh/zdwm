@@ -46,7 +46,8 @@ typedef struct window_props_t {
 
 typedef struct window_metadata_t {
   char *title;
-  char *app_id; /* X11 中将其当 role 用 */
+  char *app_id;
+  char *role;
   char *class_name;
   char *instance_name;
 } window_metadata_t;

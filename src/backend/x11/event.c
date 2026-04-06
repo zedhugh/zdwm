@@ -18,7 +18,7 @@ static bool handle_map_request(backend_t *backend, event_t *event,
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
   event->data.window_map_request.window = window;
   window_metadata_t *metadata = &event->data.window_map_request.metadata;
-  metadata->app_id = window_get_role(backend, window);
+  metadata->role = window_get_role(backend, window);
   metadata->title = window_get_title(backend, window);
   window_get_class(backend, window, &metadata->class_name,
                    &metadata->instance_name);

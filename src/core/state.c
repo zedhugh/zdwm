@@ -66,6 +66,7 @@ void state_cleanup(state_t *state) {
     window_t *window = &state->windows[i];
     p_delete(&window->title);
     p_delete(&window->app_id);
+    p_delete(&window->role);
     p_delete(&window->class_name);
     p_delete(&window->instance_name);
   }
@@ -286,6 +287,7 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
   state_window_set_frame_rect(state, id, info->frame_rect);
   state_window_set_title(state, id, info->title);
   state_window_set_app_id(state, id, info->app_id);
+  state_window_set_role(state, id, info->role);
   state_window_set_class(state, id, info->class_name);
   state_window_set_instance(state, id, info->instance_name);
   state_window_set_skip_taskbar(state, id, info->skip_taskbar);
@@ -324,6 +326,7 @@ void state_window_remove(state_t *state, window_id_t id) {
   workspace_id_t workspace_id = window->workspace_id;
   p_delete(&window->title);
   p_delete(&window->app_id);
+  p_delete(&window->role);
   p_delete(&window->class_name);
   p_delete(&window->instance_name);
 
@@ -453,6 +456,18 @@ bool state_window_set_app_id(state_t *state, window_id_t window_id,
 
   return true;
 }
+
+bool state_window_set_role(state_t *state, window_id_t window_id,
+                           const char *role) {
+  window_t *window = (window_t *)state_window_get(state, window_id);
+  if (!window) return false;
+
+  p_delete(&window->role);
+  window->role = p_strdup_nullable(role);
+
+  return true;
+}
+
 bool state_window_set_class(state_t *state, window_id_t window_id,
                             const char *class_name) {
   window_t *window = (window_t *)state_window_get(state, window_id);
@@ -463,6 +478,7 @@ bool state_window_set_class(state_t *state, window_id_t window_id,
 
   return true;
 }
+
 bool state_window_set_instance(state_t *state, window_id_t window_id,
                                const char *instance_name) {
   window_t *window = (window_t *)state_window_get(state, window_id);

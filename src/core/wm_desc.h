@@ -17,6 +17,7 @@ typedef struct window_info_t {
 
   const char *title;
   const char *app_id;
+  const char *role;
   const char *class_name;
   const char *instance_name;
 
