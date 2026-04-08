@@ -17,12 +17,25 @@ static bool handle_map_request(backend_t *backend, event_t *event,
   xcb_window_t window = xcb_event->window;
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
   event->data.window_map_request.window = window;
+
   window_metadata_t *metadata = &event->data.window_map_request.metadata;
   metadata->role = window_get_role(backend, window);
   metadata->title = window_get_title(backend, window);
   window_get_class(backend, window, &metadata->class_name,
                    &metadata->instance_name);
+
+  window_props_t *props = &event->data.window_map_request.props;
+  props->transient_for = window_get_transient_for(backend, window);
+  xcb_get_window_attributes_reply_t *wa_reply =
+    window_get_attributes(backend, window);
+  props->override_redirect = (bool)wa_reply->override_redirect;
+  p_delete(&wa_reply);
+  props->skip_taskbar = window_get_skip_taskbar(backend, window);
+  props->urgent = window_get_urgency(backend, window);
+  window_get_types(backend, window, &props->types, &props->type_count);
+  window_get_states(backend, window, &props->states, &props->state_count);
   /* TODO: */
+
   return true;
 }
 
