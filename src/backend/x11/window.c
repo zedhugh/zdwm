@@ -81,60 +81,6 @@ xcb_get_window_attributes_reply_t *window_get_attributes(backend_t *backend,
   return xcb_get_window_attributes_reply(backend->conn, cookie, nullptr);
 }
 
-bool window_get_skip_taskbar(backend_t *backend, xcb_window_t window) {
-  xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
-    backend->conn, false, window, backend->atoms._NET_WM_STATE, XCB_ATOM_ATOM,
-    0, UINT32_MAX);
-  xcb_get_property_reply_t *reply =
-    xcb_get_property_reply(backend->conn, cookie, nullptr);
-  if (!reply) return false;
-
-  bool found = false;
-  if (reply->type == XCB_ATOM_ATOM && reply->format == 32) {
-    xcb_atom_t *atoms = (xcb_atom_t *)xcb_get_property_value(reply);
-    uint32_t len = reply->value_len;
-    for (uint32_t i = 0; i < len; i++) {
-      if (atoms[i] == backend->atoms._NET_WM_STATE_SKIP_TASKBAR) {
-        found = true;
-        break;
-      }
-    }
-  }
-
-  p_delete(&reply);
-  return found;
-}
-
-bool window_get_urgency(backend_t *backend, xcb_window_t window) {
-  xcb_get_property_cookie_t cookie =
-    xcb_icccm_get_wm_hints_unchecked(backend->conn, window);
-  xcb_icccm_wm_hints_t hints;
-  xcb_icccm_get_wm_hints_reply(backend->conn, cookie, &hints, nullptr);
-  return (bool)xcb_icccm_wm_hints_get_urgency(&hints);
-}
-
-static bool window_get_atom_array(backend_t *backend, xcb_window_t window,
-                                  xcb_atom_t property, xcb_atom_t **out_atoms,
-                                  uint32_t *out_len) {
-  xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
-    backend->conn, false, window, property, XCB_ATOM_ATOM, 0, UINT32_MAX);
-  xcb_get_property_reply_t *reply =
-    xcb_get_property_reply(backend->conn, cookie, nullptr);
-  if (!reply) return false;
-
-  if (reply->type == XCB_ATOM_ATOM && reply->format == 32 && reply->value_len) {
-    *out_len = reply->value_len;
-    *out_atoms =
-      p_copy((xcb_atom_t *)xcb_get_property_value(reply), reply->value_len);
-  } else {
-    *out_len = 0;
-    *out_atoms = nullptr;
-  }
-
-  p_delete(&reply);
-  return true;
-}
-
 static window_type_t atom_to_window_type(const atoms_t *atoms,
                                          xcb_atom_t atom) {
   if (atom == atoms->_NET_WM_WINDOW_TYPE_DESKTOP)
@@ -185,55 +131,9 @@ bool window_get_types(backend_t *backend, xcb_window_t window,
   return true;
 }
 
-static window_state_t atom_to_window_state(const atoms_t *atoms,
-                                           xcb_atom_t atom) {
-  if (atom == atoms->_NET_WM_STATE_FULLSCREEN)
-    return ZDWM_WINDOW_STATE_FULLSCREEN;
-  if (atom == atoms->_NET_WM_STATE_ABOVE) return ZDWM_WINDOW_STATE_ABOVE;
-  if (atom == atoms->_NET_WM_STATE_STICKY) return ZDWM_WINDOW_STATE_STICKY;
-  if (atom == atoms->_NET_WM_STATE_MODAL) return ZDWM_WINDOW_STATE_MODAL;
-  return (window_state_t)-1;
-}
-
-bool window_get_states(backend_t *backend, xcb_window_t window,
-                       window_state_t **states, size_t *count) {
-  uint32_t atom_count = 0;
-  xcb_atom_t *atoms = nullptr;
-  if (!window_get_atom_array(backend, window, backend->atoms._NET_WM_STATE,
-                             &atoms, &atom_count)) {
-    return false;
-  }
-  if (!atoms) {
-    *states = nullptr;
-    *count = 0;
-    return true;
-  }
-
-  /* 只保留已知 state，跳过未识别的 atom */
-  window_state_t *buf = p_new(window_state_t, atom_count);
-  size_t valid = 0;
-  for (uint32_t i = 0; i < atom_count; i++) {
-    window_state_t s = atom_to_window_state(&backend->atoms, atoms[i]);
-    if (s != (window_state_t)-1) buf[valid++] = s;
-  }
-
-  p_delete(&atoms);
-
-  if (valid == 0) {
-    p_delete(&buf);
-    *states = nullptr;
-    *count = 0;
-    return true;
-  }
-
-  *states = buf;
-  *count = valid;
-  return true;
-}
-
-bool window_get_fixed_size(backend_t *backend, xcb_window_t window) {
+bool window_get_fixed_size(backend_t *backend, xcb_window_t window, bool *out) {
+  xcb_size_hints_t hints = {0};
   xcb_connection_t *conn = backend->conn;
-  xcb_size_hints_t hints;
   xcb_get_property_cookie_t cookie =
     xcb_icccm_get_wm_normal_hints_unchecked(conn, window);
   if (!xcb_icccm_get_wm_normal_hints_reply(conn, cookie, &hints, nullptr)) {
@@ -242,11 +142,12 @@ bool window_get_fixed_size(backend_t *backend, xcb_window_t window) {
 
   if ((hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) &&
       (hints.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)) {
-    return hints.min_width == hints.max_width &&
+    *out = hints.min_width == hints.max_width &&
            hints.min_height == hints.max_height;
+  } else {
+    *out = false;
   }
-
-  return false;
+  return true;
 }
 
 bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out) {
@@ -264,39 +165,44 @@ bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out) {
   return true;
 }
 
-window_geometry_mode_t window_get_geometry_mode(backend_t *backend,
-                                                xcb_window_t window) {
-  xcb_connection_t *conn = backend->conn;
-  xcb_icccm_wm_hints_t hints;
-  xcb_get_property_cookie_t hints_cookie =
-    xcb_icccm_get_wm_hints_unchecked(conn, window);
-  if (xcb_icccm_get_wm_hints_reply(conn, hints_cookie, &hints, nullptr)) {
-    if (hints.initial_state == XCB_ICCCM_WM_STATE_ICONIC) {
-      return ZDWM_GEOMETRY_MINIMIZED;
-    }
+bool window_get_atom_array(backend_t *backend, xcb_window_t window,
+                           xcb_atom_t property, xcb_atom_t **out_atoms,
+                           uint32_t *out_len) {
+  xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
+    backend->conn, false, window, property, XCB_ATOM_ATOM, 0, UINT32_MAX);
+  xcb_get_property_reply_t *reply =
+    xcb_get_property_reply(backend->conn, cookie, nullptr);
+  if (!reply) return false;
+
+  if (reply->type == XCB_ATOM_ATOM && reply->format == 32 && reply->value_len) {
+    *out_len = reply->value_len;
+    *out_atoms =
+      p_copy((xcb_atom_t *)xcb_get_property_value(reply), reply->value_len);
+  } else {
+    *out_len = 0;
+    *out_atoms = nullptr;
   }
 
-  uint32_t atom_count = 0;
-  xcb_atom_t *atoms = nullptr;
-  if (!window_get_atom_array(backend, window, backend->atoms._NET_WM_STATE,
-                             &atoms, &atom_count)) {
-    return ZDWM_GEOMETRY_NORMAL;
+  p_delete(&reply);
+  return true;
+}
+
+bool window_get_wm_hints(backend_t *backend, xcb_window_t window,
+                         xcb_icccm_wm_hints_t *out) {
+  xcb_get_property_cookie_t cookie =
+    xcb_icccm_get_wm_hints_unchecked(backend->conn, window);
+  if (!xcb_icccm_get_wm_hints_reply(backend->conn, cookie, out, nullptr)) {
+    p_clear(out, 1);
+    return false;
   }
+  return true;
+}
 
-  window_geometry_mode_t mode = ZDWM_GEOMETRY_NORMAL;
-
-  for (uint32_t i = 0; i < atom_count; i++) {
-    if (atoms[i] == backend->atoms._NET_WM_STATE_FULLSCREEN) {
-      mode = ZDWM_GEOMETRY_FULLSCREEN;
-      break;
-    }
-    if (atoms[i] == backend->atoms._NET_WM_STATE_MAXIMIZED_VERT ||
-        atoms[i] == backend->atoms._NET_WM_STATE_MAXIMIZED_HORZ) {
-      mode = ZDWM_GEOMETRY_MAXIMIZED;
-      break;
-    }
-  }
-
-  p_delete(&atoms);
-  return mode;
+window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom) {
+  if (atom == atoms->_NET_WM_STATE_FULLSCREEN)
+    return ZDWM_WINDOW_STATE_FULLSCREEN;
+  if (atom == atoms->_NET_WM_STATE_ABOVE) return ZDWM_WINDOW_STATE_ABOVE;
+  if (atom == atoms->_NET_WM_STATE_STICKY) return ZDWM_WINDOW_STATE_STICKY;
+  if (atom == atoms->_NET_WM_STATE_MODAL) return ZDWM_WINDOW_STATE_MODAL;
+  return (window_state_t)-1;
 }

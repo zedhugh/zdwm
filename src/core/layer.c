@@ -88,7 +88,7 @@ bool layer_stack_lower(layer_stack_t *layer, window_id_t window) {
   return true;
 }
 
-layer_type_t layer_classify(const window_props_t *props) {
+layer_type_t layer_classify(const window_layer_props_t *props) {
   for (size_t i = 0; i < props->type_count; ++i) {
     window_type_t type = props->types[i];
     if (type == ZDWM_WINDOW_TYPE_NOTIFICATION) return ZDWM_WINDOW_LAYER_OVERLAY;

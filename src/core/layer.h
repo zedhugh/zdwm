@@ -57,4 +57,4 @@ bool layer_stack_raise(layer_stack_t *layer, window_id_t window);
  */
 bool layer_stack_lower(layer_stack_t *layer, window_id_t window);
 
-layer_type_t layer_classify(const window_props_t *props);
+layer_type_t layer_classify(const window_layer_props_t *props);

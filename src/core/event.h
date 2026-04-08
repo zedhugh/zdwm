@@ -64,9 +64,16 @@ typedef struct pointer_enter_event_t {
 
 typedef struct window_map_request_event_t {
   window_id_t window;
-  window_props_t props;
+  window_id_t transient_for;
+  bool override_redirect;
+  bool skip_taskbar;
+  bool urgent;
+  bool fixed_size;
+  window_geometry_mode_t geometry_mode;
+  rect_t rect;
+
+  window_layer_props_t props;
   window_metadata_t metadata;
-  window_geometry_t geometry;
 } window_map_request_event_t;
 
 typedef enum window_remove_reason_t {
