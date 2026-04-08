@@ -8,33 +8,58 @@
 #include "backend/x11/window.h"
 #include "base/memory.h"
 #include "core/backend.h"
+#include "core/types.h"
 #include "core/window.h"
 #include "internal.h" /* IWYU pragma: keep */
+
+static void map_request_cleanup(event_t *event) {
+  window_metadata_t *metadata = &event->data.window_map_request.metadata;
+  window_props_t *props = &event->data.window_map_request.props;
+  p_delete(&metadata->role);
+  p_delete(&metadata->title);
+  p_delete(&metadata->class_name);
+  p_delete(&metadata->instance_name);
+  p_delete(&props->types);
+  p_delete(&props->states);
+}
 
 static bool handle_map_request(backend_t *backend, event_t *event,
                                const xcb_map_request_event_t *xcb_event) {
   p_clear(event, 1);
   xcb_window_t window = xcb_event->window;
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
-  event->data.window_map_request.window = window;
+  event->data.window_map_request.window = (window_id_t)window;
 
   window_metadata_t *metadata = &event->data.window_map_request.metadata;
+  window_props_t *props = &event->data.window_map_request.props;
+  window_geometry_t *geometry = &event->data.window_map_request.geometry;
+
+  {
+    xcb_get_window_attributes_reply_t *wa_reply =
+      window_get_attributes(backend, window);
+    if (!wa_reply) return false;
+    props->override_redirect = (bool)wa_reply->override_redirect;
+    p_delete(&wa_reply);
+  }
+
+  if (!window_get_geometry(backend, window, &geometry->rect)) return false;
+
+  props->transient_for = window_get_transient_for(backend, window);
+  props->skip_taskbar = window_get_skip_taskbar(backend, window);
+  props->urgent = window_get_urgency(backend, window);
+  geometry->mode = window_get_geometry_mode(backend, window);
+  geometry->fixed_size = window_get_fixed_size(backend, window);
+
   metadata->role = window_get_role(backend, window);
   metadata->title = window_get_title(backend, window);
   window_get_class(backend, window, &metadata->class_name,
                    &metadata->instance_name);
 
-  window_props_t *props = &event->data.window_map_request.props;
-  props->transient_for = window_get_transient_for(backend, window);
-  xcb_get_window_attributes_reply_t *wa_reply =
-    window_get_attributes(backend, window);
-  props->override_redirect = (bool)wa_reply->override_redirect;
-  p_delete(&wa_reply);
-  props->skip_taskbar = window_get_skip_taskbar(backend, window);
-  props->urgent = window_get_urgency(backend, window);
-  window_get_types(backend, window, &props->types, &props->type_count);
-  window_get_states(backend, window, &props->states, &props->state_count);
-  /* TODO: */
+  if (!window_get_types(backend, window, &props->types, &props->type_count) ||
+      !window_get_states(backend, window, &props->states, &props->state_count)) {
+    map_request_cleanup(event);
+    return false;
+  }
 
   return true;
 }

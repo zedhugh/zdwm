@@ -47,6 +47,10 @@ static void atoms_init(backend_t *backend) {
      &atoms->_NET_WM_STATE_MODAL},
     {"_NET_WM_STATE_SKIP_TASKBAR", sizeof("_NET_WM_STATE_SKIP_TASKBAR") - 1,
      &atoms->_NET_WM_STATE_SKIP_TASKBAR},
+    {"_NET_WM_STATE_MAXIMIZED_VERT", sizeof("_NET_WM_STATE_MAXIMIZED_VERT") - 1,
+     &atoms->_NET_WM_STATE_MAXIMIZED_VERT},
+    {"_NET_WM_STATE_MAXIMIZED_HORZ", sizeof("_NET_WM_STATE_MAXIMIZED_HORZ") - 1,
+     &atoms->_NET_WM_STATE_MAXIMIZED_HORZ},
 
     {"_NET_WM_WINDOW_TYPE", sizeof("_NET_WM_WINDOW_TYPE") - 1,
      &atoms->_NET_WM_WINDOW_TYPE},

@@ -17,6 +17,8 @@ typedef struct atoms_t {
   xcb_atom_t _NET_WM_STATE_STICKY;
   xcb_atom_t _NET_WM_STATE_MODAL;
   xcb_atom_t _NET_WM_STATE_SKIP_TASKBAR;
+  xcb_atom_t _NET_WM_STATE_MAXIMIZED_VERT;
+  xcb_atom_t _NET_WM_STATE_MAXIMIZED_HORZ;
 
   xcb_atom_t _NET_WM_WINDOW_TYPE;
   xcb_atom_t _NET_WM_WINDOW_TYPE_NORMAL;

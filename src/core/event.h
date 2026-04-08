@@ -66,7 +66,7 @@ typedef struct window_map_request_event_t {
   window_id_t window;
   window_props_t props;
   window_metadata_t metadata;
-  window_geometry_mode_t geometry;
+  window_geometry_t geometry;
 } window_map_request_event_t;
 
 typedef enum window_remove_reason_t {

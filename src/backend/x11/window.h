@@ -44,3 +44,7 @@ bool window_get_types(backend_t *backend, xcb_window_t window,
                       window_type_t **types, size_t *count);
 bool window_get_states(backend_t *backend, xcb_window_t window,
                        window_state_t **states, size_t *count);
+bool window_get_fixed_size(backend_t *backend, xcb_window_t window);
+bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out);
+window_geometry_mode_t window_get_geometry_mode(backend_t *backend,
+                                                xcb_window_t window);

@@ -113,25 +113,26 @@ bool window_get_urgency(backend_t *backend, xcb_window_t window) {
   return (bool)xcb_icccm_wm_hints_get_urgency(&hints);
 }
 
-static xcb_atom_t *window_get_atom_array(backend_t *backend,
-                                         xcb_window_t window,
-                                         xcb_atom_t property,
-                                         uint32_t *out_len) {
+static bool window_get_atom_array(backend_t *backend, xcb_window_t window,
+                                  xcb_atom_t property, xcb_atom_t **out_atoms,
+                                  uint32_t *out_len) {
   xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
     backend->conn, false, window, property, XCB_ATOM_ATOM, 0, UINT32_MAX);
   xcb_get_property_reply_t *reply =
     xcb_get_property_reply(backend->conn, cookie, nullptr);
-  if (!reply) return nullptr;
+  if (!reply) return false;
 
-  xcb_atom_t *result = nullptr;
   if (reply->type == XCB_ATOM_ATOM && reply->format == 32 && reply->value_len) {
     *out_len = reply->value_len;
-    result =
+    *out_atoms =
       p_copy((xcb_atom_t *)xcb_get_property_value(reply), reply->value_len);
+  } else {
+    *out_len = 0;
+    *out_atoms = nullptr;
   }
 
   p_delete(&reply);
-  return result;
+  return true;
 }
 
 static window_type_t atom_to_window_type(const atoms_t *atoms,
@@ -161,15 +162,17 @@ static window_type_t atom_to_window_type(const atoms_t *atoms,
 
 bool window_get_types(backend_t *backend, xcb_window_t window,
                       window_type_t **types, size_t *count) {
-  if (!types || !count) return false;
-
   uint32_t atom_count = 0;
-  xcb_atom_t *atoms = window_get_atom_array(
-    backend, window, backend->atoms._NET_WM_WINDOW_TYPE, &atom_count);
+  xcb_atom_t *atoms = nullptr;
+  if (!window_get_atom_array(backend, window,
+                             backend->atoms._NET_WM_WINDOW_TYPE, &atoms,
+                             &atom_count)) {
+    return false;
+  }
   if (!atoms) {
     *types = nullptr;
     *count = 0;
-    return false;
+    return true;
   }
 
   *count = atom_count;
@@ -194,15 +197,16 @@ static window_state_t atom_to_window_state(const atoms_t *atoms,
 
 bool window_get_states(backend_t *backend, xcb_window_t window,
                        window_state_t **states, size_t *count) {
-  if (!states || !count) return false;
-
   uint32_t atom_count = 0;
-  xcb_atom_t *atoms = window_get_atom_array(
-    backend, window, backend->atoms._NET_WM_STATE, &atom_count);
+  xcb_atom_t *atoms = nullptr;
+  if (!window_get_atom_array(backend, window, backend->atoms._NET_WM_STATE,
+                             &atoms, &atom_count)) {
+    return false;
+  }
   if (!atoms) {
     *states = nullptr;
     *count = 0;
-    return false;
+    return true;
   }
 
   /* 只保留已知 state，跳过未识别的 atom */
@@ -219,10 +223,80 @@ bool window_get_states(backend_t *backend, xcb_window_t window,
     p_delete(&buf);
     *states = nullptr;
     *count = 0;
-    return false;
+    return true;
   }
 
   *states = buf;
   *count = valid;
   return true;
+}
+
+bool window_get_fixed_size(backend_t *backend, xcb_window_t window) {
+  xcb_connection_t *conn = backend->conn;
+  xcb_size_hints_t hints;
+  xcb_get_property_cookie_t cookie =
+    xcb_icccm_get_wm_normal_hints_unchecked(conn, window);
+  if (!xcb_icccm_get_wm_normal_hints_reply(conn, cookie, &hints, nullptr)) {
+    return false;
+  }
+
+  if ((hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) &&
+      (hints.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)) {
+    return hints.min_width == hints.max_width &&
+           hints.min_height == hints.max_height;
+  }
+
+  return false;
+}
+
+bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out) {
+  xcb_get_geometry_cookie_t cookie = xcb_get_geometry(backend->conn, window);
+  xcb_get_geometry_reply_t *reply =
+    xcb_get_geometry_reply(backend->conn, cookie, nullptr);
+  if (!reply) return false;
+
+  out->x = reply->x;
+  out->y = reply->y;
+  out->width = reply->width;
+  out->height = reply->height;
+
+  p_delete(&reply);
+  return true;
+}
+
+window_geometry_mode_t window_get_geometry_mode(backend_t *backend,
+                                                xcb_window_t window) {
+  xcb_connection_t *conn = backend->conn;
+  xcb_icccm_wm_hints_t hints;
+  xcb_get_property_cookie_t hints_cookie =
+    xcb_icccm_get_wm_hints_unchecked(conn, window);
+  if (xcb_icccm_get_wm_hints_reply(conn, hints_cookie, &hints, nullptr)) {
+    if (hints.initial_state == XCB_ICCCM_WM_STATE_ICONIC) {
+      return ZDWM_GEOMETRY_MINIMIZED;
+    }
+  }
+
+  uint32_t atom_count = 0;
+  xcb_atom_t *atoms = nullptr;
+  if (!window_get_atom_array(backend, window, backend->atoms._NET_WM_STATE,
+                             &atoms, &atom_count)) {
+    return ZDWM_GEOMETRY_NORMAL;
+  }
+
+  window_geometry_mode_t mode = ZDWM_GEOMETRY_NORMAL;
+
+  for (uint32_t i = 0; i < atom_count; i++) {
+    if (atoms[i] == backend->atoms._NET_WM_STATE_FULLSCREEN) {
+      mode = ZDWM_GEOMETRY_FULLSCREEN;
+      break;
+    }
+    if (atoms[i] == backend->atoms._NET_WM_STATE_MAXIMIZED_VERT ||
+        atoms[i] == backend->atoms._NET_WM_STATE_MAXIMIZED_HORZ) {
+      mode = ZDWM_GEOMETRY_MAXIMIZED;
+      break;
+    }
+  }
+
+  p_delete(&atoms);
+  return mode;
 }
