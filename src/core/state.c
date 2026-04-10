@@ -1,6 +1,7 @@
 #include "core/state.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <zdwm/types.h>
 
@@ -265,6 +266,14 @@ bool state_output_valid(const state_t *state, output_id_t id) {
 
   return false;
 #endif
+}
+
+void state_cycle_current_output(state_t *state, int delta) {
+  int64_t count = (int64_t)state->output_count;
+  int64_t current = (int64_t)state->current_output_index;
+  int64_t next = (current + (int64_t)delta) % count;
+  if (next < 0) next += count;
+  state->current_output_index = (size_t)next;
 }
 
 static inline void window_set_geometry_mode(

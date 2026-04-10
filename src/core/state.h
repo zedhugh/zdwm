@@ -65,6 +65,7 @@ typedef struct state_t {
 
   output_t *outputs;
   size_t output_count;
+  size_t current_output_index;
 
   window_t *windows;
   size_t window_count;
@@ -129,6 +130,7 @@ void state_output_set_current_workspace(state_t *state, output_id_t output_id,
                                         workspace_id_t workspace_id);
 size_t state_output_count(const state_t *state);
 bool state_output_valid(const state_t *state, output_id_t id);
+void state_cycle_current_output(state_t *state, int delta);
 
 /*
  * state 持有的 window 集合接口
