@@ -218,7 +218,7 @@ static bool detect_monitor_by_randr(const backend_t *backend,
     if (name_reply) {
       char *name = xcb_get_atom_name_name(name_reply);
       int length = xcb_get_atom_name_name_length(name_reply);
-      output->name = strndup(name, length);
+      output->name = p_strndup(name, length);
       p_delete(&name_reply);
     }
   }
