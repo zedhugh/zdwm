@@ -68,7 +68,7 @@ static bool handle_map_request(backend_t *backend, event_t *event,
   p_clear(event, 1);
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
 
-  window_map_request_event_t *ev = &event->data.window_map_request;
+  window_map_request_event_t *ev = &event->as.window_map_request;
   ev->window = (window_id_t)window;
   ev->transient_for = window_get_transient_for(backend, window);
   ev->geometry_mode = ZDWM_GEOMETRY_NORMAL;

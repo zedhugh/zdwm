@@ -176,5 +176,5 @@ typedef struct event_t {
     window_activate_request_event_t window_activate_request;
     window_state_request_event_t window_state_request;
     configure_request_event_t configure_request;
-  } data;
+  } as;
 } event_t;
