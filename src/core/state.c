@@ -267,6 +267,57 @@ bool state_output_valid(const state_t *state, output_id_t id) {
 #endif
 }
 
+static inline void window_set_geometry_mode(
+  window_t *window, window_geometry_mode_t geometry_mode) {
+  window->geometry_mode = geometry_mode;
+}
+static inline void window_set_floating(window_t *window, bool floating) {
+  window->floating = floating;
+  if (floating) window->float_rect = window->frame_rect;
+}
+static inline void window_set_sticky(window_t *window, bool sticky) {
+  window->sticky = sticky;
+  if (sticky) window_set_floating(window, true);
+}
+static inline void window_set_urgent(window_t *window, bool urgent) {
+  window->urgent = urgent;
+}
+static inline void window_set_fixed_size(window_t *window, bool fixed_size) {
+  window->fixed_size = fixed_size;
+  if (fixed_size) window_set_floating(window, true);
+}
+static inline void window_set_float_rect(window_t *window, rect_t rect) {
+  window->float_rect = rect;
+}
+static inline void window_set_frame_rect(window_t *window, rect_t rect) {
+  window->frame_rect = rect;
+}
+static inline void window_set_title(window_t *window, const char *title) {
+  p_delete(&window->title);
+  window->title = p_strdup_nullable(title);
+}
+static inline void window_set_app_id(window_t *window, const char *app_id) {
+  p_delete(&window->app_id);
+  window->app_id = p_strdup_nullable(app_id);
+}
+static inline void window_set_role(window_t *window, const char *role) {
+  p_delete(&window->role);
+  window->role = p_strdup_nullable(role);
+}
+static inline void window_set_class(window_t *window, const char *class_name) {
+  p_delete(&window->class_name);
+  window->class_name = p_strdup_nullable(class_name);
+}
+static inline void window_set_instance(window_t *window,
+                                       const char *instance_name) {
+  p_delete(&window->instance_name);
+  window->instance_name = p_strdup_nullable(instance_name);
+}
+static inline void window_set_skip_taskbar(window_t *window,
+                                           bool skip_taskbar) {
+  window->skip_taskbar = skip_taskbar;
+}
+
 const window_t *state_window_add(state_t *state, const window_info_t *info) {
   window_id_t id = info->id;
   window_t *window = (window_t *)state_window_get(state, id);
@@ -279,19 +330,21 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
 
     p_clear(window, 1);
     window->id = id;
+    window->transient_for = info->transient_for;
     window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
+    window->layer = info->layer_type;
   }
 
-  state_window_set_geometry_mode(state, id, info->geometry_mode);
-  state_window_set_urgent(state, id, info->urgent);
-  state_window_set_fixed_size(state, id, info->fixed_size);
-  state_window_set_frame_rect(state, id, info->frame_rect);
-  state_window_set_title(state, id, info->title);
-  state_window_set_app_id(state, id, info->app_id);
-  state_window_set_role(state, id, info->role);
-  state_window_set_class(state, id, info->class_name);
-  state_window_set_instance(state, id, info->instance_name);
-  state_window_set_skip_taskbar(state, id, info->skip_taskbar);
+  window_set_geometry_mode(window, info->geometry_mode);
+  window_set_urgent(window, info->urgent);
+  window_set_fixed_size(window, info->fixed_size);
+  window_set_frame_rect(window, info->frame_rect);
+  window_set_title(window, info->title);
+  window_set_app_id(window, info->app_id);
+  window_set_role(window, info->role);
+  window_set_class(window, info->class_name);
+  window_set_instance(window, info->instance_name);
+  window_set_skip_taskbar(window, info->skip_taskbar);
 
   return window;
 }
@@ -373,67 +426,49 @@ void state_window_set_workspace(state_t *state, window_id_t window_id,
 void state_window_set_geometry_mode(state_t *state, window_id_t window_id,
                                     window_geometry_mode_t geometry_mode) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->geometry_mode = geometry_mode;
+  if (window) window_set_geometry_mode(window, geometry_mode);
 }
 
 void state_window_set_floating(state_t *state, window_id_t window_id,
                                bool floating) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->floating = floating;
+  if (window) window_set_floating(window, floating);
 }
 
 void state_window_set_sticky(state_t *state, window_id_t window_id,
                              bool sticky) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->sticky = sticky;
-  if (window->sticky) state_window_set_floating(state, window_id, true);
+  if (window) window_set_sticky(window, sticky);
 }
 
 void state_window_set_urgent(state_t *state, window_id_t window_id,
                              bool urgent) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->urgent = urgent;
+  if (window) window_set_urgent(window, urgent);
 }
 
 void state_window_set_fixed_size(state_t *state, window_id_t window_id,
                                  bool fixed_size) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->fixed_size = fixed_size;
-  if (fixed_size) state_window_set_floating(state, window_id, true);
+  if (window) window_set_fixed_size(window, fixed_size);
 }
 
 void state_window_set_skip_taskbar(state_t *state, window_id_t window_id,
                                    bool skip_taskbar) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->skip_taskbar = skip_taskbar;
+  if (window) window_set_skip_taskbar(window, skip_taskbar);
 }
 
 void state_window_set_float_rect(state_t *state, window_id_t window_id,
                                  rect_t float_rect) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->float_rect = float_rect;
+  if (window) window_set_float_rect(window, float_rect);
 }
 
 void state_window_set_frame_rect(state_t *state, window_id_t window_id,
                                  rect_t frame_rect) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (!window) return;
-
-  window->frame_rect = frame_rect;
+  if (window) window_set_frame_rect(window, frame_rect);
 }
 
 bool state_window_take_metadata(state_t *state, window_id_t window_id,
@@ -466,9 +501,7 @@ bool state_window_set_title(state_t *state, window_id_t window_id,
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
-  p_delete(&window->title);
-  window->title = p_strdup_nullable(title);
-
+  window_set_title(window, title);
   return true;
 }
 
@@ -477,9 +510,7 @@ bool state_window_set_app_id(state_t *state, window_id_t window_id,
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
-  p_delete(&window->app_id);
-  window->app_id = p_strdup_nullable(app_id);
-
+  window_set_app_id(window, app_id);
   return true;
 }
 
@@ -488,9 +519,7 @@ bool state_window_set_role(state_t *state, window_id_t window_id,
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
-  p_delete(&window->role);
-  window->role = p_strdup_nullable(role);
-
+  window_set_role(window, role);
   return true;
 }
 
@@ -499,9 +528,7 @@ bool state_window_set_class(state_t *state, window_id_t window_id,
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
-  p_delete(&window->class_name);
-  window->class_name = p_strdup_nullable(class_name);
-
+  window_set_class(window, class_name);
   return true;
 }
 
@@ -510,9 +537,7 @@ bool state_window_set_instance(state_t *state, window_id_t window_id,
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
-  p_delete(&window->instance_name);
-  window->instance_name = p_strdup_nullable(instance_name);
-
+  window_set_instance(window, instance_name);
   return true;
 }
 

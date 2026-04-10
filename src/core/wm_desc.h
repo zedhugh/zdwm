@@ -13,6 +13,7 @@
  */
 typedef struct window_info_t {
   window_id_t id;
+  window_id_t transient_for;
   rect_t frame_rect;
 
   const char *title;

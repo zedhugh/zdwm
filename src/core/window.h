@@ -2,8 +2,6 @@
 
 #include <stddef.h>
 
-#include "core/types.h"
-
 /* Internal semantic window types mapped from backend-specific protocols. */
 typedef enum window_type_t {
   ZDWM_WINDOW_TYPE_NORMAL = 0,
