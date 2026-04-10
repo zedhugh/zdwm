@@ -796,17 +796,17 @@ static bool route_move_floating_event(wm_runtime_t *runtime,
 
 **输入事件 → 命令映射**
 
-| 事件类型 | 可能生成的命令 | 条件 |
-|---------|---------------|------|
-| KEY_PRESS | 任意命令（通过键盘绑定） | 绑定存在 |
-| POINTER_BUTTON_PRESS | 任意窗口命令 / BEGIN_*_INTERACTION（通过鼠标绑定） | 绑定存在 |
-| POINTER_ENTER | FOCUS_WINDOW | policy.pointer_enter_focuses_window == true 且窗口已管理 |
-| WINDOW_MAP_REQUEST | MANAGE_WINDOW | 窗口未管理 |
-| WINDOW_REMOVE | UNMANAGE_WINDOW | 窗口已管理 |
-| WINDOW_ACTIVATE_REQUEST | SWITCH_WORKSPACE + FOCUS_WINDOW / SET_WINDOW_URGENT | source == pager / source != pager |
-| WINDOW_STATE_REQUEST | SET_FULLSCREEN / SET_MAXIMIZED / SET_MINIMIZED | 窗口已管理 |
-| CONFIGURE_REQUEST | (可能不生成命令) | floating 窗口 |
-| POINTER_MOTION | MOVE/RESIZE 命令 | 交互态下 |
+| 事件类型                | 可能生成的命令                                      | 条件                                                     |
+|-------------------------+-----------------------------------------------------+----------------------------------------------------------|
+| KEY_PRESS               | 任意命令（通过键盘绑定）                            | 绑定存在                                                 |
+| POINTER_BUTTON_PRESS    | 任意窗口命令 / BEGIN_*_INTERACTION（通过鼠标绑定）  | 绑定存在                                                 |
+| POINTER_ENTER           | FOCUS_WINDOW                                        | policy.pointer_enter_focuses_window == true 且窗口已管理 |
+| WINDOW_MAP_REQUEST      | MANAGE_WINDOW                                       | 窗口未管理                                               |
+| WINDOW_REMOVE           | UNMANAGE_WINDOW                                     | 窗口已管理                                               |
+| WINDOW_ACTIVATE_REQUEST | SWITCH_WORKSPACE + FOCUS_WINDOW / SET_WINDOW_URGENT | source == pager / source != pager                        |
+| WINDOW_STATE_REQUEST    | SET_FULLSCREEN / SET_MAXIMIZED / SET_MINIMIZED      | 窗口已管理                                               |
+| CONFIGURE_REQUEST       | (可能不生成命令)                                    | floating 窗口                                            |
+| POINTER_MOTION          | MOVE/RESIZE 命令                                    | 交互态下                                                 |
 
 补充约定：
 

@@ -393,14 +393,14 @@ config.c
 
 ## 实现优先级
 
-| 优先级 | 模块 | 说明 |
-|-------|------|------|
-| P0 | config_default.c | 定义默认配置值 |
-| P0 | config.c | 主加载逻辑 |
-| P1 | config_xres.c | XResources 支持（已有基础） |
-| P1 | 热重载 | SIGHUP 支持（配合 XResources） |
-| P1 | config_lib.c | 动态库加载 |
-| P2 | config_api.c | API 实现 |
+| 优先级 | 模块             | 说明                           |
+|--------|------------------|--------------------------------|
+| P0     | config_default.c | 定义默认配置值                 |
+| P0     | config.c         | 主加载逻辑                     |
+| P1     | config_xres.c    | XResources 支持（已有基础）    |
+| P1     | 热重载           | SIGHUP 支持（配合 XResources） |
+| P1     | config_lib.c     | 动态库加载                     |
+| P2     | config_api.c     | API 实现                       |
 
 **P0**: 核心功能，必须实现
 **P1**: 重要功能，提升用户体验
