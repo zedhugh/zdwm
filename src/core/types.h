@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <zdwm/rules.h>
 #include <zdwm/types.h>
 
 /* clang-format off */
@@ -11,6 +12,9 @@ typedef uint32_t                output_id_t;
 
 typedef zdwm_rect_t             rect_t;
 typedef zdwm_output_info_t      output_info_t;
+
+typedef zdwm_rule_match_t       rule_match_t;
+typedef zdwm_rule_action_t      rule_action_t;
 /* clang-format on */
 
 #define ZDWM_OUTPUT_ID_INVALID ((output_id_t)UINT32_MAX)

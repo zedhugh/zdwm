@@ -5,6 +5,8 @@
 #include "base/memory.h"
 #include "core/backend.h"
 #include "core/event.h"
+#include "core/layout.h"
+#include "core/rules.h"
 #include "core/state.h"
 #include "core/wm_desc.h"
 
@@ -42,11 +44,10 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
 
   p_clear(runtime, 1);
   runtime->backend = desc->backend;
-  runtime->layouts = desc->layouts;
+  layout_registry_move(&desc->layouts, &runtime->layouts);
+  rules_move(&desc->rules, &runtime->rules);
   runtime->config_module_handle = desc->config_module_handle;
-
   desc->backend = nullptr;
-  p_clear(&desc->layouts, 1);
   desc->config_module_handle = nullptr;
 
   state_init(&runtime->state, desc->outputs, desc->output_count,
@@ -81,10 +82,8 @@ void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
 
 void runtime_shutdown(runtime_t *runtime) {
   runtime->running = false;
-  if (runtime->layouts.slots || runtime->layouts.slot_count ||
-      runtime->layouts.slot_capacity) {
-    layout_registry_cleanup(&runtime->layouts);
-  }
+  layout_registry_cleanup(&runtime->layouts);
+  rules_cleanup(&runtime->rules);
   state_cleanup(&runtime->state);
   backend_destroy(runtime->backend);
   runtime->backend = nullptr;

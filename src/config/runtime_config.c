@@ -1,6 +1,7 @@
 #include "config/runtime_config.h"
 
 #include <dlfcn.h>
+#include <stddef.h>
 #include <zdwm/config.h>
 
 #include "base/array.h"
@@ -8,11 +9,14 @@
 #include "config/defaults.h"
 #include "config/loader.h"
 #include "core/layout.h"
+#include "core/rules.h"
 #include "core/runtime.h"
+#include "core/types.h"
 #include "core/wm_desc.h"
 
 struct zdwm_config_builder_t {
   layout_registry_t layouts;
+  rules_t rules;
   workspace_desc_t *workspaces;
   size_t workspace_count;
   size_t workspace_capacity;
@@ -89,6 +93,46 @@ static workspace_id_t runtime_config_define_workspace(
   return workspace_id;
 }
 
+static bool rule_match_valid(const rule_match_t *match) {
+  if (!match) return false;
+
+  return match->app_id || match->role || match->class_name ||
+         match->instance_name;
+}
+
+static bool rule_action_valid(const rule_action_t *action,
+                              size_t workspace_count) {
+  if (!action) return false;
+
+  bool flag_valid = action->switch_to_workspace || action->fullscreen ||
+                    action->maximize || action->floating;
+
+  if (action->workspace == ZDWM_WORKSPACE_ID_INVALID) {
+    return flag_valid;
+  } else {
+    return action->workspace < workspace_count && flag_valid;
+  }
+}
+
+static bool runtime_config_add_rule(zdwm_config_builder_t *builder,
+                                    const zdwm_rule_match_t *match,
+                                    const zdwm_rule_action_t *action) {
+  if (!builder) return false;
+  if (!rule_match_valid(match)) return false;
+  if (!rule_action_valid(action, builder->workspace_count)) return false;
+
+  rules_t *rules = &builder->rules;
+  rule_item_t *rule = array_push(rules->items, rules->count, rules->capacity);
+
+  rule->match.app_id = p_strdup_nullable(match->app_id);
+  rule->match.role = p_strdup_nullable(match->role);
+  rule->match.class_name = p_strdup_nullable(match->class_name);
+  rule->match.instance_name = p_strdup_nullable(match->instance_name);
+  rule->action = *action;
+
+  return true;
+}
+
 static bool config_builder_finish(zdwm_config_builder_t *builder,
                                   runtime_init_desc_t *out) {
   if (!builder || !out) return false;
@@ -96,6 +140,7 @@ static bool config_builder_finish(zdwm_config_builder_t *builder,
   if (!builder->layouts.slot_count || !builder->workspace_count) return false;
 
   if (!layout_registry_move(&builder->layouts, &out->layouts)) return false;
+  if (!rules_move(&builder->rules, &out->rules)) return false;
   out->workspaces = builder->workspaces;
   out->workspace_count = builder->workspace_count;
   builder->workspaces = nullptr;
@@ -122,6 +167,7 @@ static bool runtime_config_build(zdwm_config_setup_fn *setup,
       },
     .register_layout = runtime_config_register_layout,
     .define_workspace = runtime_config_define_workspace,
+    .add_rule = runtime_config_add_rule,
   };
   bool ok = setup(&api, &builder, outputs, output_count) &&
             config_builder_finish(&builder, out);

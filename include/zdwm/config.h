@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <zdwm/layout.h>
+#include <zdwm/rules.h>
 #include <zdwm/types.h>
 
 #if defined(__cplusplus)
@@ -54,6 +55,19 @@ typedef struct zdwm_api_t {
                                           const zdwm_layout_id_t *layout_ids,
                                           size_t layout_count,
                                           zdwm_layout_id_t initial_layout_id);
+
+  /**
+   * 用户调用这个函数添加窗口规则
+   * @param builder 配置构建上下文
+   * @param match 窗口匹配条件，不能为 nullptr
+   * @param action 匹配后执行的动作，不能为 nullptr
+   * @returns 添加成功返回 true ，不合法时返回 false
+   * @details 不合法的情况：match 所有字段全为 nullptr；
+   *          或 action 无任何动作；或 action 指定的 workspace 不存在
+   */
+  bool (*add_rule)(zdwm_config_builder_t *builder,
+                   const zdwm_rule_match_t *match,
+                   const zdwm_rule_action_t *action);
 } zdwm_api_t;
 
 /**

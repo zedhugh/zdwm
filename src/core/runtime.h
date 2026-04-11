@@ -4,6 +4,7 @@
 
 #include "core/backend.h"
 #include "core/layout.h"
+#include "core/rules.h"
 #include "core/state.h"
 
 typedef struct runtime_init_desc_t {
@@ -12,6 +13,7 @@ typedef struct runtime_init_desc_t {
   size_t output_count;
 
   layout_registry_t layouts;
+  rules_t rules;
   workspace_desc_t *workspaces;
   size_t workspace_count;
   void *config_module_handle;
@@ -23,6 +25,7 @@ typedef struct runtime_t {
 
   state_t state;
   layout_registry_t layouts;
+  rules_t rules;
   backend_t *backend;
   void *config_module_handle;
 } runtime_t;
