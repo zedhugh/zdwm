@@ -21,14 +21,15 @@ void layout_result_push(layout_result_t *result, layout_item_t item) {
 }
 
 void layout_registry_cleanup(layout_registry_t *registry) {
-  while (registry->slot_count > 0) {
-    layout_slot_t *r = &registry->slots[--registry->slot_count];
+  for (size_t i = 0; i < registry->slot_count; ++i) {
+    layout_slot_t *r = &registry->slots[i];
     p_delete(&r->name);
     p_delete(&r->symbol);
     p_delete(&r->description);
     r->fn = nullptr;
     r->id = ZDWM_LAYOUT_ID_INVALID;
   }
+
   p_delete(&registry->slots);
   registry->slot_count = 0;
   registry->slot_capacity = 0;
