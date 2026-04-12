@@ -97,5 +97,7 @@ void runtime_run(runtime_t *runtime) {
     if (!backend_next_event(runtime->backend, &event)) {
       break;
     }
+
+    event_cleanup(&event);
   }
 }

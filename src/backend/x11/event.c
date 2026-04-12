@@ -65,7 +65,7 @@ static bool handle_map_request(backend_t *backend, event_t *event,
                                const xcb_map_request_event_t *xcb_event) {
   xcb_window_t window = xcb_event->window;
 
-  p_clear(event, 1);
+  event_reset(event);
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
 
   window_map_request_event_t *ev = &event->as.window_map_request;
@@ -125,7 +125,7 @@ static bool handle_map_request(backend_t *backend, event_t *event,
 
 static bool handle_unmap_notify(backend_t *backend, event_t *event,
                                 const xcb_unmap_notify_event_t *xcb_event) {
-  p_clear(event, 1);
+  event_reset(event);
   event->type = ZDWM_EVENT_WINDOW_REMOVE;
   /* TODO: */
   return true;
@@ -133,7 +133,7 @@ static bool handle_unmap_notify(backend_t *backend, event_t *event,
 
 static bool handle_destroy_notify(backend_t *backend, event_t *event,
                                   const xcb_destroy_notify_event_t *xcb_event) {
-  p_clear(event, 1);
+  event_reset(event);
   event->type = ZDWM_EVENT_WINDOW_REMOVE;
   /* TODO: */
   return true;
@@ -142,7 +142,7 @@ static bool handle_destroy_notify(backend_t *backend, event_t *event,
 static bool handle_configure_request(
   backend_t *backend, event_t *event,
   const xcb_configure_request_event_t *xcb_event) {
-  p_clear(event, 1);
+  event_reset(event);
   event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
   /* TODO: */
   return true;
@@ -179,5 +179,6 @@ bool backend_next_event(backend_t *backend, event_t *event) {
 
     p_delete(&raw_event);
     if (handled) return true;
+    event_reset(event);
   }
 }

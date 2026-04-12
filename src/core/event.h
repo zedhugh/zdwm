@@ -178,3 +178,6 @@ typedef struct event_t {
     configure_request_event_t configure_request;
   } as;
 } event_t;
+
+void event_cleanup(event_t *event);
+void event_reset(event_t *event);
