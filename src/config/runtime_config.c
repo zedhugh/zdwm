@@ -104,14 +104,12 @@ static bool rule_action_valid(const rule_action_t *action,
                               size_t workspace_count) {
   if (!action) return false;
 
-  bool flag_valid = action->switch_to_workspace || action->fullscreen ||
-                    action->maximize || action->floating;
-
   if (action->workspace == ZDWM_WORKSPACE_ID_INVALID) {
-    return flag_valid;
-  } else {
-    return action->workspace < workspace_count && flag_valid;
+    return action->switch_to_workspace || action->fullscreen ||
+           action->maximize || action->floating;
   }
+
+  return action->workspace < workspace_count;
 }
 
 static bool runtime_config_add_rule(zdwm_config_builder_t *builder,
