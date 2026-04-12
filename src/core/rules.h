@@ -15,5 +15,5 @@ typedef struct rules_t {
   size_t capacity;
 } rules_t;
 
-bool rules_move(rules_t *dest, rules_t *src);
+bool rules_move(rules_t *src, rules_t *dest);
 void rules_cleanup(rules_t *rules);
