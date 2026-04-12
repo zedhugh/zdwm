@@ -1,8 +1,14 @@
 #pragma once
 
-#include "core/layer.h"
+#include "core/command_buffer.h"
+#include "core/event.h"
+#include "core/rules.h"
 #include "core/state.h"
-#include "core/types.h"
 
-layer_type_t policy_adjust_window_layer_from_transient(
-  const state_t *state, window_id_t transient_for, layer_type_t base_layer);
+typedef struct policy_context_t {
+  const state_t *state;
+  const rules_t *rules;
+  const event_t *event;
+} policy_context_t;
+
+bool policy_route_event(const policy_context_t *ctx, command_buffer_t *out);
