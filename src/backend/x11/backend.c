@@ -337,3 +337,9 @@ void backend_detect_destroy(backend_detect_t *detect) {
   p_delete(&detect->outputs);
   free(detect);
 }
+
+bool backend_apply_effect(backend_t *backend, const effect_t *effects,
+                          size_t effect_count) {
+  /* TODO: */
+  return true;
+}

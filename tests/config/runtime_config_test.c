@@ -22,6 +22,11 @@ bool backend_next_event(backend_t *backend, event_t *event) {
   return false;
 }
 
+bool backend_apply_effect(backend_t *backend, const effect_t *effects,
+                          size_t effect_count) {
+  return false;
+}
+
 static backend_t *test_backend_create(void) {
   return calloc(1, sizeof(backend_t));
 }

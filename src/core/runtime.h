@@ -5,6 +5,7 @@
 #include "core/backend.h"
 #include "core/command_buffer.h"
 #include "core/layout.h"
+#include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
 
@@ -24,6 +25,7 @@ typedef struct runtime_t {
   bool running;
   bool will_restart;
 
+  plan_t plan;
   command_buffer_t command_buffer;
   state_t state;
   layout_registry_t layouts;

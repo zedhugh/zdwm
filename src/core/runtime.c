@@ -4,8 +4,11 @@
 
 #include "base/memory.h"
 #include "core/backend.h"
+#include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/layout.h"
+#include "core/plan.h"
+#include "core/policy.h"
 #include "core/rules.h"
 #include "core/state.h"
 #include "core/wm_desc.h"
@@ -82,6 +85,8 @@ void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
 
 void runtime_shutdown(runtime_t *runtime) {
   runtime->running = false;
+  plan_cleanup(&runtime->plan);
+  command_buffer_cleanup(&runtime->command_buffer);
   layout_registry_cleanup(&runtime->layouts);
   rules_cleanup(&runtime->rules);
   state_cleanup(&runtime->state);
@@ -92,11 +97,28 @@ void runtime_shutdown(runtime_t *runtime) {
 }
 
 void runtime_run(runtime_t *runtime) {
-  for (;;) {
+  runtime->running = true;
+
+  backend_t *backend = runtime->backend;
+  command_buffer_t *command_buffer = &runtime->command_buffer;
+  plan_t *plan = &runtime->plan;
+
+  while (runtime->running) {
     event_t event = {0};
-    if (!backend_next_event(runtime->backend, &event)) {
-      break;
-    }
+    if (!backend_next_event(backend, &event)) break;
+
+    command_buffer_reset(command_buffer);
+    plan_reset(plan);
+
+    policy_context_t ctx = {
+      .state = &runtime->state,
+      .rules = &runtime->rules,
+      .event = &event,
+    };
+
+    policy_route_event(&ctx, command_buffer);
+    policy_apply_command(&ctx, command_buffer, plan);
+    if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
 
     event_cleanup(&event);
   }

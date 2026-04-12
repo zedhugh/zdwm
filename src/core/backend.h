@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "core/event.h"
+#include "core/plan.h"
 #include "core/types.h"
 
 typedef struct backend_t backend_t;
@@ -31,3 +32,5 @@ void backend_detect_destroy(backend_detect_t *detect);
  * 无需 cleanup 的状态，调用方可以直接退出循环。
  */
 bool backend_next_event(backend_t *backend, event_t *event);
+bool backend_apply_effect(backend_t *backend, const effect_t *effects,
+                          size_t effect_count);

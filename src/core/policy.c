@@ -102,3 +102,10 @@ bool policy_route_event(const policy_context_t *ctx, command_buffer_t *out) {
       return false;
   }
 }
+
+bool policy_apply_command(const policy_context_t *ctx,
+                          const command_buffer_t *command_buffer,
+                          plan_t *plan) {
+  /* TODO: */
+  return true;
+}

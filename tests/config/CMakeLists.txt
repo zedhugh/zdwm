@@ -41,9 +41,12 @@ add_executable(${RUNTIME_CONFIG_TEST_APP_NAME}
     ${SOURCE_DIR}/config/defaults.c
     ${SOURCE_DIR}/config/loader.c
     ${SOURCE_DIR}/config/runtime_config.c
+    ${SOURCE_DIR}/core/command_buffer.c
     ${SOURCE_DIR}/core/event.c
     ${SOURCE_DIR}/core/layer.c
     ${SOURCE_DIR}/core/layout.c
+    ${SOURCE_DIR}/core/plan.c
+    ${SOURCE_DIR}/core/policy.c
     ${SOURCE_DIR}/core/rules.c
     ${SOURCE_DIR}/core/runtime.c
     ${SOURCE_DIR}/core/state.c
