@@ -6,8 +6,13 @@
 #include "core/types.h"
 #include "utils.h"
 
-static void assert_output_geometry(const output_info_t *output, int32_t x,
-                                   int32_t y, int32_t width, int32_t height) {
+static void assert_output_geometry(
+  const output_info_t *output,
+  int32_t x,
+  int32_t y,
+  int32_t width,
+  int32_t height
+) {
   assert(output);
   assert(output->geometry.x == x);
   assert(output->geometry.y == y);

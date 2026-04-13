@@ -71,7 +71,8 @@ typedef struct wm_pointer_enter_event_t {
   wm_point_t root;
   // 相对 window 的坐标；若 window == WM_WINDOW_ID_INVALID，则该值未定义
   wm_point_t local;
-  // 当前进入并获得 pointer focus 的窗口；若未命中窗口，则为 WM_WINDOW_ID_INVALID
+  // 当前进入并获得 pointer focus 的窗口；若未命中窗口，则为
+  // WM_WINDOW_ID_INVALID
   wm_window_id_t window;
 } wm_pointer_enter_event_t;
 
@@ -99,10 +100,10 @@ typedef struct wm_window_remove_event_t {
 } wm_window_remove_event_t;
 
 typedef enum wm_window_meta_changed_flags_t {
-  WM_WINDOW_META_CHANGED_NONE = 0,
-  WM_WINDOW_META_CHANGED_TITLE = 1u << 0,
-  WM_WINDOW_META_CHANGED_APP_ID = 1u << 1,
-  WM_WINDOW_META_CHANGED_CLASS = 1u << 2,
+  WM_WINDOW_META_CHANGED_NONE     = 0,
+  WM_WINDOW_META_CHANGED_TITLE    = 1u << 0,
+  WM_WINDOW_META_CHANGED_APP_ID   = 1u << 1,
+  WM_WINDOW_META_CHANGED_CLASS    = 1u << 2,
   WM_WINDOW_META_CHANGED_INSTANCE = 1u << 3,
 } wm_window_meta_changed_flags_t;
 
@@ -122,9 +123,9 @@ typedef struct wm_window_metadata_changed_event_t {
 } wm_window_metadata_changed_event_t;
 
 typedef enum wm_window_hint_changed_flags_t {
-  WM_WINDOW_HINT_CHANGED_NONE = 0,
-  WM_WINDOW_HINT_CHANGED_URGENT = 1u << 0,
-  WM_WINDOW_HINT_CHANGED_FIXED_SIZE = 1u << 1,
+  WM_WINDOW_HINT_CHANGED_NONE         = 0,
+  WM_WINDOW_HINT_CHANGED_URGENT       = 1u << 0,
+  WM_WINDOW_HINT_CHANGED_FIXED_SIZE   = 1u << 1,
   WM_WINDOW_HINT_CHANGED_SKIP_TASKBAR = 1u << 2,
 } wm_window_hint_changed_flags_t;
 
@@ -149,9 +150,9 @@ typedef struct wm_window_hints_changed_event_t {
  * - 2: pager / taskbar / window switcher 发起
  */
 typedef enum wm_window_activation_source_t {
-  WM_WINDOW_ACTIVATION_SOURCE_LEGACY = 0,
+  WM_WINDOW_ACTIVATION_SOURCE_LEGACY      = 0,
   WM_WINDOW_ACTIVATION_SOURCE_APPLICATION = 1,
-  WM_WINDOW_ACTIVATION_SOURCE_PAGER = 2,
+  WM_WINDOW_ACTIVATION_SOURCE_PAGER       = 2,
 } wm_window_activation_source_t;
 
 typedef struct wm_window_activate_request_event_t {
@@ -183,10 +184,10 @@ typedef struct wm_window_state_request_event_t {
 } wm_window_state_request_event_t;
 
 typedef enum wm_configure_request_field_t {
-  WM_CONFIGURE_REQUEST_FIELD_NONE = 0,
-  WM_CONFIGURE_REQUEST_FIELD_X = 1u << 0,
-  WM_CONFIGURE_REQUEST_FIELD_Y = 1u << 1,
-  WM_CONFIGURE_REQUEST_FIELD_WIDTH = 1u << 2,
+  WM_CONFIGURE_REQUEST_FIELD_NONE   = 0,
+  WM_CONFIGURE_REQUEST_FIELD_X      = 1u << 0,
+  WM_CONFIGURE_REQUEST_FIELD_Y      = 1u << 1,
+  WM_CONFIGURE_REQUEST_FIELD_WIDTH  = 1u << 2,
   WM_CONFIGURE_REQUEST_FIELD_HEIGHT = 1u << 3,
 } wm_configure_request_field_t;
 

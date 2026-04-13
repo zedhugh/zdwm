@@ -1,9 +1,10 @@
 #pragma once
 
-#include "wm_command.h"
-#include "wm_types.h"
 #include <stdbool.h>
 #include <stddef.h>
+
+#include "wm_command.h"
+#include "wm_types.h"
 
 /*
  * 输入绑定只匹配 backend 已归一化后的输入事件。
@@ -71,8 +72,10 @@ typedef struct wm_pointer_binding_table_t {
  * 出现在 key binding table 里。
  */
 const wm_key_binding_t *wm_key_binding_find(
-    const wm_key_binding_table_t *table, wm_keysym_t keysym,
-    wm_modifier_mask_t modifiers);
+  const wm_key_binding_table_t *table,
+  wm_keysym_t keysym,
+  wm_modifier_mask_t modifiers
+);
 
 /*
  * 查找与当前按钮按下事件匹配的鼠标绑定。
@@ -82,5 +85,8 @@ const wm_key_binding_t *wm_key_binding_find(
  * 匹配顺序与键盘绑定一致：先 exact，再 allow-extra-modifiers。
  */
 const wm_pointer_binding_t *wm_pointer_binding_find(
-    const wm_pointer_binding_table_t *table, wm_button_t button,
-    wm_modifier_mask_t modifiers, bool hits_window);
+  const wm_pointer_binding_table_t *table,
+  wm_button_t button,
+  wm_modifier_mask_t modifiers,
+  bool hits_window
+);

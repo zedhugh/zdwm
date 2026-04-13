@@ -5,12 +5,34 @@ BasedOnStyle: Google
 IndentWidth: 2
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
----
-Language: C
-DerivePointerAlignment: false
-PointerAlignment: Right
----
-Language: Cpp
+
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: true
+  PadOperators: true
+AlignConsecutiveBitFields:
+  Enabled: true
+
+AlignConsecutiveMacros:
+  Enabled: true
+
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+
+IndentCaseLabels: false
+
+# 多行函数每个参数单独一行
+AlignAfterOpenBracket: BlockIndent
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+
+# 指针样式（右对齐）
 DerivePointerAlignment: false
 PointerAlignment: Right
 ---

@@ -22,8 +22,11 @@ bool backend_next_event(backend_t *backend, event_t *event) {
   return false;
 }
 
-bool backend_apply_effect(backend_t *backend, const effect_t *effects,
-                          size_t effect_count) {
+bool backend_apply_effect(
+  backend_t *backend,
+  const effect_t *effects,
+  size_t effect_count
+) {
   return false;
 }
 
@@ -35,8 +38,8 @@ static void assert_default_layouts(const runtime_init_desc_t *desc) {
   assert(desc);
   assert(layout_registry_count(&desc->layouts) == 3);
 
-  const layout_slot_t *tile = layout_registry_at(&desc->layouts, 0);
-  const layout_slot_t *monocle = layout_registry_at(&desc->layouts, 1);
+  const layout_slot_t *tile     = layout_registry_at(&desc->layouts, 0);
+  const layout_slot_t *monocle  = layout_registry_at(&desc->layouts, 1);
   const layout_slot_t *floating = layout_registry_at(&desc->layouts, 2);
 
   assert(tile);
@@ -52,13 +55,13 @@ static void test_runtime_config_loads_user_library(const char *fixture_path) {
 
   output_info_t outputs[] = {
     {
-      .name = "HDMI-A-1",
+      .name     = "HDMI-A-1",
       .geometry = {.x = 0, .y = 0, .width = 1920, .height = 1080},
     },
   };
 
   runtime_init_desc_t desc = {
-    .outputs = outputs,
+    .outputs      = outputs,
     .output_count = 1,
   };
   assert(runtime_config_load(fixture_path, &desc));
@@ -79,20 +82,21 @@ static void test_runtime_config_loads_user_library(const char *fixture_path) {
 }
 
 static void test_runtime_config_keeps_module_loaded_after_runtime_init(
-  const char *fixture_path) {
+  const char *fixture_path
+) {
   config_test_clear_env();
 
   output_info_t outputs[] = {
     {
-      .name = "HDMI-A-1",
+      .name     = "HDMI-A-1",
       .geometry = {.x = 0, .y = 0, .width = 1920, .height = 1080},
     },
   };
   window_id_t window_ids[] = {42};
 
   runtime_init_desc_t desc = {
-    .backend = test_backend_create(),
-    .outputs = outputs,
+    .backend      = test_backend_create(),
+    .outputs      = outputs,
     .output_count = 1,
   };
   assert(desc.backend);
@@ -111,11 +115,11 @@ static void test_runtime_config_keeps_module_loaded_after_runtime_init(
   layout_result_t result = {0};
 
   layout_ctx_t ctx = {
-    .workspace_id = 0,
+    .workspace_id      = 0,
     .focused_window_id = window_ids[0],
-    .workarea = {.x = 11, .y = 22, .width = 333, .height = 444},
-    .window_ids = window_ids,
-    .window_count = 1,
+    .workarea          = {.x = 11, .y = 22, .width = 333, .height = 444},
+    .window_ids        = window_ids,
+    .window_count      = 1,
   };
   assert(layout(&ctx, &result));
   assert(result.item_count == 1);
@@ -132,27 +136,31 @@ static void test_runtime_config_keeps_module_loaded_after_runtime_init(
 
 static void
 test_runtime_config_falls_back_to_defaults_when_implicit_library_is_missing(
-  void) {
+  void
+) {
   config_test_clear_env();
 
   output_info_t outputs[] = {
     {
-      .name = "eDP-1",
+      .name     = "eDP-1",
       .geometry = {.x = 0, .y = 0, .width = 1920, .height = 1080},
     },
     {
-      .name = "DP-1",
+      .name     = "DP-1",
       .geometry = {.x = 1920, .y = 0, .width = 2560, .height = 1440},
     },
   };
 
   char temp_root[PATH_MAX] = {0};
-  config_test_make_temp_dir(temp_root, sizeof(temp_root),
-                            "zdwm-runtime-config-missing");
+  config_test_make_temp_dir(
+    temp_root,
+    sizeof(temp_root),
+    "zdwm-runtime-config-missing"
+  );
   assert(setenv("XDG_CONFIG_HOME", temp_root, 1) == 0);
 
   runtime_init_desc_t desc = {
-    .outputs = outputs,
+    .outputs      = outputs,
     .output_count = 2,
   };
   assert(runtime_config_load(nullptr, &desc));
@@ -173,13 +181,13 @@ static void test_runtime_config_rejects_missing_explicit_library(void) {
 
   output_info_t outputs[] = {
     {
-      .name = "HDMI-A-1",
+      .name     = "HDMI-A-1",
       .geometry = {.x = 0, .y = 0, .width = 1920, .height = 1080},
     },
   };
 
   runtime_init_desc_t desc = {
-    .outputs = outputs,
+    .outputs      = outputs,
     .output_count = 1,
   };
   assert(!runtime_config_load("/tmp/definitely-missing-config.so", &desc));
@@ -190,18 +198,19 @@ static void test_runtime_config_rejects_missing_explicit_library(void) {
 }
 
 static void test_runtime_config_rejects_library_without_setup(
-  const char *fixture_path) {
+  const char *fixture_path
+) {
   config_test_clear_env();
 
   output_info_t outputs[] = {
     {
-      .name = "HDMI-A-1",
+      .name     = "HDMI-A-1",
       .geometry = {.x = 0, .y = 0, .width = 1920, .height = 1080},
     },
   };
 
   runtime_init_desc_t desc = {
-    .outputs = outputs,
+    .outputs      = outputs,
     .output_count = 1,
   };
   assert(!runtime_config_load(fixture_path, &desc));

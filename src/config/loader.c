@@ -10,40 +10,43 @@
 static char *config_loader_join_path(const char *base, const char *suffix) {
   if (!base || !suffix) return nullptr;
 
-  size_t base_len = strlen(base);
+  size_t base_len   = strlen(base);
   size_t suffix_len = strlen(suffix);
-  char *path = p_new(char, base_len + suffix_len + 1);
+  char *path        = p_new(char, base_len + suffix_len + 1);
   memcpy(path, base, base_len);
   memcpy(path + base_len, suffix, suffix_len + 1);
   return path;
 }
 
-static bool config_loader_resolve_path(char **out_path, bool *out_is_explicit,
-                                       const char *override_path) {
+static bool config_loader_resolve_path(
+  char **out_path,
+  bool *out_is_explicit,
+  const char *override_path
+) {
   const char *path = override_path;
   if (path && *path) {
-    *out_path = p_strdup(path);
+    *out_path        = p_strdup(path);
     *out_is_explicit = true;
     return true;
   }
 
   path = getenv("ZDWM_CONFIG_LIB");
   if (path && *path) {
-    *out_path = p_strdup(path);
+    *out_path        = p_strdup(path);
     *out_is_explicit = true;
     return true;
   }
 
   path = getenv("XDG_CONFIG_HOME");
   if (path && *path) {
-    *out_path = config_loader_join_path(path, "/zdwm/config.so");
+    *out_path        = config_loader_join_path(path, "/zdwm/config.so");
     *out_is_explicit = false;
     return *out_path != nullptr;
   }
 
   path = getenv("HOME");
   if (path && *path) {
-    *out_path = config_loader_join_path(path, "/.config/zdwm/config.so");
+    *out_path        = config_loader_join_path(path, "/.config/zdwm/config.so");
     *out_is_explicit = false;
     return *out_path != nullptr;
   }
@@ -76,7 +79,7 @@ bool config_loader_load(config_loader_t *loader, const char *override_path) {
   }
 
   dlerror();
-  loader->setup = (zdwm_config_setup_fn *)dlsym(loader->handle, "setup");
+  loader->setup     = (zdwm_config_setup_fn *)dlsym(loader->handle, "setup");
   const char *error = dlerror();
   if (!error) return true;
 

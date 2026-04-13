@@ -13,21 +13,25 @@
 #include "core/types.h"
 #include "core/wm_desc.h"
 
-void state_init(state_t *state, const output_info_t *outputs,
-                size_t output_count, const workspace_desc_t *workspaces,
-                size_t workspace_count) {
+void state_init(
+  state_t *state,
+  const output_info_t *outputs,
+  size_t output_count,
+  const workspace_desc_t *workspaces,
+  size_t workspace_count
+) {
   p_clear(state, 1);
 
   state->outputs = p_new(output_t, output_count);
   for (size_t i = 0; i < output_count; i++) {
     const output_info_t *output_info = &outputs[i];
-    output_t *output = &state->outputs[i];
+    output_t *output                 = &state->outputs[i];
 
-    output->id = (output_id_t)i;
+    output->id                   = (output_id_t)i;
     output->current_workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-    output->name = p_strdup_nullable(output_info->name);
-    output->geometry = output_info->geometry;
-    output->workarea = output_info->geometry;
+    output->name                 = p_strdup_nullable(output_info->name);
+    output->geometry             = output_info->geometry;
+    output->workarea             = output_info->geometry;
   }
   state->output_count = output_count;
 
@@ -38,16 +42,16 @@ void state_init(state_t *state, const output_info_t *outputs,
       fatal("workspace desc at index %zu invalid", i);
     }
 
-    output_t *output = &state->outputs[workspace_desc->output_index];
+    output_t *output       = &state->outputs[workspace_desc->output_index];
     workspace_t *workspace = &state->workspaces[i];
-    workspace->id = (workspace_id_t)i;
-    workspace->output_id = output->id;
+    workspace->id          = (workspace_id_t)i;
+    workspace->output_id   = output->id;
     workspace->focused_window_id = ZDWM_WINDOW_ID_INVALID;
     workspace->available_layouts =
       p_copy(workspace_desc->layout_ids, workspace_desc->layout_count);
-    workspace->layout_id = workspace_desc->initial_layout_id;
+    workspace->layout_id    = workspace_desc->initial_layout_id;
     workspace->layout_count = workspace_desc->layout_count;
-    workspace->name = p_strdup(workspace_desc->name);
+    workspace->name         = p_strdup(workspace_desc->name);
 
     if (output->current_workspace_id == ZDWM_WORKSPACE_ID_INVALID) {
       output->current_workspace_id = workspace->id;
@@ -79,7 +83,7 @@ void state_cleanup(state_t *state) {
   for (size_t i = 0; i < ZDWM_WINDOW_LAYER_COUNT; ++i) {
     layer_stack_t *layer = &state->stacks[i];
     p_delete(&layer->order);
-    layer->order = 0;
+    layer->order    = 0;
     layer->capacity = 0;
   }
 
@@ -102,8 +106,8 @@ void state_cleanup(state_t *state) {
   p_clear(state, 1);
 }
 
-const workspace_t *state_workspace_get(const state_t *state,
-                                       workspace_id_t id) {
+const workspace_t *
+state_workspace_get(const state_t *state, workspace_id_t id) {
   if (id < state->workspace_count) return &state->workspaces[id];
   return nullptr;
 }
@@ -113,8 +117,10 @@ const workspace_t *state_workspace_at(const state_t *state, size_t index) {
   return nullptr;
 }
 
-static void state_workspace_adjust_focused_window(const state_t *state,
-                                                  workspace_id_t workspace_id) {
+static void state_workspace_adjust_focused_window(
+  const state_t *state,
+  workspace_id_t workspace_id
+) {
   workspace_t *workspace =
     (workspace_t *)state_workspace_get(state, workspace_id);
   if (!workspace) return;
@@ -127,7 +133,7 @@ static void state_workspace_adjust_focused_window(const state_t *state,
     const layer_stack_t *layer = &state->stacks[i];
     for (size_t i = layer->count; i > 0; --i) {
       window_id_t window_id = layer->order[i - 1];
-      window = state_window_get(state, window_id);
+      window                = state_window_get(state, window_id);
       if (window && window->workspace_id == workspace_id) {
         workspace->focused_window_id = window_id;
         return;
@@ -144,25 +150,27 @@ bool state_workspace_cycle_layout(state_t *state, workspace_id_t workspace_id) {
   if (!workspace) return false;
 
   size_t next_index = 0;
-  bool matched = false;
+  bool matched      = false;
   for (size_t i = 0; i < workspace->layout_count; i++) {
     if (workspace->layout_id == workspace->available_layouts[i]) {
       next_index = (i + 1) % workspace->layout_count;
-      matched = true;
+      matched    = true;
       break;
     }
   }
 
   if (!matched) return false;
 
-  auto next_layout_id = workspace->available_layouts[next_index];
+  auto next_layout_id  = workspace->available_layouts[next_index];
   workspace->layout_id = next_layout_id;
   return true;
 }
 
-bool state_workspace_set_layout_by_index(state_t *state,
-                                         workspace_id_t workspace_id,
-                                         size_t index) {
+bool state_workspace_set_layout_by_index(
+  state_t *state,
+  workspace_id_t workspace_id,
+  size_t index
+) {
   workspace_t *workspace =
     (workspace_t *)state_workspace_get(state, workspace_id);
   if (!workspace) return false;
@@ -172,9 +180,11 @@ bool state_workspace_set_layout_by_index(state_t *state,
   return true;
 }
 
-bool state_workspace_set_layout_by_id(state_t *state,
-                                      workspace_id_t workspace_id,
-                                      layout_id_t layout_id) {
+bool state_workspace_set_layout_by_id(
+  state_t *state,
+  workspace_id_t workspace_id,
+  layout_id_t layout_id
+) {
   workspace_t *workspace =
     (workspace_t *)state_workspace_get(state, workspace_id);
   if (!workspace) return false;
@@ -188,9 +198,11 @@ bool state_workspace_set_layout_by_id(state_t *state,
   return false;
 }
 
-void state_workspace_set_focused_window(state_t *state,
-                                        workspace_id_t workspace_id,
-                                        window_id_t window_id) {
+void state_workspace_set_focused_window(
+  state_t *state,
+  workspace_id_t workspace_id,
+  window_id_t window_id
+) {
   workspace_t *workspace =
     (workspace_t *)state_workspace_get(state, workspace_id);
   if (!workspace) return;
@@ -235,14 +247,20 @@ const output_t *state_output_at(const state_t *state, size_t index) {
   return nullptr;
 }
 
-void state_output_set_workarea(state_t *state, output_id_t output_id,
-                               rect_t workarea) {
+void state_output_set_workarea(
+  state_t *state,
+  output_id_t output_id,
+  rect_t workarea
+) {
   output_t *output = (output_t *)state_output_get(state, output_id);
   if (output) output->workarea = workarea;
 }
 
-void state_output_set_current_workspace(state_t *state, output_id_t output_id,
-                                        workspace_id_t workspace_id) {
+void state_output_set_current_workspace(
+  state_t *state,
+  output_id_t output_id,
+  workspace_id_t workspace_id
+) {
   output_t *output = (output_t *)state_output_get(state, output_id);
   if (!output) return;
   const workspace_t *workspace = state_workspace_get(state, workspace_id);
@@ -269,15 +287,17 @@ bool state_output_valid(const state_t *state, output_id_t id) {
 }
 
 void state_cycle_current_output(state_t *state, int delta) {
-  int64_t count = (int64_t)state->output_count;
+  int64_t count   = (int64_t)state->output_count;
   int64_t current = (int64_t)state->current_output_index;
-  int64_t next = (current + (int64_t)delta) % count;
+  int64_t next    = (current + (int64_t)delta) % count;
   if (next < 0) next += count;
   state->current_output_index = (size_t)next;
 }
 
 static inline void window_set_geometry_mode(
-  window_t *window, window_geometry_mode_t geometry_mode) {
+  window_t *window,
+  window_geometry_mode_t geometry_mode
+) {
   window->geometry_mode = geometry_mode;
 }
 static inline void window_set_floating(window_t *window, bool floating) {
@@ -317,18 +337,18 @@ static inline void window_set_class(window_t *window, const char *class_name) {
   p_delete(&window->class_name);
   window->class_name = p_strdup_nullable(class_name);
 }
-static inline void window_set_instance(window_t *window,
-                                       const char *instance_name) {
+static inline void
+window_set_instance(window_t *window, const char *instance_name) {
   p_delete(&window->instance_name);
   window->instance_name = p_strdup_nullable(instance_name);
 }
-static inline void window_set_skip_taskbar(window_t *window,
-                                           bool skip_taskbar) {
+static inline void
+window_set_skip_taskbar(window_t *window, bool skip_taskbar) {
   window->skip_taskbar = skip_taskbar;
 }
 
 const window_t *state_window_add(state_t *state, const window_info_t *info) {
-  window_id_t id = info->id;
+  window_id_t id   = info->id;
   window_t *window = (window_t *)state_window_get(state, id);
   if (!window) {
     window =
@@ -338,10 +358,10 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
     layer_stack_append(layer, id);
 
     p_clear(window, 1);
-    window->id = id;
+    window->id            = id;
     window->transient_for = info->transient_for;
-    window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-    window->layer = info->layer_type;
+    window->workspace_id  = ZDWM_WORKSPACE_ID_INVALID;
+    window->layer         = info->layer_type;
   }
 
   window_set_geometry_mode(window, info->geometry_mode);
@@ -378,14 +398,14 @@ void state_window_remove(state_t *state, window_id_t id) {
   for (size_t i = 0; i < state->window_count; i++) {
     if (state->windows[i].id == id) {
       matched = true;
-      index = i;
+      index   = i;
       break;
     }
   }
   if (!matched) return;
 
-  window_t *window = &state->windows[index];
-  layer_type_t layer_type = window->layer;
+  window_t *window            = &state->windows[index];
+  layer_type_t layer_type     = window->layer;
   workspace_id_t workspace_id = window->workspace_id;
   p_delete(&window->title);
   p_delete(&window->app_id);
@@ -398,7 +418,7 @@ void state_window_remove(state_t *state, window_id_t id) {
   }
   window = &state->windows[state->window_count - 1];
   p_clear(window, 1);
-  window->id = ZDWM_WINDOW_ID_INVALID;
+  window->id           = ZDWM_WINDOW_ID_INVALID;
   window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
   state->window_count--;
 
@@ -416,13 +436,16 @@ void state_window_remove(state_t *state, window_id_t id) {
 
 size_t state_window_count(const state_t *state) { return state->window_count; }
 
-void state_window_set_workspace(state_t *state, window_id_t window_id,
-                                workspace_id_t workspace_id) {
+void state_window_set_workspace(
+  state_t *state,
+  window_id_t window_id,
+  workspace_id_t workspace_id
+) {
   const workspace_t *workspace = state_workspace_get(state, workspace_id);
-  window_t *window = (window_t *)state_window_get(state, window_id);
+  window_t *window             = (window_t *)state_window_get(state, window_id);
   if (!workspace || !window || window->workspace_id == workspace_id) return;
 
-  workspace = state_workspace_get(state, window->workspace_id);
+  workspace            = state_workspace_get(state, window->workspace_id);
   window->workspace_id = workspace_id;
 
   if (workspace && workspace->focused_window_id == window_id) {
@@ -432,57 +455,84 @@ void state_window_set_workspace(state_t *state, window_id_t window_id,
   state_workspace_adjust_focused_window(state, workspace_id);
 }
 
-void state_window_set_geometry_mode(state_t *state, window_id_t window_id,
-                                    window_geometry_mode_t geometry_mode) {
+void state_window_set_geometry_mode(
+  state_t *state,
+  window_id_t window_id,
+  window_geometry_mode_t geometry_mode
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_geometry_mode(window, geometry_mode);
 }
 
-void state_window_set_floating(state_t *state, window_id_t window_id,
-                               bool floating) {
+void state_window_set_floating(
+  state_t *state,
+  window_id_t window_id,
+  bool floating
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_floating(window, floating);
 }
 
-void state_window_set_sticky(state_t *state, window_id_t window_id,
-                             bool sticky) {
+void state_window_set_sticky(
+  state_t *state,
+  window_id_t window_id,
+  bool sticky
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_sticky(window, sticky);
 }
 
-void state_window_set_urgent(state_t *state, window_id_t window_id,
-                             bool urgent) {
+void state_window_set_urgent(
+  state_t *state,
+  window_id_t window_id,
+  bool urgent
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_urgent(window, urgent);
 }
 
-void state_window_set_fixed_size(state_t *state, window_id_t window_id,
-                                 bool fixed_size) {
+void state_window_set_fixed_size(
+  state_t *state,
+  window_id_t window_id,
+  bool fixed_size
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_fixed_size(window, fixed_size);
 }
 
-void state_window_set_skip_taskbar(state_t *state, window_id_t window_id,
-                                   bool skip_taskbar) {
+void state_window_set_skip_taskbar(
+  state_t *state,
+  window_id_t window_id,
+  bool skip_taskbar
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_skip_taskbar(window, skip_taskbar);
 }
 
-void state_window_set_float_rect(state_t *state, window_id_t window_id,
-                                 rect_t float_rect) {
+void state_window_set_float_rect(
+  state_t *state,
+  window_id_t window_id,
+  rect_t float_rect
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_float_rect(window, float_rect);
 }
 
-void state_window_set_frame_rect(state_t *state, window_id_t window_id,
-                                 rect_t frame_rect) {
+void state_window_set_frame_rect(
+  state_t *state,
+  window_id_t window_id,
+  rect_t frame_rect
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_frame_rect(window, frame_rect);
 }
 
-bool state_window_take_metadata(state_t *state, window_id_t window_id,
-                                window_metadata_t *metadata,
-                                uint32_t changed_fields) {
+bool state_window_take_metadata(
+  state_t *state,
+  window_id_t window_id,
+  window_metadata_t *metadata,
+  uint32_t changed_fields
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
@@ -505,8 +555,11 @@ bool state_window_take_metadata(state_t *state, window_id_t window_id,
   return true;
 }
 
-bool state_window_set_title(state_t *state, window_id_t window_id,
-                            const char *title) {
+bool state_window_set_title(
+  state_t *state,
+  window_id_t window_id,
+  const char *title
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
@@ -514,8 +567,11 @@ bool state_window_set_title(state_t *state, window_id_t window_id,
   return true;
 }
 
-bool state_window_set_app_id(state_t *state, window_id_t window_id,
-                             const char *app_id) {
+bool state_window_set_app_id(
+  state_t *state,
+  window_id_t window_id,
+  const char *app_id
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
@@ -523,8 +579,11 @@ bool state_window_set_app_id(state_t *state, window_id_t window_id,
   return true;
 }
 
-bool state_window_set_role(state_t *state, window_id_t window_id,
-                           const char *role) {
+bool state_window_set_role(
+  state_t *state,
+  window_id_t window_id,
+  const char *role
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
@@ -532,8 +591,11 @@ bool state_window_set_role(state_t *state, window_id_t window_id,
   return true;
 }
 
-bool state_window_set_class(state_t *state, window_id_t window_id,
-                            const char *class_name) {
+bool state_window_set_class(
+  state_t *state,
+  window_id_t window_id,
+  const char *class_name
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
@@ -541,8 +603,11 @@ bool state_window_set_class(state_t *state, window_id_t window_id,
   return true;
 }
 
-bool state_window_set_instance(state_t *state, window_id_t window_id,
-                               const char *instance_name) {
+bool state_window_set_instance(
+  state_t *state,
+  window_id_t window_id,
+  const char *instance_name
+) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 

@@ -42,13 +42,13 @@ static inline void workspace_desc_cleanup(workspace_desc_t *workspace) {
 
   p_delete(&workspace->name);
   p_delete(&workspace->layout_ids);
-  workspace->output_index = 0;
-  workspace->layout_count = 0;
+  workspace->output_index      = 0;
+  workspace->layout_count      = 0;
   workspace->initial_layout_id = ZDWM_LAYOUT_ID_INVALID;
 }
 
-static inline void workspace_desc_list_cleanup(workspace_desc_t **list,
-                                               size_t *count) {
+static inline void
+workspace_desc_list_cleanup(workspace_desc_t **list, size_t *count) {
   if (!list || !count) return;
 
   for (size_t i = 0; i < *count; i++) {
@@ -65,7 +65,8 @@ static inline void workspace_desc_list_cleanup(workspace_desc_t **list,
  * 这组接口只校验描述表自身的一致性，不访问 state。
  */
 static inline bool workspace_desc_layouts_valid(
-  const workspace_desc_t *workspace) {
+  const workspace_desc_t *workspace
+) {
   if (!workspace || !workspace->layout_count || !workspace->layout_ids) {
     return false;
   }
@@ -77,8 +78,8 @@ static inline bool workspace_desc_layouts_valid(
   return false;
 }
 
-static inline bool workspace_desc_valid(const workspace_desc_t *workspace,
-                                        size_t output_count) {
+static inline bool
+workspace_desc_valid(const workspace_desc_t *workspace, size_t output_count) {
   if (!workspace || !workspace->name) return false;
   if (workspace->output_index >= output_count) return false;
 

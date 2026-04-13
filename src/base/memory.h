@@ -5,11 +5,11 @@
 #include <string.h>
 #include <sys/types.h>
 
-#define p_alloc_nr(x) (((x) + 16) * 3 / 2)
-#define p_new(type, count) ((type *)xmalloc(sizeof(type) * (count)))
-#define p_clear(p, count) ((void)memset((p), 0, sizeof(*(p)) * (count)))
+#define p_alloc_nr(x)        (((x) + 16) * 3 / 2)
+#define p_new(type, count)   ((type *)xmalloc(sizeof(type) * (count)))
+#define p_clear(p, count)    ((void)memset((p), 0, sizeof(*(p)) * (count)))
 #define p_realloc(pp, count) xrealloc((void *)(pp), sizeof(**(pp)) * (count))
-#define p_copy(src, count) xmemcopy((src), sizeof(*(src)) * (count))
+#define p_copy(src, count)   xmemcopy((src), sizeof(*(src)) * (count))
 
 #define p_delete(mem_p)              \
   do {                               \
@@ -64,8 +64,7 @@ static inline void *xmemcopy(const void *src, size_t n) {
 }
 
 static inline void xrealloc(void **ptr, ssize_t newsize) {
-  if (newsize <= 0)
-    p_delete(ptr);
+  if (newsize <= 0) p_delete(ptr);
   else {
     *ptr = realloc(*ptr, newsize);
     if (!*ptr) abort();

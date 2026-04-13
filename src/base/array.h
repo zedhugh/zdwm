@@ -24,8 +24,12 @@ static inline size_t next_capacity(size_t capacity) {
  * @param capacity 当前容量地址
  * @param need 目标容量
  */
-static inline void array_reserve_impl(void **items, size_t item_size,
-                                      size_t *capacity, size_t need) {
+static inline void array_reserve_impl(
+  void **items,
+  size_t item_size,
+  size_t *capacity,
+  size_t need
+) {
   if (*capacity >= need) return;
 
   size_t new_capacity = next_capacity(*capacity);
@@ -51,8 +55,12 @@ static inline void array_reserve_impl(void **items, size_t item_size,
  *
  * @return void* 新槽位地址
  */
-static inline void *array_push_impl(void **items, size_t item_size,
-                                    size_t *count, size_t *capacity) {
+static inline void *array_push_impl(
+  void **items,
+  size_t item_size,
+  size_t *count,
+  size_t *capacity
+) {
   array_reserve_impl(items, item_size, capacity, *count + 1);
 
   void *slot = (char *)*items + *count * item_size;
@@ -71,14 +79,14 @@ static inline void *array_push_impl(void **items, size_t item_size,
  * @return true 删除成功
  * @return false 下标越界
  */
-static inline bool array_erase_impl(void *items, size_t item_size,
-                                    size_t *count, size_t index) {
+static inline bool
+array_erase_impl(void *items, size_t item_size, size_t *count, size_t index) {
   if (index >= *count) return false;
 
   size_t tail_count = *count - index - 1;
   if (tail_count > 0) {
     char *dest = (char *)items + index * item_size;
-    char *src = dest + item_size;
+    char *src  = dest + item_size;
     memmove(dest, src, tail_count * item_size);
   }
 

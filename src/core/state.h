@@ -90,9 +90,13 @@ typedef struct state_t {
  * 每个 output 的 current_workspace_id 会自动设置为首个归属到该 output 的
  * workspace；若某个 output 没有任何归属 workspace，state_init() 会失败。
  */
-void state_init(state_t *state, const output_info_t *outputs,
-                size_t output_count, const workspace_desc_t *workspaces,
-                size_t workspace_count);
+void state_init(
+  state_t *state,
+  const output_info_t *outputs,
+  size_t output_count,
+  const workspace_desc_t *workspaces,
+  size_t workspace_count
+);
 void state_cleanup(state_t *state);
 
 /*
@@ -104,15 +108,21 @@ void state_cleanup(state_t *state);
 const workspace_t *state_workspace_get(const state_t *state, workspace_id_t id);
 const workspace_t *state_workspace_at(const state_t *state, size_t index);
 bool state_workspace_cycle_layout(state_t *state, workspace_id_t workspace_id);
-bool state_workspace_set_layout_by_index(state_t *state,
-                                         workspace_id_t workspace_id,
-                                         size_t index);
-bool state_workspace_set_layout_by_id(state_t *state,
-                                      workspace_id_t workspace_id,
-                                      layout_id_t layout_id);
-void state_workspace_set_focused_window(state_t *state,
-                                        workspace_id_t workspace_id,
-                                        window_id_t window_id);
+bool state_workspace_set_layout_by_index(
+  state_t *state,
+  workspace_id_t workspace_id,
+  size_t index
+);
+bool state_workspace_set_layout_by_id(
+  state_t *state,
+  workspace_id_t workspace_id,
+  layout_id_t layout_id
+);
+void state_workspace_set_focused_window(
+  state_t *state,
+  workspace_id_t workspace_id,
+  window_id_t window_id
+);
 size_t state_workspace_count(const state_t *state);
 bool state_workspace_valid(const state_t *state, workspace_id_t id);
 
@@ -124,10 +134,16 @@ bool state_workspace_valid(const state_t *state, workspace_id_t id);
  */
 const output_t *state_output_get(const state_t *state, output_id_t id);
 const output_t *state_output_at(const state_t *state, size_t index);
-void state_output_set_workarea(state_t *state, output_id_t output_id,
-                               rect_t workarea);
-void state_output_set_current_workspace(state_t *state, output_id_t output_id,
-                                        workspace_id_t workspace_id);
+void state_output_set_workarea(
+  state_t *state,
+  output_id_t output_id,
+  rect_t workarea
+);
+void state_output_set_current_workspace(
+  state_t *state,
+  output_id_t output_id,
+  workspace_id_t workspace_id
+);
 size_t state_output_count(const state_t *state);
 bool state_output_valid(const state_t *state, output_id_t id);
 void state_cycle_current_output(state_t *state, int delta);
@@ -153,24 +169,51 @@ void state_window_remove(state_t *state, window_id_t id);
 size_t state_window_count(const state_t *state);
 
 /* state 持有的单个 window 状态更新接口 */
-void state_window_set_workspace(state_t *state, window_id_t window_id,
-                                workspace_id_t workspace_id);
-void state_window_set_geometry_mode(state_t *state, window_id_t window_id,
-                                    window_geometry_mode_t geometry_mode);
-void state_window_set_floating(state_t *state, window_id_t window_id,
-                               bool floating);
-void state_window_set_sticky(state_t *state, window_id_t window_id,
-                             bool sticky);
-void state_window_set_urgent(state_t *state, window_id_t window_id,
-                             bool urgent);
-void state_window_set_fixed_size(state_t *state, window_id_t window_id,
-                                 bool fixed_size);
-void state_window_set_skip_taskbar(state_t *state, window_id_t window_id,
-                                   bool skip_taskbar);
-void state_window_set_float_rect(state_t *state, window_id_t window_id,
-                                 rect_t float_rect);
-void state_window_set_frame_rect(state_t *state, window_id_t window_id,
-                                 rect_t frame_rect);
+void state_window_set_workspace(
+  state_t *state,
+  window_id_t window_id,
+  workspace_id_t workspace_id
+);
+void state_window_set_geometry_mode(
+  state_t *state,
+  window_id_t window_id,
+  window_geometry_mode_t geometry_mode
+);
+void state_window_set_floating(
+  state_t *state,
+  window_id_t window_id,
+  bool floating
+);
+void state_window_set_sticky(
+  state_t *state,
+  window_id_t window_id,
+  bool sticky
+);
+void state_window_set_urgent(
+  state_t *state,
+  window_id_t window_id,
+  bool urgent
+);
+void state_window_set_fixed_size(
+  state_t *state,
+  window_id_t window_id,
+  bool fixed_size
+);
+void state_window_set_skip_taskbar(
+  state_t *state,
+  window_id_t window_id,
+  bool skip_taskbar
+);
+void state_window_set_float_rect(
+  state_t *state,
+  window_id_t window_id,
+  rect_t float_rect
+);
+void state_window_set_frame_rect(
+  state_t *state,
+  window_id_t window_id,
+  rect_t frame_rect
+);
 /**
  * @brief 按字段掩码转移窗口元数据的所有权
  * @param state 状态实例指针
@@ -185,19 +228,37 @@ void state_window_set_frame_rect(state_t *state, window_id_t window_id,
  * 失败时，不接管 metadata 中任何字段的所有权，metadata 保持不变，仍由调用方负
  * 责后续访问与释放。
  */
-bool state_window_take_metadata(state_t *state, window_id_t window_id,
-                                window_metadata_t *metadata,
-                                uint32_t changed_fields);
-bool state_window_set_title(state_t *state, window_id_t window_id,
-                            const char *title);
-bool state_window_set_app_id(state_t *state, window_id_t window_id,
-                             const char *app_id);
-bool state_window_set_role(state_t *state, window_id_t window_id,
-                           const char *role);
-bool state_window_set_class(state_t *state, window_id_t window_id,
-                            const char *class_name);
-bool state_window_set_instance(state_t *state, window_id_t window_id,
-                               const char *instance_name);
+bool state_window_take_metadata(
+  state_t *state,
+  window_id_t window_id,
+  window_metadata_t *metadata,
+  uint32_t changed_fields
+);
+bool state_window_set_title(
+  state_t *state,
+  window_id_t window_id,
+  const char *title
+);
+bool state_window_set_app_id(
+  state_t *state,
+  window_id_t window_id,
+  const char *app_id
+);
+bool state_window_set_role(
+  state_t *state,
+  window_id_t window_id,
+  const char *role
+);
+bool state_window_set_class(
+  state_t *state,
+  window_id_t window_id,
+  const char *class_name
+);
+bool state_window_set_instance(
+  state_t *state,
+  window_id_t window_id,
+  const char *instance_name
+);
 
 bool state_stack_raise(state_t *state, window_id_t window_id);
 bool state_stack_lower(state_t *state, window_id_t window_id);

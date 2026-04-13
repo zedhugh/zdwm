@@ -30,16 +30,18 @@ typedef struct zdwm_layout_result_t {
   size_t item_capacity;
 } zdwm_layout_result_t;
 
-typedef bool (*zdwm_layout_fn)(const zdwm_layout_ctx_t *ctx,
-                               zdwm_layout_result_t *out);
+typedef bool (*zdwm_layout_fn)(
+  const zdwm_layout_ctx_t *ctx,
+  zdwm_layout_result_t *out
+);
 
 static inline void zdwm_layout_result_reset(zdwm_layout_result_t *result) {
   if (!result) abort();
   result->item_count = 0;
 }
 
-static inline void zdwm_layout_result_push(zdwm_layout_result_t *result,
-                                           zdwm_layout_item_t item) {
+static inline void
+zdwm_layout_result_push(zdwm_layout_result_t *result, zdwm_layout_item_t item) {
   if (!result) abort();
 
   if (result->item_count == result->item_capacity) {
@@ -47,7 +49,8 @@ static inline void zdwm_layout_result_push(zdwm_layout_result_t *result,
     zdwm_layout_item_t *items =
       realloc(result->items, capacity * sizeof(*result->items));
     if (!items) abort();
-    result->items = items;
+
+    result->items         = items;
     result->item_capacity = capacity;
   }
 

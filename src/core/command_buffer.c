@@ -13,11 +13,11 @@ void command_buffer_reset(command_buffer_t *buffer) {
 
 void command_buffer_cleanup(command_buffer_t *buffer) {
   p_delete(&buffer->items);
-  buffer->count = 0;
+  buffer->count    = 0;
   buffer->capacity = 0;
 }
 
 void command_buffer_push(command_buffer_t *buffer, const command_t *command) {
   command_t *cmd = array_push(buffer->items, buffer->count, buffer->capacity);
-  *cmd = *command;
+  *cmd           = *command;
 }

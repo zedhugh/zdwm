@@ -22,8 +22,8 @@ typedef enum event_type_t {
 
 typedef enum modifier_bit_t {
   ZDWM_MOD_SHIFT = 1u << 0,
-  ZDWM_MOD_CTRL = 1u << 1,
-  ZDWM_MOD_ALT = 1u << 2,
+  ZDWM_MOD_CTRL  = 1u << 1,
+  ZDWM_MOD_ALT   = 1u << 2,
   ZDWM_MOD_SUPER = 1u << 3,
 } modifier_bit_t;
 
@@ -87,10 +87,10 @@ typedef struct window_remove_event_t {
 } window_remove_event_t;
 
 typedef enum window_metadata_change_flags_t {
-  ZDWM_WINDOW_METADATA_CHANGE_TITLE = 1u << 0,
-  ZDWM_WINDOW_METADATA_CHANGE_APP_ID = 1u << 1,
-  ZDWM_WINDOW_METADATA_CHANGE_ROLE = 1u << 2,
-  ZDWM_WINDOW_METADATA_CHANGE_CLASS = 1u << 3,
+  ZDWM_WINDOW_METADATA_CHANGE_TITLE    = 1u << 0,
+  ZDWM_WINDOW_METADATA_CHANGE_APP_ID   = 1u << 1,
+  ZDWM_WINDOW_METADATA_CHANGE_ROLE     = 1u << 2,
+  ZDWM_WINDOW_METADATA_CHANGE_CLASS    = 1u << 3,
   ZDWM_WINDOW_METADATA_CHANGE_INSTANCE = 1u << 4,
 } window_metadata_change_flags_t;
 
@@ -101,9 +101,9 @@ typedef struct window_metadata_change_event_t {
 } window_metadata_change_event_t;
 
 typedef enum window_hint_changed_flags_t {
-  ZDWM_WINDOW_HINT_CHANGED_NONE = 0,
-  ZDWM_WINDOW_HINT_CHANGED_URGENT = 1u << 0,
-  ZDWM_WINDOW_HINT_CHANGED_FIXED_SIZE = 1u << 1,
+  ZDWM_WINDOW_HINT_CHANGED_NONE         = 0,
+  ZDWM_WINDOW_HINT_CHANGED_URGENT       = 1u << 0,
+  ZDWM_WINDOW_HINT_CHANGED_FIXED_SIZE   = 1u << 1,
   ZDWM_WINDOW_HINT_CHANGED_SKIP_TASKBAR = 1u << 2,
 } window_hint_changed_flags_t;
 
@@ -116,9 +116,9 @@ typedef struct window_hints_changed_event_t {
 } window_hints_changed_event_t;
 
 typedef enum window_activation_source_t {
-  ZDWM_WINDOW_ACTIVATION_SOURCE_LEGACY = 0,
+  ZDWM_WINDOW_ACTIVATION_SOURCE_LEGACY      = 0,
   ZDWM_WINDOW_ACTIVATION_SOURCE_APPLICATION = 1,
-  ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER = 2,
+  ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER       = 2,
 } window_activation_source_t;
 
 typedef struct window_activate_request_event_t {
@@ -145,10 +145,10 @@ typedef struct window_state_request_event_t {
 } window_state_request_event_t;
 
 typedef enum configure_request_field_t {
-  ZDWM_CONFIGURE_REQUEST_FIELD_NONE = 0,
-  ZDWM_CONFIGURE_REQUEST_FIELD_X = 1u << 0,
-  ZDWM_CONFIGURE_REQUEST_FIELD_Y = 1u << 1,
-  ZDWM_CONFIGURE_REQUEST_FIELD_WIDTH = 1u << 2,
+  ZDWM_CONFIGURE_REQUEST_FIELD_NONE   = 0,
+  ZDWM_CONFIGURE_REQUEST_FIELD_X      = 1u << 0,
+  ZDWM_CONFIGURE_REQUEST_FIELD_Y      = 1u << 1,
+  ZDWM_CONFIGURE_REQUEST_FIELD_WIDTH  = 1u << 2,
   ZDWM_CONFIGURE_REQUEST_FIELD_HEIGHT = 1u << 3,
 } configure_request_field_t;
 

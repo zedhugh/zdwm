@@ -78,9 +78,9 @@ void raise_or_run(const user_action_arg_t *arg) {
     bool monitor_changed = client->monitor != wm.current_monitor;
     bool tag_changed = client->tags != client->monitor->selected_tag->mask;
     if (monitor_changed || tag_changed) {
-      point_t point = monitor_changed ? monitor_get_restore_cursor_point(
-                                        client->monitor)
-                                      : xcursor_query_pointer_position();
+      point_t point = monitor_changed
+                        ? monitor_get_restore_cursor_point(client->monitor)
+                        : xcursor_query_pointer_position();
       wm_ignore_enter_notify_at_point(point);
     }
     wm_set_current_monitor(client->monitor, true);

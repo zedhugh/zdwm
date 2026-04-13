@@ -7,10 +7,10 @@
 #define countof(foo) (ssizeof(foo) / ssizeof(foo[0]))
 
 #ifdef __GNUC__
-#define likely(expr) __builtin_expect(!!(expr), 1)
+#define likely(expr)   __builtin_expect(!!(expr), 1)
 #define unlikely(expr) __builtin_expect((expr), 0)
 #else
-#define likely(expr) expr
+#define likely(expr)   expr
 #define unlikely(expr) expr
 #endif
 

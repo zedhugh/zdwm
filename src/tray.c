@@ -123,7 +123,8 @@ static void tray_get_icon_layout(const tray_icon_t *icon, uint16_t *width,
 }
 
 static uint16_t tray_compute_width(void) {
-  if (!tray.initialized || tray.host_monitor == nullptr || tray.icon_count == 0) {
+  if (!tray.initialized || tray.host_monitor == nullptr ||
+      tray.icon_count == 0) {
     return 0;
   }
 
@@ -163,11 +164,10 @@ static void tray_select_icon_events(xcb_window_t window) {
   xcb_params_cw_t params = {
     .back_pixel = wm.color_set.bar_bg.argb,
     .border_pixel = 0,
-    .event_mask = XCB_EVENT_MASK_PROPERTY_CHANGE |
-                  XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+    .event_mask =
+      XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_STRUCTURE_NOTIFY,
   };
-  uint32_t mask =
-    XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK;
+  uint32_t mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK;
   xcb_aux_change_window_attributes(wm.xcb_conn, window, mask, &params);
   xcb_clear_area(wm.xcb_conn, false, window, 0, 0, 0, 0);
 }
@@ -180,9 +180,9 @@ static void tray_release_icon_window(tray_icon_t *icon) {
     .event_mask = XCB_EVENT_MASK_NO_EVENT,
     .border_pixel = 0,
   };
-  xcb_aux_change_window_attributes(
-    wm.xcb_conn, icon->window, XCB_CW_EVENT_MASK | XCB_CW_BORDER_PIXEL,
-    &params);
+  xcb_aux_change_window_attributes(wm.xcb_conn, icon->window,
+                                   XCB_CW_EVENT_MASK | XCB_CW_BORDER_PIXEL,
+                                   &params);
   xcb_reparent_window(wm.xcb_conn, icon->window, wm.screen->root, 0, 0);
 }
 
@@ -299,7 +299,8 @@ static void tray_add_icon(xcb_window_t window) {
 
 static bool tray_create_window(void) {
   static xcb_colormap_t colormap = XCB_NONE;
-  if (tray.host_monitor == nullptr || tray.host_monitor->bar_window == XCB_NONE) {
+  if (tray.host_monitor == nullptr ||
+      tray.host_monitor->bar_window == XCB_NONE) {
     return false;
   }
 
@@ -319,8 +320,8 @@ static bool tray_create_window(void) {
   const xcb_create_window_value_list_t value_list = {
     .background_pixel = wm.color_set.bar_bg.argb,
     .border_pixel = 0,
-    .event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT |
-                  XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+    .event_mask =
+      XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
     .colormap = colormap,
   };
 
@@ -362,7 +363,8 @@ static bool tray_take_selection_owner(void) {
                           XCB_CURRENT_TIME);
 
   owner_cookie = xcb_get_selection_owner(wm.xcb_conn, tray.selection_atom);
-  owner_reply = xcb_get_selection_owner_reply(wm.xcb_conn, owner_cookie, nullptr);
+  owner_reply =
+    xcb_get_selection_owner_reply(wm.xcb_conn, owner_cookie, nullptr);
   bool success = owner_reply && owner_reply->owner == tray.window;
   p_delete(&owner_reply);
 
@@ -378,18 +380,12 @@ static void tray_set_properties(void) {
 
   const color_t *fg = &wm.color_set.tag_color;
   uint32_t colors[12] = {
-    tray_color_component_u16(fg->red),
-    tray_color_component_u16(fg->green),
-    tray_color_component_u16(fg->blue),
-    tray_color_component_u16(fg->red),
-    tray_color_component_u16(fg->green),
-    tray_color_component_u16(fg->blue),
-    tray_color_component_u16(fg->red),
-    tray_color_component_u16(fg->green),
-    tray_color_component_u16(fg->blue),
-    tray_color_component_u16(fg->red),
-    tray_color_component_u16(fg->green),
-    tray_color_component_u16(fg->blue),
+    tray_color_component_u16(fg->red),   tray_color_component_u16(fg->green),
+    tray_color_component_u16(fg->blue),  tray_color_component_u16(fg->red),
+    tray_color_component_u16(fg->green), tray_color_component_u16(fg->blue),
+    tray_color_component_u16(fg->red),   tray_color_component_u16(fg->green),
+    tray_color_component_u16(fg->blue),  tray_color_component_u16(fg->red),
+    tray_color_component_u16(fg->green), tray_color_component_u16(fg->blue),
   };
   xcb_change_property(wm.xcb_conn, XCB_PROP_MODE_REPLACE, tray.window,
                       _NET_SYSTEM_TRAY_COLORS, XCB_ATOM_CARDINAL, 32,

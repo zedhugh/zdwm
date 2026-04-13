@@ -7,17 +7,28 @@
 #include <xcb/xproto.h>
 
 #include "base/memory.h"
+#include "core/backend.h"
 #include "internal.h"
 
-static char *window_get_text_property(backend_t *backend, xcb_window_t window,
-                                      xcb_atom_t property) {
+static char *window_get_text_property(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_atom_t property
+) {
   xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
-    backend->conn, false, window, property, XCB_ATOM_ANY, 0, UINT32_MAX);
+    backend->conn,
+    false,
+    window,
+    property,
+    XCB_ATOM_ANY,
+    0,
+    UINT32_MAX
+  );
   xcb_get_property_reply_t *reply =
     xcb_get_property_reply(backend->conn, cookie, nullptr);
   if (!reply) return nullptr;
 
-  int length = xcb_get_property_value_length(reply);
+  int length  = xcb_get_property_value_length(reply);
   char *value = (char *)xcb_get_property_value(reply);
 
   char *text = nullptr;
@@ -39,16 +50,20 @@ char *window_get_role(backend_t *backend, xcb_window_t window) {
 
 char *window_get_title(backend_t *backend, xcb_window_t window) {
   xcb_atom_t property = backend->atoms._NET_WM_NAME;
-  char *name = window_get_text_property(backend, window, property);
+  char *name          = window_get_text_property(backend, window, property);
   if (!name) {
     property = backend->atoms.WM_NAME;
-    name = window_get_text_property(backend, window, property);
+    name     = window_get_text_property(backend, window, property);
   }
   return name;
 }
 
-void window_get_class(backend_t *backend, xcb_window_t window, char **class_out,
-                      char **instance_out) {
+void window_get_class(
+  backend_t *backend,
+  xcb_window_t window,
+  char **class_out,
+  char **instance_out
+) {
   xcb_icccm_get_wm_class_reply_t prop;
   xcb_get_property_cookie_t cookie =
     xcb_icccm_get_wm_class_unchecked(backend->conn, window);
@@ -74,15 +89,15 @@ xcb_window_t window_get_transient_for(backend_t *backend, xcb_window_t window) {
   return XCB_WINDOW_NONE;
 }
 
-xcb_get_window_attributes_reply_t *window_get_attributes(backend_t *backend,
-                                                         xcb_window_t window) {
+xcb_get_window_attributes_reply_t *
+window_get_attributes(backend_t *backend, xcb_window_t window) {
   xcb_get_window_attributes_cookie_t cookie =
     xcb_get_window_attributes(backend->conn, window);
   return xcb_get_window_attributes_reply(backend->conn, cookie, nullptr);
 }
 
-static window_type_t atom_to_window_type(const atoms_t *atoms,
-                                         xcb_atom_t atom) {
+static window_type_t
+atom_to_window_type(const atoms_t *atoms, xcb_atom_t atom) {
   if (atom == atoms->_NET_WM_WINDOW_TYPE_DESKTOP)
     return ZDWM_WINDOW_TYPE_DESKTOP;
   if (atom == atoms->_NET_WM_WINDOW_TYPE_DOCK) return ZDWM_WINDOW_TYPE_DOCK;
@@ -106,13 +121,21 @@ static window_type_t atom_to_window_type(const atoms_t *atoms,
   return ZDWM_WINDOW_TYPE_NORMAL;
 }
 
-bool window_get_types(backend_t *backend, xcb_window_t window,
-                      window_type_t **types, size_t *count) {
+bool window_get_types(
+  backend_t *backend,
+  xcb_window_t window,
+  window_type_t **types,
+  size_t *count
+) {
   uint32_t atom_count = 0;
-  xcb_atom_t *atoms = nullptr;
-  if (!window_get_atom_array(backend, window,
-                             backend->atoms._NET_WM_WINDOW_TYPE, &atoms,
-                             &atom_count)) {
+  xcb_atom_t *atoms   = nullptr;
+  if (!window_get_atom_array(
+        backend,
+        window,
+        backend->atoms._NET_WM_WINDOW_TYPE,
+        &atoms,
+        &atom_count
+      )) {
     return false;
   }
   if (!atoms) {
@@ -156,20 +179,31 @@ bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out) {
     xcb_get_geometry_reply(backend->conn, cookie, nullptr);
   if (!reply) return false;
 
-  out->x = reply->x;
-  out->y = reply->y;
-  out->width = reply->width;
+  out->x      = reply->x;
+  out->y      = reply->y;
+  out->width  = reply->width;
   out->height = reply->height;
 
   p_delete(&reply);
   return true;
 }
 
-bool window_get_atom_array(backend_t *backend, xcb_window_t window,
-                           xcb_atom_t property, xcb_atom_t **out_atoms,
-                           uint32_t *out_len) {
+bool window_get_atom_array(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_atom_t property,
+  xcb_atom_t **out_atoms,
+  uint32_t *out_len
+) {
   xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
-    backend->conn, false, window, property, XCB_ATOM_ATOM, 0, UINT32_MAX);
+    backend->conn,
+    false,
+    window,
+    property,
+    XCB_ATOM_ATOM,
+    0,
+    UINT32_MAX
+  );
   xcb_get_property_reply_t *reply =
     xcb_get_property_reply(backend->conn, cookie, nullptr);
   if (!reply) return false;
@@ -179,7 +213,7 @@ bool window_get_atom_array(backend_t *backend, xcb_window_t window,
     *out_atoms =
       p_copy((xcb_atom_t *)xcb_get_property_value(reply), reply->value_len);
   } else {
-    *out_len = 0;
+    *out_len   = 0;
     *out_atoms = nullptr;
   }
 
@@ -187,8 +221,11 @@ bool window_get_atom_array(backend_t *backend, xcb_window_t window,
   return true;
 }
 
-bool window_get_wm_hints(backend_t *backend, xcb_window_t window,
-                         xcb_icccm_wm_hints_t *out) {
+bool window_get_wm_hints(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_icccm_wm_hints_t *out
+) {
   xcb_get_property_cookie_t cookie =
     xcb_icccm_get_wm_hints_unchecked(backend->conn, window);
   if (!xcb_icccm_get_wm_hints_reply(backend->conn, cookie, out, nullptr)) {

@@ -15,17 +15,20 @@ static inline void config_test_clear_env(void) {
   assert(unsetenv("HOME") == 0);
 }
 
-static inline void config_test_make_temp_dir(char *path, size_t path_size,
-                                             const char *prefix) {
+static inline void
+config_test_make_temp_dir(char *path, size_t path_size, const char *prefix) {
   int len = snprintf(path, path_size, "/tmp/%s-XXXXXX", prefix);
   assert(len > 0);
   assert((size_t)len < path_size);
   assert(mkdtemp(path) == path);
 }
 
-static inline void config_test_join_path(char *out, size_t out_size,
-                                         const char *base,
-                                         const char *suffix) {
+static inline void config_test_join_path(
+  char *out,
+  size_t out_size,
+  const char *base,
+  const char *suffix
+) {
   int len = snprintf(out, out_size, "%s/%s", base, suffix);
   assert(len > 0);
   assert((size_t)len < out_size);

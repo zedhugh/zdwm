@@ -113,7 +113,8 @@ static image_cache_entry_t *image_cache_get(const char *path) {
     entry->surface = nullptr;
   }
 
-  if (!image_load_surface(path, &entry->surface, &entry->width, &entry->height)) {
+  if (!image_load_surface(path, &entry->surface, &entry->width,
+                          &entry->height)) {
     return nullptr;
   }
   return entry;

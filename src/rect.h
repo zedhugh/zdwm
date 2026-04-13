@@ -17,7 +17,8 @@ size_t rect_subtract(rect_t source, rect_t clip, rect_t remaining[4]);
  * @param source 源矩形
  * @param clips 要减去的矩形数组，可为 nullptr
  * @param clip_count clips 的长度
- * @param remaining 输出剩余矩形数组；若不为 nullptr，则由函数分配内存并由调用方释放
+ * @param remaining 输出剩余矩形数组；若不为
+ * nullptr，则由函数分配内存并由调用方释放
  * @return 剩余矩形数量
  *
  * @code{.c}

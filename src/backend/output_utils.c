@@ -14,8 +14,8 @@ static inline bool fully_contains(rect_t outer, rect_t inner) {
          right(inner) <= right(outer) && bottom(inner) <= bottom(outer);
 }
 
-backend_detect_t *output_remove_duplication(const output_info_t *output,
-                                            const size_t count) {
+backend_detect_t *
+output_remove_duplication(const output_info_t *output, const size_t count) {
   if (!output || count < 1) return nullptr;
 
   bool *remove = p_new(bool, count);
@@ -42,14 +42,14 @@ backend_detect_t *output_remove_duplication(const output_info_t *output,
   }
 
   output_info_t *list = p_new(output_info_t, amount);
-  amount = 0;
+  amount              = 0;
   for (size_t i = 0; i < count; i++) {
     if (remove[i]) continue;
     list[amount++] = output[i];
   }
   p_delete(&remove);
   backend_detect_t *detect = p_new(backend_detect_t, 1);
-  detect->outputs = list;
-  detect->output_count = amount;
+  detect->outputs          = list;
+  detect->output_count     = amount;
   return detect;
 }

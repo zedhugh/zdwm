@@ -30,11 +30,11 @@ typedef uint32_t wm_modifier_mask_t;
 typedef uint32_t wm_rgba32_t;
 
 // 无效 ID 标记
-#define WM_WINDOW_ID_INVALID     ((wm_window_id_t)0)
-#define WM_WORKSPACE_ID_INVALID  ((wm_workspace_id_t)-1)
-#define WM_OUTPUT_ID_INVALID     ((wm_output_id_t)-1)
-#define WM_LAYOUT_ID_INVALID     ((wm_layout_id_t)-1)
-#define WM_KEYSYM_INVALID        ((wm_keysym_t)0)
+#define WM_WINDOW_ID_INVALID    ((wm_window_id_t)0)
+#define WM_WORKSPACE_ID_INVALID ((wm_workspace_id_t) - 1)
+#define WM_OUTPUT_ID_INVALID    ((wm_output_id_t) - 1)
+#define WM_LAYOUT_ID_INVALID    ((wm_layout_id_t) - 1)
+#define WM_KEYSYM_INVALID       ((wm_keysym_t)0)
 
 /*
  * 归一化后的修饰键掩码：
@@ -42,10 +42,10 @@ typedef uint32_t wm_rgba32_t;
  * - CapsLock / NumLock 这类锁定位不应进入该掩码
  */
 typedef enum wm_modifier_bit_t {
-  WM_MOD_NONE = 0,
+  WM_MOD_NONE  = 0,
   WM_MOD_SHIFT = 1u << 0,
-  WM_MOD_CTRL = 1u << 1,
-  WM_MOD_ALT = 1u << 2,
+  WM_MOD_CTRL  = 1u << 1,
+  WM_MOD_ALT   = 1u << 2,
   WM_MOD_SUPER = 1u << 3,
 } wm_modifier_bit_t;
 

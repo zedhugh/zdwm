@@ -25,15 +25,15 @@ void event_cleanup(event_t *event) {
   if (!event) return;
 
   switch (event->type) {
-    case ZDWM_EVENT_WINDOW_MAP_REQUEST:
-      window_layer_props_cleanup(&event->as.window_map_request.props);
-      window_metadata_cleanup(&event->as.window_map_request.metadata);
-      break;
-    case ZDWM_EVENT_WINDOW_METADATA_CHANGED:
-      window_metadata_cleanup(&event->as.window_metadata_change.metadata);
-      break;
-    default:
-      break;
+  case ZDWM_EVENT_WINDOW_MAP_REQUEST:
+    window_layer_props_cleanup(&event->as.window_map_request.props);
+    window_metadata_cleanup(&event->as.window_map_request.metadata);
+    break;
+  case ZDWM_EVENT_WINDOW_METADATA_CHANGED:
+    window_metadata_cleanup(&event->as.window_metadata_change.metadata);
+    break;
+  default:
+    break;
   }
 }
 

@@ -14,7 +14,9 @@
 #include "core/wm_desc.h"
 
 static bool runtime_workspace_desc_has_valid_layouts(
-  const layout_registry_t *layouts, const workspace_desc_t *workspace) {
+  const layout_registry_t *layouts,
+  const workspace_desc_t *workspace
+) {
   if (!layouts || !workspace) return false;
 
   for (size_t i = 0; i < workspace->layout_count; i++) {
@@ -50,14 +52,19 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   layout_registry_move(&desc->layouts, &runtime->layouts);
   rules_move(&desc->rules, &runtime->rules);
   runtime->config_module_handle = desc->config_module_handle;
-  desc->backend = nullptr;
-  desc->config_module_handle = nullptr;
+  desc->backend                 = nullptr;
+  desc->config_module_handle    = nullptr;
 
-  state_init(&runtime->state, desc->outputs, desc->output_count,
-             desc->workspaces, desc->workspace_count);
+  state_init(
+    &runtime->state,
+    desc->outputs,
+    desc->output_count,
+    desc->workspaces,
+    desc->workspace_count
+  );
 
   workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
-  desc->outputs = nullptr;
+  desc->outputs      = nullptr;
   desc->output_count = 0;
 
   return true;
@@ -77,7 +84,7 @@ void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
   }
 
   workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
-  desc->outputs = nullptr;
+  desc->outputs      = nullptr;
   desc->output_count = 0;
   if (desc->config_module_handle) dlclose(desc->config_module_handle);
   desc->config_module_handle = nullptr;
@@ -99,9 +106,9 @@ void runtime_shutdown(runtime_t *runtime) {
 void runtime_run(runtime_t *runtime) {
   runtime->running = true;
 
-  backend_t *backend = runtime->backend;
+  backend_t *backend               = runtime->backend;
   command_buffer_t *command_buffer = &runtime->command_buffer;
-  plan_t *plan = &runtime->plan;
+  plan_t *plan                     = &runtime->plan;
 
   while (runtime->running) {
     event_t event = {0};

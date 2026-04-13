@@ -35,18 +35,33 @@ char *window_get_title(backend_t *backend, xcb_window_t window);
  * @param instance_out instance 信息返回指针，调用者持有其内存并负责调用 free
  * 释放
  */
-void window_get_class(backend_t *backend, xcb_window_t window, char **class_out,
-                      char **instance_out);
+void window_get_class(
+  backend_t *backend,
+  xcb_window_t window,
+  char **class_out,
+  char **instance_out
+);
 xcb_window_t window_get_transient_for(backend_t *backend, xcb_window_t window);
-xcb_get_window_attributes_reply_t *window_get_attributes(backend_t *backend,
-                                                         xcb_window_t window);
-bool window_get_types(backend_t *backend, xcb_window_t window,
-                      window_type_t **types, size_t *count);
+xcb_get_window_attributes_reply_t *
+window_get_attributes(backend_t *backend, xcb_window_t window);
+bool window_get_types(
+  backend_t *backend,
+  xcb_window_t window,
+  window_type_t **types,
+  size_t *count
+);
 bool window_get_fixed_size(backend_t *backend, xcb_window_t window, bool *out);
 bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out);
-bool window_get_atom_array(backend_t *backend, xcb_window_t window,
-                           xcb_atom_t property, xcb_atom_t **out_atoms,
-                           uint32_t *out_len);
-bool window_get_wm_hints(backend_t *backend, xcb_window_t window,
-                         xcb_icccm_wm_hints_t *out);
+bool window_get_atom_array(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_atom_t property,
+  xcb_atom_t **out_atoms,
+  uint32_t *out_len
+);
+bool window_get_wm_hints(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_icccm_wm_hints_t *out
+);
 window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom);

@@ -26,7 +26,7 @@ typedef struct atom_item_t {
 
 static void atoms_init(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
-  atoms_t *atoms = &backend->atoms;
+  atoms_t *atoms         = &backend->atoms;
 
 #define ATOM_ITEM(name) {#name, sizeof(#name) - 1, &atoms->name},
   atom_item_t atom_list[] = {ATOM_LIST(ATOM_ITEM)};
@@ -44,15 +44,15 @@ static void atoms_init(backend_t *backend) {
     if (!reply) continue;
 
     atom_item_t *atom = &atom_list[i];
-    *atom->atom = reply->atom;
+    *atom->atom       = reply->atom;
     p_delete(&reply);
   }
 }
 
 backend_t *backend_create(const char *display_name) {
-  int screen_num = 0;
+  int screen_num         = 0;
   xcb_connection_t *conn = xcb_connect(display_name, &screen_num);
-  int xcb_conn_error = xcb_connection_has_error(conn);
+  int xcb_conn_error     = xcb_connection_has_error(conn);
   if (xcb_conn_error) {
     fatal("cannot open display %s, error %d", display_name, xcb_conn_error);
   }
@@ -61,7 +61,7 @@ backend_t *backend_create(const char *display_name) {
   if (!screen) fatal("cannot get screen info");
   xcb_window_t root = screen->root;
 
-  uint32_t mask = XCB_CW_EVENT_MASK;
+  uint32_t mask                = XCB_CW_EVENT_MASK;
   const xcb_params_cw_t params = {
     .event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
   };
@@ -70,20 +70,24 @@ backend_t *backend_create(const char *display_name) {
   if (xcb_request_check(conn, cookie)) {
     fatal(
       "another window manager is already running (cannot select "
-      "SubstructureRedirect)");
+      "SubstructureRedirect)"
+    );
   }
 
   backend_t *backend = p_new(backend_t, 1);
-  backend->conn = conn;
-  backend->screen = screen;
-  backend->screenp = screen_num;
+  backend->conn      = conn;
+  backend->screen    = screen;
+  backend->screenp   = screen_num;
 
   xcb_prefetch_extension_data(conn, &xcb_xfixes_id);
   const xcb_query_extension_reply_t *query =
     xcb_get_extension_data(conn, &xcb_xfixes_id);
   if (query && query->present) {
     xcb_xfixes_query_version_cookie_t cookie = xcb_xfixes_query_version(
-      conn, XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
+      conn,
+      XCB_XFIXES_MAJOR_VERSION,
+      XCB_XFIXES_MINOR_VERSION
+    );
     xcb_xfixes_query_version_reply_t *reply =
       xcb_xfixes_query_version_reply(conn, cookie, nullptr);
 
@@ -108,15 +112,21 @@ void backend_destroy(backend_t *backend) {
   free(backend);
 }
 
-static bool detect_monitor_by_randr(const backend_t *backend,
-                                    output_info_t **outputs, size_t *count) {
+static bool detect_monitor_by_randr(
+  const backend_t *backend,
+  output_info_t **outputs,
+  size_t *count
+) {
   xcb_prefetch_extension_data(backend->conn, &xcb_randr_id);
   const xcb_query_extension_reply_t *query =
     xcb_get_extension_data(backend->conn, &xcb_randr_id);
   if (!query || !query->present) return false;
 
   xcb_randr_query_version_cookie_t cookie = xcb_randr_query_version(
-    backend->conn, XCB_RANDR_MAJOR_VERSION, XCB_RANDR_MINOR_VERSION);
+    backend->conn,
+    XCB_RANDR_MAJOR_VERSION,
+    XCB_RANDR_MINOR_VERSION
+  );
   xcb_randr_query_version_reply_t *reply =
     xcb_randr_query_version_reply(backend->conn, cookie, nullptr);
   if (!reply) return false;
@@ -149,10 +159,10 @@ static bool detect_monitor_by_randr(const backend_t *backend,
   xcb_randr_monitor_info_iterator_t iter =
     xcb_randr_get_monitors_monitors_iterator(monitors_reply);
   for (int i = 0; iter.rem; xcb_randr_monitor_info_next(&iter), i++) {
-    output_info_t *output = &output_list[i];
-    output->geometry.x = iter.data->x;
-    output->geometry.y = iter.data->y;
-    output->geometry.width = iter.data->width;
+    output_info_t *output   = &output_list[i];
+    output->geometry.x      = iter.data->x;
+    output->geometry.y      = iter.data->y;
+    output->geometry.width  = iter.data->width;
     output->geometry.height = iter.data->height;
 
     xcb_get_atom_name_cookie_t name_cookie =
@@ -161,8 +171,8 @@ static bool detect_monitor_by_randr(const backend_t *backend,
       xcb_get_atom_name_reply(backend->conn, name_cookie, nullptr);
 
     if (name_reply) {
-      char *name = xcb_get_atom_name_name(name_reply);
-      int length = xcb_get_atom_name_name_length(name_reply);
+      char *name   = xcb_get_atom_name_name(name_reply);
+      int length   = xcb_get_atom_name_name_length(name_reply);
       output->name = p_strndup(name, length);
       p_delete(&name_reply);
     }
@@ -181,15 +191,21 @@ static bool detect_monitor_by_randr(const backend_t *backend,
   return true;
 }
 
-static bool detect_monitor_by_xinerama(const backend_t *backend,
-                                       output_info_t **outputs, size_t *count) {
+static bool detect_monitor_by_xinerama(
+  const backend_t *backend,
+  output_info_t **outputs,
+  size_t *count
+) {
   xcb_prefetch_extension_data(backend->conn, &xcb_xinerama_id);
   const xcb_query_extension_reply_t *query =
     xcb_get_extension_data(backend->conn, &xcb_xinerama_id);
   if (!query || !query->present) return false;
 
   xcb_xinerama_query_version_cookie_t cookie = xcb_xinerama_query_version(
-    backend->conn, XCB_XINERAMA_MAJOR_VERSION, XCB_XINERAMA_MINOR_VERSION);
+    backend->conn,
+    XCB_XINERAMA_MAJOR_VERSION,
+    XCB_XINERAMA_MINOR_VERSION
+  );
   xcb_xinerama_query_version_reply_t *version_reply =
     xcb_xinerama_query_version_reply(backend->conn, cookie, nullptr);
   if (!version_reply) return false;
@@ -225,10 +241,10 @@ static bool detect_monitor_by_xinerama(const backend_t *backend,
 
   output_info_t *output_list = p_new(output_info_t, len);
   for (int i = 0; i < len; i++) {
-    output_info_t *output = &output_list[i];
-    output->geometry.x = screen_info[i].x_org;
-    output->geometry.y = screen_info[i].y_org;
-    output->geometry.width = screen_info[i].width;
+    output_info_t *output   = &output_list[i];
+    output->geometry.x      = screen_info[i].x_org;
+    output->geometry.y      = screen_info[i].y_org;
+    output->geometry.width  = screen_info[i].width;
     output->geometry.height = screen_info[i].height;
   }
   p_delete(&screens_reply);
@@ -246,7 +262,7 @@ static bool detect_monitor_by_xinerama(const backend_t *backend,
 
 backend_detect_t *backend_detect(backend_t *backend) {
   output_info_t *outputs = nullptr;
-  size_t count = 0;
+  size_t count           = 0;
 
   if (detect_monitor_by_randr(backend, &outputs, &count)) {
     backend_detect_t *detect = output_remove_duplication(outputs, count);
@@ -260,15 +276,15 @@ backend_detect_t *backend_detect(backend_t *backend) {
     return detect;
   }
 
-  output_info_t *output = p_new(output_info_t, 1);
-  output->geometry.x = 0;
-  output->geometry.y = 0;
-  output->geometry.width = backend->screen->width_in_pixels;
+  output_info_t *output   = p_new(output_info_t, 1);
+  output->geometry.x      = 0;
+  output->geometry.y      = 0;
+  output->geometry.width  = backend->screen->width_in_pixels;
   output->geometry.height = backend->screen->height_in_pixels;
 
   backend_detect_t *detect = p_new(backend_detect_t, 1);
-  detect->outputs = output;
-  detect->output_count = 1;
+  detect->outputs          = output;
+  detect->output_count     = 1;
   return detect;
 }
 
@@ -283,8 +299,11 @@ void backend_detect_destroy(backend_detect_t *detect) {
   free(detect);
 }
 
-bool backend_apply_effect(backend_t *backend, const effect_t *effects,
-                          size_t effect_count) {
+bool backend_apply_effect(
+  backend_t *backend,
+  const effect_t *effects,
+  size_t effect_count
+) {
   /* TODO: */
   return true;
 }

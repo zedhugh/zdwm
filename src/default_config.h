@@ -35,7 +35,7 @@ static const config_status_item_t status_list[] = {
     .type = status_net_down,
     .icon_type = icon_type_image,
     .icon = "/home/zedhugh/develop/zswm/src/resources/icons/"
-      "corner-left-down-line.png",
+            "corner-left-down-line.png",
     .color = "#87af5f",
   },
   {
@@ -91,9 +91,9 @@ static const button_t button_list[] = {
 };
 
 #define TAGKEYS(KEY, TAG)                                                  \
-{modifier_super, KEY, select_tag_of_current_monitor, {.ui = TAG}}, {     \
-modifier_super | modifier_shift, KEY, send_client_to_tag, {.ui = TAG}, \
-}
+  {modifier_super, KEY, select_tag_of_current_monitor, {.ui = TAG}}, {     \
+    modifier_super | modifier_shift, KEY, send_client_to_tag, {.ui = TAG}, \
+  }
 
 static const char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";

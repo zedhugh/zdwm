@@ -9,7 +9,7 @@
 
 void layer_stack_cleanup(layer_stack_t *layer) {
   p_delete(&layer->order);
-  layer->count = 0;
+  layer->count    = 0;
   layer->capacity = 0;
 }
 
@@ -20,7 +20,7 @@ void layer_stack_append(layer_stack_t *layer, window_id_t window) {
 }
 
 bool layer_stack_remove(layer_stack_t *layer, window_id_t window) {
-  bool found = false;
+  bool found   = false;
   size_t index = 0;
   for (size_t i = 0; i < layer->count; ++i) {
     if (layer->order[i] != window) continue;
@@ -41,7 +41,7 @@ bool layer_stack_remove(layer_stack_t *layer, window_id_t window) {
 }
 
 bool layer_stack_raise(layer_stack_t *layer, window_id_t window) {
-  bool found = false;
+  bool found   = false;
   size_t index = 0;
   for (size_t i = 0; i < layer->count; ++i) {
     if (layer->order[i] != window) continue;
@@ -65,7 +65,7 @@ bool layer_stack_raise(layer_stack_t *layer, window_id_t window) {
 }
 
 bool layer_stack_lower(layer_stack_t *layer, window_id_t window) {
-  bool found = false;
+  bool found   = false;
   size_t index = 0;
   for (size_t i = 0; i < layer->count; ++i) {
     if (layer->order[i] != window) continue;

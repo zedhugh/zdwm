@@ -4,7 +4,7 @@
 #include "core/runtime.h"
 
 static void bootstrap(runtime_t *runtime) {
-  backend_t *backend = backend_create(nullptr);
+  backend_t *backend       = backend_create(nullptr);
   backend_detect_t *detect = backend_detect(backend);
 
   if (!backend || !detect || detect->output_count == 0) {
@@ -12,8 +12,8 @@ static void bootstrap(runtime_t *runtime) {
   }
 
   runtime_init_desc_t desc = {
-    .backend = backend,
-    .outputs = detect->outputs,
+    .backend      = backend,
+    .outputs      = detect->outputs,
     .output_count = detect->output_count,
   };
   if (!runtime_config_load(nullptr, &desc)) {

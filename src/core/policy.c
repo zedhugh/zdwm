@@ -16,9 +16,12 @@ static workspace_id_t derive_window_workspace(const state_t *state) {
   return state->outputs[state->current_output_index].current_workspace_id;
 }
 
-static bool route_map_request(const state_t *state, const rules_t *rules,
-                              const window_map_request_event_t *e,
-                              command_buffer_t *out) {
+static bool route_map_request(
+  const state_t *state,
+  const rules_t *rules,
+  const window_map_request_event_t *e,
+  command_buffer_t *out
+) {
   if (state_window_get(state, e->window)) return false;
 
   layer_type_t layer_type = layer_classify(&e->props);
@@ -28,29 +31,27 @@ static bool route_map_request(const state_t *state, const rules_t *rules,
   }
 
   command_t cmd = {
-    .type = ZDWM_COMMAND_MANAGE_WINDOW,
-    .as.manage_window =
-      {
-        .workspace = derive_window_workspace(state),
-        .info =
-          {
-            .id = e->window,
-            .transient_for = e->transient_for,
-            .frame_rect = e->rect,
+    .type             = ZDWM_COMMAND_MANAGE_WINDOW,
+    .as.manage_window = {
+      .workspace = derive_window_workspace(state),
+      .info      = {
+             .id            = e->window,
+             .transient_for = e->transient_for,
+             .frame_rect    = e->rect,
 
-            .title = e->metadata.title,
-            .app_id = e->metadata.app_id,
-            .role = e->metadata.role,
-            .class_name = e->metadata.class_name,
-            .instance_name = e->metadata.instance_name,
+             .title         = e->metadata.title,
+             .app_id        = e->metadata.app_id,
+             .role          = e->metadata.role,
+             .class_name    = e->metadata.class_name,
+             .instance_name = e->metadata.instance_name,
 
-            .geometry_mode = e->geometry_mode,
-            .layer_type = layer_type,
-            .urgent = e->urgent,
-            .fixed_size = e->fixed_size,
-            .skip_taskbar = e->skip_taskbar,
-          },
+             .geometry_mode = e->geometry_mode,
+             .layer_type    = layer_type,
+             .urgent        = e->urgent,
+             .fixed_size    = e->fixed_size,
+             .skip_taskbar  = e->skip_taskbar,
       },
+    },
   };
 
   rule_action_t action = {.workspace = ZDWM_WORKSPACE_ID_INVALID};
@@ -73,17 +74,16 @@ static bool route_map_request(const state_t *state, const rules_t *rules,
 
   command_buffer_push(out, &cmd);
   if (have_rule_match && action.switch_to_workspace) {
-    workspace_id_t workspace_id = cmd.as.manage_window.workspace;
+    workspace_id_t workspace_id  = cmd.as.manage_window.workspace;
     const workspace_t *workspace = state_workspace_get(state, workspace_id);
 
     if (workspace) {
       command_t switch_workspace_cmd = {
-        .type = ZDWM_COMMAND_SWITCH_WORKSPACE,
-        .as.switch_workspace =
-          {
-            .output = workspace->output_id,
-            .workspace = workspace_id,
-          },
+        .type                = ZDWM_COMMAND_SWITCH_WORKSPACE,
+        .as.switch_workspace = {
+          .output    = workspace->output_id,
+          .workspace = workspace_id,
+        },
       };
 
       command_buffer_push(out, &switch_workspace_cmd);
@@ -95,17 +95,23 @@ static bool route_map_request(const state_t *state, const rules_t *rules,
 
 bool policy_route_event(const policy_context_t *ctx, command_buffer_t *out) {
   switch (ctx->event->type) {
-    case ZDWM_EVENT_WINDOW_MAP_REQUEST:
-      return route_map_request(ctx->state, ctx->rules,
-                               &ctx->event->as.window_map_request, out);
-    default:
-      return false;
+  case ZDWM_EVENT_WINDOW_MAP_REQUEST:
+    return route_map_request(
+      ctx->state,
+      ctx->rules,
+      &ctx->event->as.window_map_request,
+      out
+    );
+  default:
+    return false;
   }
 }
 
-bool policy_apply_command(const policy_context_t *ctx,
-                          const command_buffer_t *command_buffer,
-                          plan_t *plan) {
+bool policy_apply_command(
+  const policy_context_t *ctx,
+  const command_buffer_t *command_buffer,
+  plan_t *plan
+) {
   /* TODO: */
   return true;
 }

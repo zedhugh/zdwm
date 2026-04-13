@@ -30,8 +30,11 @@ typedef struct wm_service_t wm_service_t;
 
 typedef struct wm_service_api_t {
   bool (*init)(wm_service_t *service);
-  void (*handle_event)(wm_service_t *service, const wm_service_event_t *event,
-                       const wm_state_t *state);
+  void (*handle_event)(
+    wm_service_t *service,
+    const wm_service_event_t *event,
+    const wm_state_t *state
+  );
   void (*shutdown)(wm_service_t *service);
 } wm_service_api_t;
 
@@ -49,8 +52,12 @@ typedef struct wm_service_registry_t {
 void wm_service_registry_init(wm_service_registry_t *registry);
 void wm_service_registry_shutdown(wm_service_registry_t *registry);
 
-bool wm_service_registry_register(wm_service_registry_t *registry,
-                                  wm_service_t service);
-void wm_service_registry_emit(wm_service_registry_t *registry,
-                              const wm_service_event_t *event,
-                              const wm_state_t *state);
+bool wm_service_registry_register(
+  wm_service_registry_t *registry,
+  wm_service_t service
+);
+void wm_service_registry_emit(
+  wm_service_registry_t *registry,
+  const wm_service_event_t *event,
+  const wm_state_t *state
+);

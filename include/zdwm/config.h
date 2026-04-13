@@ -35,10 +35,13 @@ typedef struct zdwm_api_t {
    * @returns 返回布局算法对应的布局 id ，如果注册失败，返回
    * ZDWM_LAYOUT_ID_INVALID
    */
-  zdwm_layout_id_t (*register_layout)(zdwm_config_builder_t *builder,
-                                      const char *name, const char *symbol,
-                                      const char *description,
-                                      zdwm_layout_fn fn);
+  zdwm_layout_id_t (*register_layout)(
+    zdwm_config_builder_t *builder,
+    const char *name,
+    const char *symbol,
+    const char *description,
+    zdwm_layout_fn fn
+  );
 
   /**
    * 用户调用这个函数添加 output 中的工作空间
@@ -50,11 +53,14 @@ typedef struct zdwm_api_t {
    * @param initial_layout_id 初始布局算法 id
    * @returns 返回工作空间 id 。如果注册失败，返回 ZDWM_WORKSPACE_ID_INVALID
    */
-  zdwm_workspace_id_t (*define_workspace)(zdwm_config_builder_t *builder,
-                                          size_t output_index, const char *name,
-                                          const zdwm_layout_id_t *layout_ids,
-                                          size_t layout_count,
-                                          zdwm_layout_id_t initial_layout_id);
+  zdwm_workspace_id_t (*define_workspace)(
+    zdwm_config_builder_t *builder,
+    size_t output_index,
+    const char *name,
+    const zdwm_layout_id_t *layout_ids,
+    size_t layout_count,
+    zdwm_layout_id_t initial_layout_id
+  );
 
   /**
    * 用户调用这个函数添加窗口规则
@@ -65,9 +71,11 @@ typedef struct zdwm_api_t {
    * @details 不合法的情况：match 所有字段全为 nullptr；
    *          或 action 无任何动作；或 action 指定的 workspace 不存在
    */
-  bool (*add_rule)(zdwm_config_builder_t *builder,
-                   const zdwm_rule_match_t *match,
-                   const zdwm_rule_action_t *action);
+  bool (*add_rule)(
+    zdwm_config_builder_t *builder,
+    const zdwm_rule_match_t *match,
+    const zdwm_rule_action_t *action
+  );
 } zdwm_api_t;
 
 /**
@@ -79,10 +87,12 @@ typedef struct zdwm_api_t {
  * @param output_count 屏幕个数
  * @returns 用户配置成功返回 true ，配置失败返回 false
  */
-typedef bool zdwm_config_setup_fn(const zdwm_api_t *api,
-                                  zdwm_config_builder_t *builder,
-                                  const zdwm_output_info_t *outputs,
-                                  size_t output_count);
+typedef bool zdwm_config_setup_fn(
+  const zdwm_api_t *api,
+  zdwm_config_builder_t *builder,
+  const zdwm_output_info_t *outputs,
+  size_t output_count
+);
 
 /* 用户在自己的动态链接库配置中必须实现该函数 */
 extern zdwm_config_setup_fn setup;

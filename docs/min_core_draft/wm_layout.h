@@ -27,8 +27,10 @@ typedef struct wm_layout_result_t {
   size_t item_capacity;
 } wm_layout_result_t;
 
-typedef bool (*wm_layout_fn)(const wm_layout_ctx_t *ctx,
-                             wm_layout_result_t *out);
+typedef bool (*wm_layout_fn)(
+  const wm_layout_ctx_t *ctx,
+  wm_layout_result_t *out
+);
 
 typedef struct wm_layout_slot_t {
   wm_layout_id_t id;
@@ -67,17 +69,20 @@ bool wm_layout_result_push(wm_layout_result_t *result, wm_layout_item_t item);
 void wm_layout_registry_init(wm_layout_registry_t *registry);
 void wm_layout_registry_shutdown(wm_layout_registry_t *registry);
 size_t wm_layout_registry_count(const wm_layout_registry_t *registry);
-const wm_layout_slot_t *wm_layout_registry_at(
-  const wm_layout_registry_t *registry, size_t index);
+const wm_layout_slot_t *
+wm_layout_registry_at(const wm_layout_registry_t *registry, size_t index);
 
-wm_layout_id_t wm_layout_register(wm_layout_registry_t *registry,
-                                  const char *name, const char *symbol,
-                                  wm_layout_fn fn);
+wm_layout_id_t wm_layout_register(
+  wm_layout_registry_t *registry,
+  const char *name,
+  const char *symbol,
+  wm_layout_fn fn
+);
 /*
  * layout registry 只允许在 bootstrap / 初始化阶段注册。
  * 运行时布局集合保持固定，只允许切换 workspace 当前选中的 layout_id。
  */
-wm_layout_fn wm_layout_lookup(const wm_layout_registry_t *registry,
-                              wm_layout_id_t id);
-const wm_layout_slot_t *wm_layout_slot_get(const wm_layout_registry_t *registry,
-                                           wm_layout_id_t id);
+wm_layout_fn
+wm_layout_lookup(const wm_layout_registry_t *registry, wm_layout_id_t id);
+const wm_layout_slot_t *
+wm_layout_slot_get(const wm_layout_registry_t *registry, wm_layout_id_t id);

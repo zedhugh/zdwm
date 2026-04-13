@@ -54,8 +54,8 @@ void layout_result_push(layout_result_t *result, layout_item_t item);
 void layout_registry_cleanup(layout_registry_t *registry);
 bool layout_registry_move(layout_registry_t *src, layout_registry_t *dest);
 size_t layout_registry_count(const layout_registry_t *registry);
-const layout_slot_t *layout_registry_at(const layout_registry_t *registry,
-                                        size_t index);
+const layout_slot_t *
+layout_registry_at(const layout_registry_t *registry, size_t index);
 
 /*
  * 注册一个布局并返回其稳定 ID。
@@ -75,9 +75,13 @@ const layout_slot_t *layout_registry_at(const layout_registry_t *registry,
  *
  * 注册成功后，布局 ID 与其在 registry 中的槽位索引保持一致。
  */
-layout_id_t layout_register(layout_registry_t *registry, const char *name,
-                            const char *symbol, const char *description,
-                            layout_fn fn);
+layout_id_t layout_register(
+  layout_registry_t *registry,
+  const char *name,
+  const char *symbol,
+  const char *description,
+  layout_fn fn
+);
 /*
  * 获取可执行的布局函数。
  *
@@ -87,5 +91,5 @@ layout_id_t layout_register(layout_registry_t *registry, const char *name,
  * - slot 存在，但 fn == NULL（表示 floating 布局）
  */
 layout_fn layout_get(const layout_registry_t *registry, layout_id_t id);
-const layout_slot_t *layout_slot_get(const layout_registry_t *registry,
-                                     layout_id_t id);
+const layout_slot_t *
+layout_slot_get(const layout_registry_t *registry, layout_id_t id);

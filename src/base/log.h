@@ -5,14 +5,23 @@
 
 #define fatal(format, ...) \
   _fatal(__LINE__, __FUNCTION__, __FILE__, format, ##__VA_ARGS__)
-void _fatal(int line, const char *function, const char *file,
-            const char *format, ...) __attribute__((noreturn))
-__attribute__((format(printf, 4, 5)));
+void _fatal(
+  int line,
+  const char *function,
+  const char *file,
+  const char *format,
+  ...
+) __attribute__((noreturn)) __attribute__((format(printf, 4, 5)));
 
 #define warn(format, ...) \
   _warn(__LINE__, __FUNCTION__, __FILE__, format, ##__VA_ARGS__)
-void _warn(int line, const char *function, const char *file, const char *format,
-           ...) __attribute__((format(printf, 4, 5)));
+void _warn(
+  int line,
+  const char *function,
+  const char *file,
+  const char *format,
+  ...
+) __attribute__((format(printf, 4, 5)));
 
 const char *current_time_str(void);
 

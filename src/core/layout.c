@@ -10,7 +10,7 @@
 
 void layout_result_cleanup(layout_result_t *result) {
   p_delete(&result->items);
-  result->item_count = 0;
+  result->item_count    = 0;
   result->item_capacity = 0;
 }
 
@@ -31,19 +31,19 @@ void layout_registry_cleanup(layout_registry_t *registry) {
   }
 
   p_delete(&registry->slots);
-  registry->slot_count = 0;
+  registry->slot_count    = 0;
   registry->slot_capacity = 0;
 }
 
 bool layout_registry_move(layout_registry_t *src, layout_registry_t *dest) {
   if (!src || !dest) return false;
 
-  dest->slots = src->slots;
-  dest->slot_count = src->slot_count;
+  dest->slots         = src->slots;
+  dest->slot_count    = src->slot_count;
   dest->slot_capacity = src->slot_capacity;
 
-  src->slots = nullptr;
-  src->slot_count = 0;
+  src->slots         = nullptr;
+  src->slot_count    = 0;
   src->slot_capacity = 0;
 
   return true;
@@ -53,25 +53,29 @@ size_t layout_registry_count(const layout_registry_t *registry) {
   return registry->slot_count;
 }
 
-const layout_slot_t *layout_registry_at(const layout_registry_t *registry,
-                                        size_t index) {
+const layout_slot_t *
+layout_registry_at(const layout_registry_t *registry, size_t index) {
   if (index >= registry->slot_count) return nullptr;
   return &registry->slots[index];
 }
 
-layout_id_t layout_register(layout_registry_t *registry, const char *name,
-                            const char *symbol, const char *description,
-                            layout_fn fn) {
+layout_id_t layout_register(
+  layout_registry_t *registry,
+  const char *name,
+  const char *symbol,
+  const char *description,
+  layout_fn fn
+) {
   if (!name || !symbol) return ZDWM_LAYOUT_ID_INVALID;
 
   layout_id_t id = (layout_id_t)registry->slot_count;
   layout_slot_t *r =
     array_push(registry->slots, registry->slot_count, registry->slot_capacity);
-  r->id = id;
-  r->name = p_strdup(name);
-  r->symbol = p_strdup(symbol);
+  r->id          = id;
+  r->name        = p_strdup(name);
+  r->symbol      = p_strdup(symbol);
   r->description = p_strdup_nullable(description);
-  r->fn = fn;
+  r->fn          = fn;
 
   return r->id;
 }
@@ -82,8 +86,8 @@ layout_fn layout_get(const layout_registry_t *registry, layout_id_t id) {
   return nullptr;
 }
 
-const layout_slot_t *layout_slot_get(const layout_registry_t *registry,
-                                     layout_id_t id) {
+const layout_slot_t *
+layout_slot_get(const layout_registry_t *registry, layout_id_t id) {
   if (id >= registry->slot_count) return nullptr;
   return &registry->slots[id];
 }

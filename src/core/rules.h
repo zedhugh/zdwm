@@ -19,5 +19,8 @@ typedef struct rules_t {
 bool rules_move(rules_t *src, rules_t *dest);
 void rules_cleanup(rules_t *rules);
 
-bool rules_resolve(const rules_t *rules, const window_metadata_t *metadata,
-                   rule_action_t *action_out);
+bool rules_resolve(
+  const rules_t *rules,
+  const window_metadata_t *metadata,
+  rule_action_t *action_out
+);

@@ -13,5 +13,8 @@ typedef struct policy_context_t {
 } policy_context_t;
 
 bool policy_route_event(const policy_context_t *ctx, command_buffer_t *out);
-bool policy_apply_command(const policy_context_t *ctx,
-                          const command_buffer_t *command_buffer, plan_t *plan);
+bool policy_apply_command(
+  const policy_context_t *ctx,
+  const command_buffer_t *command_buffer,
+  plan_t *plan
+);

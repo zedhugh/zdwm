@@ -1,14 +1,15 @@
 #pragma once
 
-#include "wm_binding.h"
+#include <stdint.h>
+
 #include "wm_backend.h"
+#include "wm_binding.h"
 #include "wm_layout.h"
 #include "wm_plan.h"
-#include "wm_policy_config.h"
 #include "wm_policy.h"
+#include "wm_policy_config.h"
 #include "wm_service.h"
 #include "wm_state.h"
-#include <stdint.h>
 
 typedef enum wm_interaction_mode_t {
   WM_INTERACTION_NONE,
@@ -63,7 +64,8 @@ typedef struct wm_runtime_bootstrap_t {
 
   /*
    * 不可变键盘绑定表。
-   * 当前草案把它视为 bootstrap 提供的只读视图；items 的生命周期必须覆盖 runtime。
+   * 当前草案把它视为 bootstrap 提供的只读视图；items 的生命周期必须覆盖
+   * runtime。
    */
   wm_key_binding_table_t keybindings;
 
@@ -115,8 +117,11 @@ typedef struct wm_runtime_t {
   wm_service_registry_t services;
 } wm_runtime_t;
 
-bool wm_runtime_init(wm_runtime_t *runtime, wm_backend_t backend,
-                     const wm_runtime_bootstrap_t *bootstrap);
+bool wm_runtime_init(
+  wm_runtime_t *runtime,
+  wm_backend_t backend,
+  const wm_runtime_bootstrap_t *bootstrap
+);
 bool wm_runtime_register_service(wm_runtime_t *runtime, wm_service_t service);
 
 /*

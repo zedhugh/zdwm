@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <xcb/xproto.h>
+
 #include "types.h"
 
 typedef struct wallpaper_context_t wallpaper_context_t;
