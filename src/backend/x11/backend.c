@@ -16,7 +16,7 @@
 #include "base/macros.h"
 #include "base/memory.h"
 #include "core/types.h"
-#include "internal.h" /* IWYU pragma: keep */
+#include "internal.h"
 
 typedef struct atom_item_t {
   const char *name;
@@ -28,64 +28,9 @@ static void atoms_init(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
   atoms_t *atoms = &backend->atoms;
 
-  atom_item_t atom_list[] = {
-    {"COMPOUND_TEXT", sizeof("COMPOUND_TEXT") - 1, &atoms->COMPOUND_TEXT},
-    {"UTF8_STRING", sizeof("UTF8_STRING") - 1, &atoms->UTF8_STRING},
-
-    {"WM_WINDOW_ROLE", sizeof("WM_WINDOW_ROLE") - 1, &atoms->WM_WINDOW_ROLE},
-    {"WM_NAME", sizeof("WM_NAME") - 1, &atoms->WM_NAME},
-    {"_NET_WM_NAME", sizeof("_NET_WM_NAME") - 1, &atoms->_NET_WM_NAME},
-
-    {"_NET_WM_STATE", sizeof("_NET_WM_STATE") - 1, &atoms->_NET_WM_STATE},
-    {"_NET_WM_STATE_FULLSCREEN", sizeof("_NET_WM_STATE_FULLSCREEN") - 1,
-     &atoms->_NET_WM_STATE_FULLSCREEN},
-    {"_NET_WM_STATE_ABOVE", sizeof("_NET_WM_STATE_ABOVE") - 1,
-     &atoms->_NET_WM_STATE_ABOVE},
-    {"_NET_WM_STATE_STICKY", sizeof("_NET_WM_STATE_STICKY") - 1,
-     &atoms->_NET_WM_STATE_STICKY},
-    {"_NET_WM_STATE_MODAL", sizeof("_NET_WM_STATE_MODAL") - 1,
-     &atoms->_NET_WM_STATE_MODAL},
-    {"_NET_WM_STATE_SKIP_TASKBAR", sizeof("_NET_WM_STATE_SKIP_TASKBAR") - 1,
-     &atoms->_NET_WM_STATE_SKIP_TASKBAR},
-    {"_NET_WM_STATE_MAXIMIZED_VERT", sizeof("_NET_WM_STATE_MAXIMIZED_VERT") - 1,
-     &atoms->_NET_WM_STATE_MAXIMIZED_VERT},
-    {"_NET_WM_STATE_MAXIMIZED_HORZ", sizeof("_NET_WM_STATE_MAXIMIZED_HORZ") - 1,
-     &atoms->_NET_WM_STATE_MAXIMIZED_HORZ},
-
-    {"_NET_WM_WINDOW_TYPE", sizeof("_NET_WM_WINDOW_TYPE") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE},
-    {"_NET_WM_WINDOW_TYPE_NORMAL", sizeof("_NET_WM_WINDOW_TYPE_NORMAL") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_NORMAL},
-    {"_NET_WM_WINDOW_TYPE_DESKTOP", sizeof("_NET_WM_WINDOW_TYPE_DESKTOP") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_DESKTOP},
-    {"_NET_WM_WINDOW_TYPE_DOCK", sizeof("_NET_WM_WINDOW_TYPE_DOCK") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_DOCK},
-    {"_NET_WM_WINDOW_TYPE_TOOLBAR", sizeof("_NET_WM_WINDOW_TYPE_TOOLBAR") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_TOOLBAR},
-    {"_NET_WM_WINDOW_TYPE_DIALOG", sizeof("_NET_WM_WINDOW_TYPE_DIALOG") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_DIALOG},
-    {"_NET_WM_WINDOW_TYPE_UTILITY", sizeof("_NET_WM_WINDOW_TYPE_UTILITY") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_UTILITY},
-    {"_NET_WM_WINDOW_TYPE_SPLASH", sizeof("_NET_WM_WINDOW_TYPE_SPLASH") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_SPLASH},
-    {"_NET_WM_WINDOW_TYPE_MENU", sizeof("_NET_WM_WINDOW_TYPE_MENU") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_MENU},
-    {"_NET_WM_WINDOW_TYPE_DROPDOWN_MENU",
-     sizeof("_NET_WM_WINDOW_TYPE_DROPDOWN_MENU") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU},
-    {"_NET_WM_WINDOW_TYPE_POPUP_MENU",
-     sizeof("_NET_WM_WINDOW_TYPE_POPUP_MENU") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_POPUP_MENU},
-    {"_NET_WM_WINDOW_TYPE_TOOLTIP", sizeof("_NET_WM_WINDOW_TYPE_TOOLTIP") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_TOOLTIP},
-    {"_NET_WM_WINDOW_TYPE_COMBO", sizeof("_NET_WM_WINDOW_TYPE_COMBO") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_COMBO},
-    {"_NET_WM_WINDOW_TYPE_DND", sizeof("_NET_WM_WINDOW_TYPE_DND") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_DND},
-    {"_NET_WM_WINDOW_TYPE_NOTIFICATION",
-     sizeof("_NET_WM_WINDOW_TYPE_NOTIFICATION") - 1,
-     &atoms->_NET_WM_WINDOW_TYPE_NOTIFICATION},
-  };
+#define ATOM_ITEM(name) {#name, sizeof(#name) - 1, &atoms->name},
+  atom_item_t atom_list[] = {ATOM_LIST(ATOM_ITEM)};
+#undef ATOM_ITEM
 
   xcb_intern_atom_cookie_t cookies[countof(atom_list)];
   for (size_t i = 0; i < countof(atom_list); ++i) {

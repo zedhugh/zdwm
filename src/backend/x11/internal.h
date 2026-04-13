@@ -3,38 +3,43 @@
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
-#include "core/backend.h" /* IWYU pragma: keep */
+#define ATOM_LIST(X)                   \
+  X(COMPOUND_TEXT)                     \
+  X(UTF8_STRING)                       \
+                                       \
+  X(WM_WINDOW_ROLE)                    \
+  X(WM_NAME)                           \
+  X(_NET_WM_NAME)                      \
+                                       \
+  X(_NET_WM_STATE)                     \
+  X(_NET_WM_STATE_FULLSCREEN)          \
+  X(_NET_WM_STATE_ABOVE)               \
+  X(_NET_WM_STATE_STICKY)              \
+  X(_NET_WM_STATE_MODAL)               \
+  X(_NET_WM_STATE_SKIP_TASKBAR)        \
+  X(_NET_WM_STATE_MAXIMIZED_VERT)      \
+  X(_NET_WM_STATE_MAXIMIZED_HORZ)      \
+                                       \
+  X(_NET_WM_WINDOW_TYPE)               \
+  X(_NET_WM_WINDOW_TYPE_NORMAL)        \
+  X(_NET_WM_WINDOW_TYPE_DESKTOP)       \
+  X(_NET_WM_WINDOW_TYPE_DOCK)          \
+  X(_NET_WM_WINDOW_TYPE_TOOLBAR)       \
+  X(_NET_WM_WINDOW_TYPE_DIALOG)        \
+  X(_NET_WM_WINDOW_TYPE_UTILITY)       \
+  X(_NET_WM_WINDOW_TYPE_SPLASH)        \
+  X(_NET_WM_WINDOW_TYPE_MENU)          \
+  X(_NET_WM_WINDOW_TYPE_DROPDOWN_MENU) \
+  X(_NET_WM_WINDOW_TYPE_POPUP_MENU)    \
+  X(_NET_WM_WINDOW_TYPE_TOOLTIP)       \
+  X(_NET_WM_WINDOW_TYPE_COMBO)         \
+  X(_NET_WM_WINDOW_TYPE_DND)           \
+  X(_NET_WM_WINDOW_TYPE_NOTIFICATION)
 
 typedef struct atoms_t {
-  xcb_atom_t COMPOUND_TEXT;
-  xcb_atom_t UTF8_STRING;
-  xcb_atom_t WM_WINDOW_ROLE;
-  xcb_atom_t WM_NAME;
-  xcb_atom_t _NET_WM_NAME;
-  xcb_atom_t _NET_WM_STATE;
-  xcb_atom_t _NET_WM_STATE_FULLSCREEN;
-  xcb_atom_t _NET_WM_STATE_ABOVE;
-  xcb_atom_t _NET_WM_STATE_STICKY;
-  xcb_atom_t _NET_WM_STATE_MODAL;
-  xcb_atom_t _NET_WM_STATE_SKIP_TASKBAR;
-  xcb_atom_t _NET_WM_STATE_MAXIMIZED_VERT;
-  xcb_atom_t _NET_WM_STATE_MAXIMIZED_HORZ;
-
-  xcb_atom_t _NET_WM_WINDOW_TYPE;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_NORMAL;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_DESKTOP;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_DOCK;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_TOOLBAR;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_DIALOG;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_UTILITY;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_SPLASH;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_MENU;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_DROPDOWN_MENU;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_POPUP_MENU;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_TOOLTIP;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_COMBO;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_DND;
-  xcb_atom_t _NET_WM_WINDOW_TYPE_NOTIFICATION;
+#define DECLARATION_ATOM(name) xcb_atom_t name;
+  ATOM_LIST(DECLARATION_ATOM);
+#undef DECLARATION_ATOM
 } atoms_t;
 
 struct backend_t {
