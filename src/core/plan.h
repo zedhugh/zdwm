@@ -13,8 +13,7 @@ typedef enum dirty_flags_t : dirty_mask_t {
 } dirty_flags_t;
 
 typedef enum effect_type_t {
-  ZDWM_EFFECT_NONE,
-  ZDWM_EFFECT_MAP_WINDOW,
+  ZDWM_EFFECT_MAP_WINDOW = 1,
   ZDWM_EFFECT_UNMAP_WINDOW,
   ZDWM_EFFECT_FOCUS_WINDOW,
   ZDWM_EFFECT_MOVE_WINDOW,

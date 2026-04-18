@@ -243,3 +243,17 @@ window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom) {
   if (atom == atoms->_NET_WM_STATE_MODAL) return ZDWM_WINDOW_STATE_MODAL;
   return (window_state_t)-1;
 }
+
+void window_takefocus(backend_t *backend, xcb_window_t window) {
+  xcb_client_message_event_t ev = {0};
+
+  ev.response_type  = XCB_CLIENT_MESSAGE;
+  ev.window         = window;
+  ev.format         = 32;
+  ev.type           = backend->atoms.WM_PROTOCOLS,
+  ev.data.data32[0] = backend->atoms.WM_TAKE_FOCUS;
+  ev.data.data32[1] = XCB_CURRENT_TIME;
+
+  xcb_connection_t *conn = backend->conn;
+  xcb_send_event(conn, false, window, XCB_EVENT_MASK_NO_EVENT, (char *)&ev);
+}

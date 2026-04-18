@@ -11,6 +11,13 @@
   X(WM_NAME)                           \
   X(_NET_WM_NAME)                      \
                                        \
+  X(WM_PROTOCOLS)                      \
+  X(WM_TAKE_FOCUS)                     \
+  X(_NET_ACTIVE_WINDOW)                \
+                                       \
+  X(_NET_CLIENT_LIST)                  \
+  X(_NET_CLIENT_LIST_STACKING)         \
+                                       \
   X(_NET_WM_STATE)                     \
   X(_NET_WM_STATE_FULLSCREEN)          \
   X(_NET_WM_STATE_ABOVE)               \
@@ -49,4 +56,7 @@ struct backend_t {
   bool have_xfixes;
 
   atoms_t atoms;
+
+  /* When no window should take focus, then focus this window */
+  xcb_window_t window_no_focus;
 };

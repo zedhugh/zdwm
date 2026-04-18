@@ -12,9 +12,11 @@
 #include <xcb/xproto.h>
 
 #include "backend/output_utils.h"
+#include "backend/x11/window.h"
 #include "base/log.h"
 #include "base/macros.h"
 #include "base/memory.h"
+#include "core/plan.h"
 #include "core/types.h"
 #include "internal.h"
 
@@ -47,6 +49,40 @@ static void atoms_init(backend_t *backend) {
     *atom->atom       = reply->atom;
     p_delete(&reply);
   }
+}
+
+static void create_no_focus_window(backend_t *backend) {
+  xcb_connection_t *conn = backend->conn;
+
+  xcb_window_t win    = xcb_generate_id(conn);
+  uint32_t value_mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+                        XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP;
+  const xcb_create_window_value_list_t value_list = {
+    .override_redirect = true,
+    .background_pixel  = backend->screen->black_pixel,
+    .border_pixel      = backend->screen->black_pixel,
+    .colormap          = backend->screen->default_colormap,
+  };
+  xcb_create_window_aux(
+    conn,
+    backend->screen->root_depth,
+    win,
+    backend->screen->root,
+    -1,
+    -1,
+    1,
+    1,
+    0,
+    XCB_WINDOW_CLASS_COPY_FROM_PARENT,
+    backend->screen->root_visual,
+    value_mask,
+    &value_list
+  );
+  window_set_class_instance(conn, win);
+  window_set_name_static(conn, win, "zdwm no input window");
+  xcb_map_window(conn, win);
+
+  backend->window_no_focus = win;
 }
 
 backend_t *backend_create(const char *display_name) {
@@ -100,6 +136,7 @@ backend_t *backend_create(const char *display_name) {
   }
 
   atoms_init(backend);
+  create_no_focus_window(backend);
 
   return backend;
 }
@@ -299,11 +336,159 @@ void backend_detect_destroy(backend_detect_t *detect) {
   free(detect);
 }
 
+static void backend_focus_window(backend_t *backend, xcb_window_t window) {
+  xcb_connection_t *conn = backend->conn;
+  xcb_window_t root      = backend->screen->root;
+  const atoms_t *atoms   = &backend->atoms;
+  xcb_atom_t property    = atoms->_NET_ACTIVE_WINDOW;
+  xcb_timestamp_t time   = XCB_TIME_CURRENT_TIME;
+  if (window == XCB_WINDOW_NONE || window == root) {
+    window = backend->window_no_focus;
+    xcb_set_input_focus(conn, XCB_INPUT_FOCUS_PARENT, window, time);
+    xcb_delete_property(conn, root, property);
+  } else {
+    uint8_t mode    = XCB_PROP_MODE_REPLACE;
+    xcb_atom_t type = XCB_ATOM_WINDOW;
+    xcb_set_input_focus(conn, XCB_INPUT_FOCUS_PARENT, window, time);
+    xcb_change_property(conn, mode, root, property, type, 32, 1, &window);
+    window_takefocus(backend, window);
+  }
+}
+
+static inline void backend_change_window_list(
+  backend_t *backend,
+  bool stack_list,
+  const effect_window_list_t *list
+) {
+  xcb_change_property(
+    backend->conn,
+    XCB_PROP_MODE_REPLACE,
+    backend->screen->root,
+    stack_list ? backend->atoms._NET_CLIENT_LIST_STACKING
+               : backend->atoms._NET_CLIENT_LIST,
+    XCB_ATOM_WINDOW,
+    32,
+    list->count,
+    list->windows
+  );
+}
+
+static void
+backend_restack_windows(backend_t *backend, const effect_window_list_t *list) {
+  if (list->count == 0) return;
+
+  xcb_connection_t *conn      = backend->conn;
+  xcb_window_t sibling_window = backend->window_no_focus;
+  for (size_t i = 0; i < list->count; ++i) {
+    uint16_t mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
+    xcb_configure_window_value_list_t params = {
+      .sibling    = sibling_window,
+      .stack_mode = XCB_STACK_MODE_ABOVE
+    };
+    sibling_window = list->windows[i];
+    xcb_configure_window_aux(conn, sibling_window, mask, &params);
+  }
+}
+
+typedef struct window_configure_t {
+  xcb_window_t window;
+  uint16_t mask;
+  xcb_configure_window_value_list_t value;
+} window_configure_t;
+
+static void
+flush_configure(xcb_connection_t *conn, const window_configure_t *cfg) {
+  if (cfg->mask) {
+    xcb_configure_window_aux(conn, cfg->window, cfg->mask, &cfg->value);
+  }
+}
+
+static window_configure_t *find_or_push_configure(
+  window_configure_t *cfgs,
+  size_t *cfg_count,
+  xcb_window_t window
+) {
+  for (size_t j = 0; j < *cfg_count; ++j) {
+    if (cfgs[j].window == window) return &cfgs[j];
+  }
+  window_configure_t *cfg = &cfgs[(*cfg_count)++];
+  cfg->window             = window;
+  cfg->mask               = 0;
+  return cfg;
+}
+
 bool backend_apply_effect(
   backend_t *backend,
   const effect_t *effects,
   size_t effect_count
 ) {
-  /* TODO: */
+  xcb_connection_t *conn = backend->conn;
+
+  /* collect configure-like effects per window */
+  window_configure_t *cfgs = p_new(window_configure_t, effect_count);
+  size_t cfg_count         = 0;
+
+  for (size_t i = 0; i < effect_count; ++i) {
+    const effect_t *e = &effects[i];
+    switch (e->type) {
+    case ZDWM_EFFECT_MAP_WINDOW:
+      xcb_map_window(conn, e->as.map.window);
+      break;
+    case ZDWM_EFFECT_UNMAP_WINDOW:
+      xcb_unmap_window(conn, e->as.unmap.window);
+      break;
+    case ZDWM_EFFECT_FOCUS_WINDOW:
+      backend_focus_window(backend, e->as.focus.window);
+      break;
+    case ZDWM_EFFECT_MOVE_WINDOW: {
+      window_configure_t *cfg =
+        find_or_push_configure(cfgs, &cfg_count, e->as.move.window);
+      cfg->mask    |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
+      cfg->value.x  = e->as.move.left_top_point.x;
+      cfg->value.y  = e->as.move.left_top_point.y;
+    } break;
+    case ZDWM_EFFECT_RESIZE_WINDOW: {
+      window_configure_t *cfg =
+        find_or_push_configure(cfgs, &cfg_count, e->as.resize.window);
+      cfg->mask         |= XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
+      cfg->value.width   = (uint32_t)e->as.resize.width;
+      cfg->value.height  = (uint32_t)e->as.resize.height;
+    } break;
+    case ZDWM_EFFECT_CHANGE_BORDER_COLOR: {
+      xcb_change_window_attributes_value_list_t value = {
+        .border_pixel = e->as.change_border_color.color->argb
+      };
+      xcb_change_window_attributes_aux(
+        conn,
+        e->as.change_border_color.window,
+        XCB_CW_BORDER_PIXEL,
+        &value
+      );
+    } break;
+    case ZDWM_EFFECT_CHANGE_BORDER_WIDTH: {
+      window_configure_t *cfg = find_or_push_configure(
+        cfgs,
+        &cfg_count,
+        e->as.change_border_width.window
+      );
+      cfg->mask               |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
+      cfg->value.border_width  = e->as.change_border_width.border_width;
+    } break;
+    case ZDWM_EFFECT_CHANGE_WINDOW_LIST:
+      backend_change_window_list(backend, false, &e->as.change_window_list);
+      break;
+    case ZDWM_EFFECT_RESTACK_WINDOWS:
+      backend_restack_windows(backend, &e->as.restack_windows);
+      backend_change_window_list(backend, true, &e->as.restack_windows);
+      break;
+    }
+  }
+
+  for (size_t i = 0; i < cfg_count; ++i) {
+    flush_configure(conn, &cfgs[i]);
+  }
+  p_delete(&cfgs);
+
+  xcb_flush(conn);
   return true;
 }

@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xproto.h>
 
@@ -65,3 +66,15 @@ bool window_get_wm_hints(
   xcb_icccm_wm_hints_t *out
 );
 window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom);
+
+#define window_set_name_static(conn, win, name) \
+  xcb_icccm_set_wm_name(conn, win, XCB_ATOM_STRING, 8, sizeof(name) - 1, name)
+
+#define window_set_class_instance(conn, win) \
+  window_set_class_instance_static(conn, win, "zdwm", "zdwm")
+#define window_set_class_instance_static(conn, win, instance, class) \
+  _window_set_class_instance_static(conn, win, instance "\0" class)
+#define _window_set_class_instance_static(conn, win, instance_class) \
+  xcb_icccm_set_wm_class(conn, win, sizeof(instance_class), instance_class)
+
+void window_takefocus(backend_t *backend, xcb_window_t window);
