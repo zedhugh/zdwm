@@ -93,13 +93,17 @@ static bool route_map_request(
   return true;
 }
 
-bool policy_route_event(const policy_context_t *ctx, command_buffer_t *out) {
-  switch (ctx->event->type) {
+bool policy_route_event(
+  const policy_context_t *ctx,
+  const event_t *event,
+  command_buffer_t *out
+) {
+  switch (event->type) {
   case ZDWM_EVENT_WINDOW_MAP_REQUEST:
     return route_map_request(
       ctx->state,
       ctx->rules,
-      &ctx->event->as.window_map_request,
+      &event->as.window_map_request,
       out
     );
   default:

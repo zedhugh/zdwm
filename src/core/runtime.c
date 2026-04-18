@@ -110,6 +110,11 @@ void runtime_run(runtime_t *runtime) {
   command_buffer_t *command_buffer = &runtime->command_buffer;
   plan_t *plan                     = &runtime->plan;
 
+  policy_context_t ctx = {
+    .state = &runtime->state,
+    .rules = &runtime->rules,
+  };
+
   while (runtime->running) {
     event_t event = {0};
     if (!backend_next_event(backend, &event)) break;
@@ -117,13 +122,7 @@ void runtime_run(runtime_t *runtime) {
     command_buffer_reset(command_buffer);
     plan_reset(plan);
 
-    policy_context_t ctx = {
-      .state = &runtime->state,
-      .rules = &runtime->rules,
-      .event = &event,
-    };
-
-    policy_route_event(&ctx, command_buffer);
+    policy_route_event(&ctx, &event, command_buffer);
     policy_apply_command(&ctx, command_buffer, plan);
     if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
 
