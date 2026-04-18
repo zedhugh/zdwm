@@ -15,6 +15,9 @@
   X(WM_TAKE_FOCUS)                     \
   X(_NET_ACTIVE_WINDOW)                \
                                        \
+  X(_NET_SUPPORTING_WM_CHECK)          \
+  X(_NET_WM_PID)                       \
+                                       \
   X(_NET_CLIENT_LIST)                  \
   X(_NET_CLIENT_LIST_STACKING)         \
                                        \
@@ -59,4 +62,5 @@ struct backend_t {
 
   /* When no window should take focus, then focus this window */
   xcb_window_t window_no_focus;
+  xcb_window_t wm_check_window;
 };

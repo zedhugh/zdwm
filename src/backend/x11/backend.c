@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
@@ -51,33 +53,55 @@ static void atoms_init(backend_t *backend) {
   }
 }
 
+static void create_wm_check_window(backend_t *backend) {
+  xcb_connection_t *conn = backend->conn;
+  xcb_window_t root      = backend->screen->root;
+  uint8_t depth          = backend->screen->root_depth;
+  xcb_visualid_t v       = backend->screen->root_visual;
+  uint16_t _c            = XCB_WINDOW_CLASS_COPY_FROM_PARENT;
+  uint32_t m             = XCB_NONE;
+  void *p                = nullptr;
+
+  xcb_window_t win = xcb_generate_id(conn);
+  xcb_create_window(conn, depth, win, root, -1, -1, 1, 1, 0, _c, v, m, p);
+  window_set_class_instance(conn, win);
+
+#define NAME "zdwm"
+  window_set_name_static(conn, win, NAME);
+  uint8_t mode    = XCB_PROP_MODE_REPLACE;
+  xcb_atom_t prop = backend->atoms._NET_WM_NAME;
+  xcb_atom_t type = backend->atoms.UTF8_STRING;
+  xcb_change_property(conn, mode, win, prop, type, 8, sizeof(NAME) - 1, NAME);
+#undef NAME
+
+  prop = backend->atoms._NET_SUPPORTING_WM_CHECK;
+  type = XCB_ATOM_WINDOW;
+  xcb_change_property(conn, mode, win, prop, type, 32, 1, &win);
+  xcb_change_property(conn, mode, root, prop, type, 32, 1, &win);
+
+  prop      = backend->atoms._NET_WM_PID;
+  type      = XCB_ATOM_CARDINAL;
+  pid_t pid = getpid();
+  xcb_change_property(conn, mode, win, prop, type, 32, 1, &pid);
+}
+
 static void create_no_focus_window(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
+  xcb_window_t root      = backend->screen->root;
+  uint8_t d              = backend->screen->root_depth;
+  xcb_visualid_t v       = backend->screen->root_visual;
+  uint16_t _c            = XCB_WINDOW_CLASS_COPY_FROM_PARENT;
 
-  xcb_window_t win    = xcb_generate_id(conn);
-  uint32_t value_mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
-                        XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP;
-  const xcb_create_window_value_list_t value_list = {
+  xcb_window_t win = xcb_generate_id(conn);
+  uint32_t m       = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+               XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP;
+  const xcb_create_window_value_list_t p = {
     .override_redirect = true,
     .background_pixel  = backend->screen->black_pixel,
     .border_pixel      = backend->screen->black_pixel,
     .colormap          = backend->screen->default_colormap,
   };
-  xcb_create_window_aux(
-    conn,
-    backend->screen->root_depth,
-    win,
-    backend->screen->root,
-    -1,
-    -1,
-    1,
-    1,
-    0,
-    XCB_WINDOW_CLASS_COPY_FROM_PARENT,
-    backend->screen->root_visual,
-    value_mask,
-    &value_list
-  );
+  xcb_create_window_aux(conn, d, win, root, -1, -1, 1, 1, 0, _c, v, m, &p);
   window_set_class_instance(conn, win);
   window_set_name_static(conn, win, "zdwm no input window");
   xcb_map_window(conn, win);
@@ -136,6 +160,7 @@ backend_t *backend_create(const char *display_name) {
   }
 
   atoms_init(backend);
+  create_wm_check_window(backend);
   create_no_focus_window(backend);
 
   return backend;
