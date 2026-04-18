@@ -195,18 +195,19 @@ bool runtime_config_load(const char *override_path, runtime_init_desc_t *out) {
   runtime_config_cleanup(out);
 
   config_loader_t loader = {0};
-  bool ok                = false;
-  if (!config_loader_load(&loader, override_path)) goto cleanup;
+  if (!config_loader_load(&loader, override_path)) {
+    config_loader_cleanup(&loader);
+    return false;
+  }
 
   zdwm_config_setup_fn *setup =
     loader.setup ? loader.setup : config_defaults_build;
-  ok = runtime_config_build(setup, out->outputs, out->output_count, out);
+  bool ok = runtime_config_build(setup, out->outputs, out->output_count, out);
   if (ok) {
     out->config_module_handle = loader.handle;
     loader.handle             = nullptr;
   }
 
-cleanup:
   config_loader_cleanup(&loader);
   return ok;
 }
