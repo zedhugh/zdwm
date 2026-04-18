@@ -26,6 +26,17 @@ bool policy_route_event(
   const event_t *event,
   command_buffer_t *out
 );
+
+/**
+ * @brief 将语义命令应用到状态，并累积后端副作用到 plan
+ *
+ * @param ctx               策略上下文
+ * @param command_buffer    待应用的命令序列
+ * @param plan              副作用累积器，记录后端需要执行的操作
+ *
+ * @return true     产生了至少一项后端副作用
+ * @return false    无副作用产生
+ */
 bool policy_apply_command(
   const policy_context_t *ctx,
   const command_buffer_t *command_buffer,
