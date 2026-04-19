@@ -237,6 +237,12 @@ bool state_workspace_valid(const state_t *state, workspace_id_t id) {
 #endif
 }
 
+bool state_workspace_show(const state_t *state, workspace_id_t workspace_id) {
+  auto workspace = state_workspace_get(state, workspace_id);
+  auto output    = state_output_get(state, workspace->output_id);
+  return output->current_workspace_id == workspace_id;
+}
+
 const output_t *state_output_get(const state_t *state, output_id_t id) {
   if (id < state->output_count) return &state->outputs[id];
   return nullptr;
@@ -256,17 +262,20 @@ void state_output_set_workarea(
   if (output) output->workarea = workarea;
 }
 
-void state_output_set_current_workspace(
+bool state_output_set_current_workspace(
   state_t *state,
   output_id_t output_id,
   workspace_id_t workspace_id
 ) {
   output_t *output = (output_t *)state_output_get(state, output_id);
-  if (!output) return;
+  if (!output) return false;
   const workspace_t *workspace = state_workspace_get(state, workspace_id);
-  if (!workspace || workspace->output_id != output_id) return;
+  if (!workspace || workspace->output_id != output_id) return false;
+
+  if (output->current_workspace_id == workspace_id) return false;
 
   output->current_workspace_id = workspace_id;
+  return true;
 }
 
 size_t state_output_count(const state_t *state) { return state->output_count; }
@@ -292,6 +301,21 @@ void state_cycle_current_output(state_t *state, int delta) {
   int64_t next    = (current + (int64_t)delta) % count;
   if (next < 0) next += count;
   state->current_output_index = (size_t)next;
+}
+
+bool state_set_current_output(state_t *state, output_id_t output_id) {
+  for (size_t i = 0; i < state->output_count; ++i) {
+    auto output = &state->outputs[i];
+    if (output->id != output_id) continue;
+
+    if (i == state->current_output_index) return false;
+
+    state->current_output_index = i;
+    return true;
+  }
+
+  warn("state_set_current_output: invalid output_id %u", output_id);
+  return false;
 }
 
 static inline void window_set_geometry_mode(
@@ -633,4 +657,20 @@ bool state_stack_lower(state_t *state, window_id_t window_id) {
   if (!layer) return false;
 
   return layer_stack_lower(layer, window_id);
+}
+
+bool window_need_layout(const window_t *window) {
+  if (window->sticky || window->floating) {
+    return false;
+  }
+
+  switch (window->geometry_mode) {
+  case ZDWM_GEOMETRY_FULLSCREEN:
+  case ZDWM_GEOMETRY_MAXIMIZED:
+  case ZDWM_GEOMETRY_MINIMIZED:
+    return false;
+  default:
+  }
+
+  return true;
 }

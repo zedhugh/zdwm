@@ -7,7 +7,7 @@
 #include "core/state.h"
 
 typedef struct policy_context_t {
-  const state_t *state;
+  state_t *state;
   const rules_t *rules;
 } policy_context_t;
 

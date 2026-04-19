@@ -1,5 +1,6 @@
 #include "core/policy.h"
 
+#include <stddef.h>
 #include <zdwm/types.h>
 
 #include "base/macros.h"
@@ -7,6 +8,7 @@
 #include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/layer.h"
+#include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
 #include "core/types.h"
@@ -98,17 +100,62 @@ bool policy_route_event(
   const event_t *event,
   command_buffer_t *out
 ) {
+  auto state = ctx->state;
   switch (event->type) {
-  case ZDWM_EVENT_WINDOW_MAP_REQUEST:
-    return route_map_request(
-      ctx->state,
-      ctx->rules,
-      &event->as.window_map_request,
-      out
-    );
+  case ZDWM_EVENT_WINDOW_MAP_REQUEST: {
+    auto rules = ctx->rules;
+    return route_map_request(state, rules, &event->as.window_map_request, out);
+  }
   default:
     return false;
   }
+}
+
+static bool manage_window(
+  const policy_context_t *ctx,
+  const manage_window_command_t *command,
+  plan_t *plan
+) {
+  auto state     = ctx->state;
+  auto window    = state_window_add(state, &command->info);
+  auto window_id = window->id;
+  state_window_set_workspace(state, window_id, command->workspace);
+  state_window_set_floating(state, window_id, command->floating);
+
+  if (!state_workspace_show(state, command->workspace)) return false;
+
+  effect_t map_effect = {
+    .type          = ZDWM_EFFECT_MAP_WINDOW,
+    .as.map.window = window_id,
+  };
+  plan_push_effect(plan, &map_effect);
+
+  if (window_need_layout(window)) {
+    plan->dirty_flags |= ZDWM_DIRTY_LAYOUT;
+  }
+
+  return true;
+}
+
+static bool switch_workspace(
+  const state_t *state,
+  const switch_workspace_command_t *command,
+  plan_t *plan
+) {
+  auto output_id    = command->output;
+  auto workspace_id = command->workspace;
+
+  if (state_output_set_current_workspace(state, output_id, workspace_id)) {
+    plan->dirty_flags |= ZDWM_DIRTY_LAYOUT;
+  }
+
+  if (state_set_current_output(state, output_id)) {
+    plan->dirty_flags |= ZDWM_DIRTY_OUTPUT;
+  }
+
+  /* TODO: 后续考虑加上 ewmh 相关副作用 */
+
+  return false;
 }
 
 bool policy_apply_command(
@@ -116,6 +163,23 @@ bool policy_apply_command(
   const command_buffer_t *command_buffer,
   plan_t *plan
 ) {
-  /* TODO: */
-  return true;
+  bool has_effect = false;
+  auto state      = ctx->state;
+  for (size_t i = 0; i < command_buffer->count; ++i) {
+    auto cmd = &command_buffer->items[i];
+    switch (cmd->type) {
+    case ZDWM_COMMAND_MANAGE_WINDOW:
+      if (manage_window(ctx, &cmd->as.manage_window, plan)) {
+        has_effect = true;
+      }
+      break;
+    case ZDWM_COMMAND_SWITCH_WORKSPACE:
+      if (switch_workspace(state, &cmd->as.switch_workspace, plan)) {
+        has_effect = true;
+      }
+      break;
+    default:
+    }
+  }
+  return has_effect;
 }

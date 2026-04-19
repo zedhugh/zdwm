@@ -126,6 +126,14 @@ void state_workspace_set_focused_window(
 size_t state_workspace_count(const state_t *state);
 bool state_workspace_valid(const state_t *state, workspace_id_t id);
 
+/**
+ * @brief 当前 workspace 是否显示
+ *
+ * @return 若 workspace_id 代表的 workspace 是其所属的 output 当前显示的
+ *         workspace 则返回 true ，否则返回 false
+ */
+bool state_workspace_show(const state_t *state, workspace_id_t workspace_id);
+
 /*
  * state 持有的 output 集合接口
  *
@@ -139,7 +147,16 @@ void state_output_set_workarea(
   output_id_t output_id,
   rect_t workarea
 );
-void state_output_set_current_workspace(
+/**
+ * @brief 设置 output 的当前 workspace
+ *
+ * @param state 状态实例指针
+ * @param output_id     需要切换的当前 workspace 的 output 的 id
+ * @param workspace_id  目标 workspace 的 id
+ *
+ * @return 若 workspace 需要切换返回 true ，否则返回 false
+ */
+bool state_output_set_current_workspace(
   state_t *state,
   output_id_t output_id,
   workspace_id_t workspace_id
@@ -147,6 +164,15 @@ void state_output_set_current_workspace(
 size_t state_output_count(const state_t *state);
 bool state_output_valid(const state_t *state, output_id_t id);
 void state_cycle_current_output(state_t *state, int delta);
+/**
+ * @brief 设置当前 output
+ *
+ * @param state     状态实例指针
+ * @param output_id 目标 output 的 id
+ *
+ * @return 有变更返回 true ，无变更返回 false
+ */
+bool state_set_current_output(state_t *state, output_id_t output_id);
 
 /*
  * state 持有的 window 集合接口
@@ -262,3 +288,8 @@ bool state_window_set_instance(
 
 bool state_stack_raise(state_t *state, window_id_t window_id);
 bool state_stack_lower(state_t *state, window_id_t window_id);
+
+/**
+ * @brief 窗口是否需要参与布局计算
+ */
+bool window_need_layout(const window_t *window);

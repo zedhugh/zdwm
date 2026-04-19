@@ -9,7 +9,8 @@ typedef uint32_t dirty_mask_t;
 
 typedef enum dirty_flags_t : dirty_mask_t {
   ZDWM_DIRTY_NONE   = 0,
-  ZDWM_DIRTY_LAYOUT = 1u << 0,
+  ZDWM_DIRTY_LAYOUT = 1u << 0, /* 需要重新计算布局 */
+  ZDWM_DIRTY_OUTPUT = 1u << 1, /* 当前 output 有变更 */
 } dirty_flags_t;
 
 typedef enum effect_type_t {

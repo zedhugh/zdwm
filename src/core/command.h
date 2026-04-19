@@ -11,7 +11,6 @@ typedef enum command_type_t {
 typedef struct manage_window_command_t {
   workspace_id_t workspace;
   bool floating;
-  bool switch_to_workspace;
   window_info_t info;
 } manage_window_command_t;
 
