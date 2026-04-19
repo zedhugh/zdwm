@@ -1,25 +1,7 @@
 #include "core/event.h"
 
 #include "base/memory.h"
-
-static void window_layer_props_cleanup(window_layer_props_t *props) {
-  if (!props) return;
-
-  p_delete(&props->types);
-  props->type_count = 0;
-  p_delete(&props->states);
-  props->state_count = 0;
-}
-
-static void window_metadata_cleanup(window_metadata_t *metadata) {
-  if (!metadata) return;
-
-  p_delete(&metadata->title);
-  p_delete(&metadata->app_id);
-  p_delete(&metadata->role);
-  p_delete(&metadata->class_name);
-  p_delete(&metadata->instance_name);
-}
+#include "core/window.h"
 
 void event_cleanup(event_t *event) {
   if (!event) return;

@@ -50,6 +50,7 @@ add_executable(${RUNTIME_CONFIG_TEST_APP_NAME}
     ${SOURCE_DIR}/core/rules.c
     ${SOURCE_DIR}/core/runtime.c
     ${SOURCE_DIR}/core/state.c
+    ${SOURCE_DIR}/core/window.c
 )
 target_include_directories(${RUNTIME_CONFIG_TEST_APP_NAME} SYSTEM
     PRIVATE ${INCLUDE_DIR}

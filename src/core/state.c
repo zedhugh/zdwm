@@ -8,9 +8,9 @@
 #include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
-#include "core/event.h"
 #include "core/layer.h"
 #include "core/types.h"
+#include "core/window.h"
 #include "core/wm_desc.h"
 
 void state_init(
@@ -318,59 +318,6 @@ bool state_set_current_output(state_t *state, output_id_t output_id) {
   return false;
 }
 
-static inline void window_set_geometry_mode(
-  window_t *window,
-  window_geometry_mode_t geometry_mode
-) {
-  window->geometry_mode = geometry_mode;
-}
-static inline void window_set_floating(window_t *window, bool floating) {
-  window->floating = floating;
-  if (floating) window->float_rect = window->frame_rect;
-}
-static inline void window_set_sticky(window_t *window, bool sticky) {
-  window->sticky = sticky;
-  if (sticky) window_set_floating(window, true);
-}
-static inline void window_set_urgent(window_t *window, bool urgent) {
-  window->urgent = urgent;
-}
-static inline void window_set_fixed_size(window_t *window, bool fixed_size) {
-  window->fixed_size = fixed_size;
-  if (fixed_size) window_set_floating(window, true);
-}
-static inline void window_set_float_rect(window_t *window, rect_t rect) {
-  window->float_rect = rect;
-}
-static inline void window_set_frame_rect(window_t *window, rect_t rect) {
-  window->frame_rect = rect;
-}
-static inline void window_set_title(window_t *window, const char *title) {
-  p_delete(&window->title);
-  window->title = p_strdup_nullable(title);
-}
-static inline void window_set_app_id(window_t *window, const char *app_id) {
-  p_delete(&window->app_id);
-  window->app_id = p_strdup_nullable(app_id);
-}
-static inline void window_set_role(window_t *window, const char *role) {
-  p_delete(&window->role);
-  window->role = p_strdup_nullable(role);
-}
-static inline void window_set_class(window_t *window, const char *class_name) {
-  p_delete(&window->class_name);
-  window->class_name = p_strdup_nullable(class_name);
-}
-static inline void
-window_set_instance(window_t *window, const char *instance_name) {
-  p_delete(&window->instance_name);
-  window->instance_name = p_strdup_nullable(instance_name);
-}
-static inline void
-window_set_skip_taskbar(window_t *window, bool skip_taskbar) {
-  window->skip_taskbar = skip_taskbar;
-}
-
 const window_t *state_window_add(state_t *state, const window_info_t *info) {
   window_id_t id   = info->id;
   window_t *window = (window_t *)state_window_get(state, id);
@@ -428,9 +375,9 @@ void state_window_remove(state_t *state, window_id_t id) {
   }
   if (!matched) return;
 
-  window_t *window            = &state->windows[index];
-  layer_type_t layer_type     = window->layer;
-  workspace_id_t workspace_id = window->workspace_id;
+  window_t *window               = &state->windows[index];
+  window_layer_type_t layer_type = window->layer;
+  workspace_id_t workspace_id    = window->workspace_id;
   p_delete(&window->title);
   p_delete(&window->app_id);
   p_delete(&window->role);
@@ -560,21 +507,7 @@ bool state_window_take_metadata(
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (!window) return false;
 
-  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_TITLE) {
-    p_take(&window->title, &metadata->title);
-  }
-  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_APP_ID) {
-    p_take(&window->app_id, &metadata->app_id);
-  }
-  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_ROLE) {
-    p_take(&window->role, &metadata->role);
-  }
-  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_CLASS) {
-    p_take(&window->class_name, &metadata->class_name);
-  }
-  if (changed_fields & ZDWM_WINDOW_METADATA_CHANGE_INSTANCE) {
-    p_take(&window->instance_name, &metadata->instance_name);
-  }
+  window_take_metadata(window, metadata, changed_fields);
 
   return true;
 }
@@ -657,20 +590,4 @@ bool state_stack_lower(state_t *state, window_id_t window_id) {
   if (!layer) return false;
 
   return layer_stack_lower(layer, window_id);
-}
-
-bool window_need_layout(const window_t *window) {
-  if (window->sticky || window->floating) {
-    return false;
-  }
-
-  switch (window->geometry_mode) {
-  case ZDWM_GEOMETRY_FULLSCREEN:
-  case ZDWM_GEOMETRY_MAXIMIZED:
-  case ZDWM_GEOMETRY_MINIMIZED:
-    return false;
-  default:
-  }
-
-  return true;
 }

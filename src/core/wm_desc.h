@@ -3,8 +3,8 @@
 #include <stddef.h>
 
 #include "base/memory.h"
-#include "core/layer.h"
 #include "core/types.h"
+#include "core/window.h"
 
 /*
  * 由 backend 提供的窗口基础信息。
@@ -23,7 +23,7 @@ typedef struct window_info_t {
   const char *instance_name;
 
   window_geometry_mode_t geometry_mode;
-  layer_type_t layer_type;
+  window_layer_type_t layer_type;
   bool urgent;
   bool fixed_size;
   bool skip_taskbar;

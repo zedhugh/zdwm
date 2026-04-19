@@ -8,33 +8,6 @@
 #include "core/window.h"
 #include "core/wm_desc.h"
 
-/* 核心实体定义 */
-typedef struct window_t {
-  window_id_t id;
-  window_id_t transient_for;
-  workspace_id_t workspace_id;
-
-  layer_type_t layer;
-  window_geometry_mode_t geometry_mode;
-  bool floating;
-  bool sticky;
-  bool urgent;
-  bool fixed_size;
-
-  /* 几何信息（均为包含边框后的外框矩形） */
-  rect_t float_rect; /* floating 模式下记忆的外框矩形 */
-  rect_t frame_rect; /* 当前外框矩形（由 layout 或 float_rect 解析） */
-
-  /* 元数据（核心算法不依赖，仅用于规则匹配和信息展示） */
-  char *title;
-  char *app_id;
-  char *role;
-  char *class_name;
-  char *instance_name;
-
-  bool skip_taskbar;
-} window_t;
-
 typedef struct workspace_t {
   workspace_id_t id;
   output_id_t output_id; /* 固定归属某个输出 */
@@ -288,8 +261,3 @@ bool state_window_set_instance(
 
 bool state_stack_raise(state_t *state, window_id_t window_id);
 bool state_stack_lower(state_t *state, window_id_t window_id);
-
-/**
- * @brief 窗口是否需要参与布局计算
- */
-bool window_need_layout(const window_t *window);

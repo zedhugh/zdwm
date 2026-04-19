@@ -3,16 +3,6 @@
 #include <stddef.h>
 
 #include "core/types.h"
-#include "core/window.h"
-
-/* 层级从低到高 */
-typedef enum layer_type_t {
-  ZDWM_WINDOW_LAYER_DESKTOP = 0,
-  ZDWM_WINDOW_LAYER_NORMAL,
-  ZDWM_WINDOW_LAYER_TOP,
-  ZDWM_WINDOW_LAYER_OVERLAY,
-  ZDWM_WINDOW_LAYER_COUNT,
-} layer_type_t;
 
 typedef struct layer_stack_t {
   window_id_t *order;
@@ -56,5 +46,3 @@ bool layer_stack_raise(layer_stack_t *layer, window_id_t window);
  * @return 仅在窗口存在且顺序发生变化时返回 true，否则返回 false。
  */
 bool layer_stack_lower(layer_stack_t *layer, window_id_t window);
-
-layer_type_t layer_classify(const window_layer_props_t *props);

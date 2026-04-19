@@ -86,14 +86,6 @@ typedef struct window_remove_event_t {
   window_remove_reason_t reason;
 } window_remove_event_t;
 
-typedef enum window_metadata_change_flags_t {
-  ZDWM_WINDOW_METADATA_CHANGE_TITLE    = 1u << 0,
-  ZDWM_WINDOW_METADATA_CHANGE_APP_ID   = 1u << 1,
-  ZDWM_WINDOW_METADATA_CHANGE_ROLE     = 1u << 2,
-  ZDWM_WINDOW_METADATA_CHANGE_CLASS    = 1u << 3,
-  ZDWM_WINDOW_METADATA_CHANGE_INSTANCE = 1u << 4,
-} window_metadata_change_flags_t;
-
 typedef struct window_metadata_change_event_t {
   window_id_t window;
   uint32_t changed_fields;

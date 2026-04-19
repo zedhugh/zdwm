@@ -7,11 +7,11 @@
 #include "core/command.h"
 #include "core/command_buffer.h"
 #include "core/event.h"
-#include "core/layer.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
 #include "core/types.h"
+#include "core/window.h"
 #include "core/wm_desc.h"
 
 static workspace_id_t derive_window_workspace(const state_t *state) {
@@ -26,7 +26,7 @@ static bool route_map_request(
 ) {
   if (state_window_get(state, e->window)) return false;
 
-  layer_type_t layer_type = layer_classify(&e->props);
+  window_layer_type_t layer_type = window_classify_layer(&e->props);
   if (e->transient_for != ZDWM_WINDOW_ID_INVALID) {
     const window_t *window = state_window_get(state, e->transient_for);
     if (window) layer_type = MAX(window->layer, layer_type);
@@ -138,7 +138,7 @@ static bool manage_window(
 }
 
 static bool switch_workspace(
-  const state_t *state,
+  state_t *state,
   const switch_workspace_command_t *command,
   plan_t *plan
 ) {
