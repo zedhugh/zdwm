@@ -15,6 +15,7 @@
 
 #include "backend/output_utils.h"
 #include "backend/x11/window.h"
+#include "base/array.h"
 #include "base/log.h"
 #include "base/macros.h"
 #include "base/memory.h"
@@ -168,6 +169,15 @@ backend_t *backend_create(const char *display_name) {
 
 void backend_destroy(backend_t *backend) {
   if (!backend) return;
+
+  p_delete(&backend->config_list.cfgs);
+  p_clear(&backend->config_list, 1);
+
+  p_delete(&backend->unmap.windows);
+  p_clear(&backend->unmap, 1);
+
+  p_delete(&backend->kill.windows);
+  p_clear(&backend->kill, 1);
 
   xcb_disconnect(backend->conn);
   backend->conn = nullptr;
@@ -415,70 +425,70 @@ backend_restack_windows(backend_t *backend, const effect_window_list_t *list) {
   }
 }
 
-typedef struct window_configure_t {
-  xcb_window_t window;
-  uint16_t mask;
-  xcb_configure_window_value_list_t value;
-} window_configure_t;
+static void window_configure_list_reset(window_configure_list_t *configs) {
+  p_clear(configs->cfgs, configs->count);
+  configs->count = 0;
+}
 
-static void
-flush_configure(xcb_connection_t *conn, const window_configure_t *cfg) {
-  if (cfg->mask) {
+static void backend_apply_window_configure_list(backend_t *backend) {
+  xcb_connection_t *conn           = backend->conn;
+  window_configure_list_t *configs = &backend->config_list;
+  for (size_t i = 0; i < configs->count; ++i) {
+    window_configure_t *cfg = &configs->cfgs[i];
+    if (!cfg->mask) continue;
+
     xcb_configure_window_aux(conn, cfg->window, cfg->mask, &cfg->value);
   }
 }
 
-static window_configure_t *find_or_push_configure(
-  window_configure_t *cfgs,
-  size_t *cfg_count,
-  xcb_window_t window
-) {
-  for (size_t j = 0; j < *cfg_count; ++j) {
-    if (cfgs[j].window == window) return &cfgs[j];
+static window_configure_t *
+find_or_push_configure(window_configure_list_t *configs, xcb_window_t window) {
+  window_configure_t *cfg = nullptr;
+  for (size_t i = 0; i < configs->count; ++i) {
+    cfg = &configs->cfgs[i];
+    if (cfg->window == window) return cfg;
   }
-  window_configure_t *cfg = &cfgs[(*cfg_count)++];
-  cfg->window             = window;
-  cfg->mask               = 0;
+
+  cfg = array_push(configs->cfgs, configs->count, configs->capacity);
+  p_clear(cfg, 1);
+  cfg->window = window;
+  cfg->mask   = 0;
   return cfg;
 }
 
-bool backend_apply_effect(
+static void backend_merge_effects(
   backend_t *backend,
   const effect_t *effects,
   size_t effect_count
 ) {
-  xcb_connection_t *conn = backend->conn;
-
-  /* collect configure-like effects per window */
-  window_configure_t *cfgs = p_new(window_configure_t, effect_count);
-  size_t cfg_count         = 0;
-
-  bool focus_window_changed = false;
-  xcb_window_t focus_window = XCB_WINDOW_NONE;
+  window_configure_list_t *configs = &backend->config_list;
 
   for (size_t i = 0; i < effect_count; ++i) {
     const effect_t *e = &effects[i];
     switch (e->type) {
     case ZDWM_EFFECT_MAP_WINDOW:
-      xcb_map_window(conn, e->as.map.window);
+      window_list_push(&backend->map, e->as.map.window);
       break;
     case ZDWM_EFFECT_UNMAP_WINDOW:
-      xcb_unmap_window(conn, e->as.unmap.window);
+      window_list_push(&backend->unmap, e->as.unmap.window);
       break;
     case ZDWM_EFFECT_FOCUS_WINDOW:
-      focus_window         = e->as.focus.window;
-      focus_window_changed = true;
+      backend->focus_window = e->as.focus.window;
+      backend->update_focus = true;
+      break;
+    case ZDWM_EFFECT_KILL_WINDOW:
+      window_list_push(&backend->kill, e->as.kill.window);
       break;
     case ZDWM_EFFECT_MOVE_WINDOW: {
       window_configure_t *cfg =
-        find_or_push_configure(cfgs, &cfg_count, e->as.move.window);
+        find_or_push_configure(configs, e->as.move.window);
       cfg->mask    |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       cfg->value.x  = e->as.move.left_top_point.x;
       cfg->value.y  = e->as.move.left_top_point.y;
     } break;
     case ZDWM_EFFECT_RESIZE_WINDOW: {
       window_configure_t *cfg =
-        find_or_push_configure(cfgs, &cfg_count, e->as.resize.window);
+        find_or_push_configure(configs, e->as.resize.window);
       cfg->mask         |= XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
       cfg->value.width   = (uint32_t)e->as.resize.width;
       cfg->value.height  = (uint32_t)e->as.resize.height;
@@ -488,18 +498,15 @@ bool backend_apply_effect(
         .border_pixel = e->as.change_border_color.color->argb
       };
       xcb_change_window_attributes_aux(
-        conn,
+        backend->conn,
         e->as.change_border_color.window,
         XCB_CW_BORDER_PIXEL,
         &value
       );
     } break;
     case ZDWM_EFFECT_CHANGE_BORDER_WIDTH: {
-      window_configure_t *cfg = find_or_push_configure(
-        cfgs,
-        &cfg_count,
-        e->as.change_border_width.window
-      );
+      window_configure_t *cfg =
+        find_or_push_configure(configs, e->as.change_border_width.window);
       cfg->mask               |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
       cfg->value.border_width  = e->as.change_border_width.border_width;
     } break;
@@ -512,14 +519,56 @@ bool backend_apply_effect(
       break;
     }
   }
+}
 
-  for (size_t i = 0; i < cfg_count; ++i) {
-    flush_configure(conn, &cfgs[i]);
+static void backend_batch_apply_effects(backend_t *backend) {
+  xcb_connection_t *conn = backend->conn;
+  if (backend->unmap.count) {
+    xcb_grab_server(conn);
+    window_clean_event_mask(conn, backend->screen->root);
+
+    window_list_t *unmap = &backend->unmap;
+    for (size_t i = 0; i < unmap->count; ++i) {
+      xcb_window_t window = unmap->windows[i];
+      window_clean_event_mask(conn, window);
+      xcb_unmap_window(conn, window);
+    }
+
+    root_set_event_mask(backend);
+    xcb_ungrab_server(conn);
   }
-  p_delete(&cfgs);
 
-  if (focus_window_changed) backend_focus_window(backend, focus_window);
+  for (size_t i = 0; i < backend->map.count; ++i) {
+    xcb_window_t window = backend->map.windows[i];
+    window_set_event_mask(conn, window);
+    xcb_map_window(conn, window);
+  }
 
-  xcb_flush(conn);
+  for (size_t i = 0; i < backend->kill.count; ++i) {
+    window_kill(backend, backend->kill.windows[i]);
+  }
+
+  backend_apply_window_configure_list(backend);
+
+  if (backend->update_focus) {
+    backend_focus_window(backend, backend->focus_window);
+  }
+}
+
+bool backend_apply_effect(
+  backend_t *backend,
+  const effect_t *effects,
+  size_t effect_count
+) {
+  backend->update_focus = false;
+  window_configure_list_reset(&backend->config_list);
+  window_list_reset(&backend->unmap);
+  window_list_reset(&backend->map);
+  window_list_reset(&backend->kill);
+
+  backend_merge_effects(backend, effects, effect_count);
+  backend_batch_apply_effects(backend);
+
+  xcb_flush(backend->conn);
   return true;
 }

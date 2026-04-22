@@ -7,9 +7,10 @@
 #include <xcb/xproto.h>
 
 #include "core/backend.h"
-#include "core/window.h"
+#include "internal.h"
 
 typedef struct atoms_t atoms_t;
+typedef struct window_list_t window_list_t;
 
 /**
  * @brief 获取窗口的 role 属性
@@ -78,3 +79,11 @@ window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom);
   xcb_icccm_set_wm_class(conn, win, sizeof(instance_class), instance_class)
 
 void window_takefocus(backend_t *backend, xcb_window_t window);
+void window_kill(backend_t *backend, xcb_window_t window);
+
+void root_set_event_mask(backend_t *backend);
+void window_set_event_mask(xcb_connection_t *conn, xcb_window_t window);
+void window_clean_event_mask(xcb_connection_t *conn, xcb_window_t window);
+
+void window_list_push(window_list_t *window_list, xcb_window_t window);
+void window_list_reset(window_list_t *window_list);

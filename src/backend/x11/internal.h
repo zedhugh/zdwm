@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
 #include <xcb/xcb.h>
 #include <xcb/xproto.h>
 
@@ -13,6 +15,7 @@
                                        \
   X(WM_PROTOCOLS)                      \
   X(WM_TAKE_FOCUS)                     \
+  X(WM_DELETE_WINDOW)                  \
   X(_NET_ACTIVE_WINDOW)                \
                                        \
   X(_NET_SUPPORTING_WM_CHECK)          \
@@ -54,6 +57,24 @@ typedef struct atoms_t {
 #undef DECLARATION_ATOM
 } atoms_t;
 
+typedef struct window_configure_t {
+  xcb_window_t window;
+  uint16_t mask;
+  xcb_configure_window_value_list_t value;
+} window_configure_t;
+
+typedef struct window_configure_list_t {
+  window_configure_t *cfgs;
+  size_t count;
+  size_t capacity;
+} window_configure_list_t;
+
+typedef struct window_list_t {
+  xcb_window_t *windows;
+  size_t count;
+  size_t capacity;
+} window_list_t;
+
 struct backend_t {
   xcb_connection_t *conn;
   xcb_screen_t *screen;
@@ -65,4 +86,12 @@ struct backend_t {
   /* When no window should take focus, then focus this window */
   xcb_window_t window_no_focus;
   xcb_window_t wm_check_window;
+
+  xcb_window_t focus_window;
+  bool update_focus;
+
+  window_configure_list_t config_list;
+  window_list_t unmap;
+  window_list_t map;
+  window_list_t kill;
 };

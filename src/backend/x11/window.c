@@ -6,6 +6,7 @@
 #include <xcb/xcb_icccm.h>
 #include <xcb/xproto.h>
 
+#include "base/array.h"
 #include "base/memory.h"
 #include "core/backend.h"
 #include "internal.h"
@@ -244,16 +245,84 @@ window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom) {
   return (window_state_t)-1;
 }
 
-void window_takefocus(backend_t *backend, xcb_window_t window) {
-  xcb_client_message_event_t ev = {0};
-
-  ev.response_type  = XCB_CLIENT_MESSAGE;
-  ev.window         = window;
-  ev.format         = 32;
-  ev.type           = backend->atoms.WM_PROTOCOLS,
-  ev.data.data32[0] = backend->atoms.WM_TAKE_FOCUS;
-  ev.data.data32[1] = XCB_CURRENT_TIME;
+static bool
+window_send_event(backend_t *backend, xcb_window_t window, xcb_atom_t atom) {
+  bool exist = false;
 
   xcb_connection_t *conn = backend->conn;
-  xcb_send_event(conn, false, window, XCB_EVENT_MASK_NO_EVENT, (char *)&ev);
+  auto WM_PROTOCOLS      = backend->atoms.WM_PROTOCOLS;
+
+  xcb_get_property_cookie_t cookie =
+    xcb_icccm_get_wm_protocols_unchecked(conn, window, WM_PROTOCOLS);
+  xcb_icccm_get_wm_protocols_reply_t reply = {0};
+  if (xcb_icccm_get_wm_protocols_reply(conn, cookie, &reply, nullptr)) {
+    for (uint32_t i = 0; !exist && i < reply.atoms_len; ++i) {
+      exist = reply.atoms[i] == atom;
+    }
+    xcb_icccm_get_wm_protocols_reply_wipe(&reply);
+  }
+
+  if (exist) {
+    xcb_client_message_event_t ev = {
+      .response_type = XCB_CLIENT_MESSAGE,
+      .format        = 32,
+      .window        = window,
+      .type          = WM_PROTOCOLS,
+      .data.data32   = {atom, XCB_CURRENT_TIME},
+    };
+    xcb_send_event(conn, false, window, XCB_EVENT_MASK_NO_EVENT, (char *)&ev);
+  }
+
+  return exist;
+}
+
+void window_takefocus(backend_t *backend, xcb_window_t window) {
+  window_send_event(backend, window, backend->atoms.WM_TAKE_FOCUS);
+}
+
+void window_kill(backend_t *backend, xcb_window_t window) {
+  if (window_send_event(backend, window, backend->atoms.WM_DELETE_WINDOW)) {
+    xcb_kill_client(backend->conn, window);
+  }
+}
+
+void root_set_event_mask(backend_t *backend) {
+  xcb_connection_t *conn                               = backend->conn;
+  xcb_window_t root                                    = backend->screen->root;
+  xcb_cw_t change_mask                                 = XCB_CW_EVENT_MASK;
+  xcb_change_window_attributes_value_list_t value_list = {
+    .event_mask =
+      XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_KEY_PRESS,
+  };
+  xcb_change_window_attributes_aux(conn, root, change_mask, &value_list);
+}
+
+void window_set_event_mask(xcb_connection_t *conn, xcb_window_t window) {
+  xcb_cw_t change_mask                                 = XCB_CW_EVENT_MASK;
+  xcb_change_window_attributes_value_list_t value_list = {
+    .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
+                  XCB_EVENT_MASK_PROPERTY_CHANGE |
+                  XCB_EVENT_MASK_STRUCTURE_NOTIFY |
+                  XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+  };
+  xcb_change_window_attributes_aux(conn, window, change_mask, &value_list);
+}
+
+void window_clean_event_mask(xcb_connection_t *conn, xcb_window_t window) {
+  xcb_cw_t change_mask                                 = XCB_CW_EVENT_MASK;
+  xcb_change_window_attributes_value_list_t value_list = {
+    .event_mask = XCB_EVENT_MASK_NO_EVENT,
+  };
+  xcb_change_window_attributes_aux(conn, window, change_mask, &value_list);
+}
+
+void window_list_push(window_list_t *window_list, xcb_window_t window) {
+  xcb_window_t *win =
+    array_push(window_list->windows, window_list->count, window_list->capacity);
+  *win = window;
+}
+
+void window_list_reset(window_list_t *window_list) {
+  p_clear(window_list->windows, window_list->count);
+  window_list->count = 0;
 }
