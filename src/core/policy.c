@@ -118,6 +118,7 @@ static void manage_window(
   auto window    = state_window_add(state, &command->info);
   auto window_id = window->id;
   state_window_set_workspace(state, window_id, command->workspace);
+  state_workspace_set_focused_window(state, command->workspace, window_id);
   state_window_set_floating(state, window_id, command->floating);
 
   if (!state_workspace_show(state, command->workspace)) return;
@@ -126,11 +127,51 @@ static void manage_window(
     .type          = ZDWM_EFFECT_MAP_WINDOW,
     .as.map.window = window_id,
   };
+  effect_t focus_effect = {
+    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+    .as.focus.window = window_id,
+  };
   plan_push_effect(plan, &map_effect);
+  plan_push_effect(plan, &focus_effect);
 
   if (window_need_layout(window)) {
     plan->need_relayout = true;
   }
+}
+
+static void add_switch_workspace_effects(
+  const state_t *state,
+  workspace_id_t old_workspace,
+  workspace_id_t new_workspace,
+  plan_t *plan
+) {
+  for (size_t i = 0; i < state->window_count; ++i) {
+    window_t *window = &state->windows[i];
+    if (window->sticky) continue;
+
+    if (window->workspace_id == old_workspace) {
+      effect_t unmap_effect = {
+        .type            = ZDWM_EFFECT_UNMAP_WINDOW,
+        .as.unmap.window = window->id,
+      };
+      plan_push_effect(plan, &unmap_effect);
+    } else if (window->workspace_id == new_workspace) {
+      effect_t map_effect = {
+        .type            = ZDWM_EFFECT_MAP_WINDOW,
+        .as.unmap.window = window->id,
+      };
+      plan_push_effect(plan, &map_effect);
+    }
+  }
+
+  const workspace_t *workspace = state_workspace_get(state, new_workspace);
+  if (!workspace) return;
+
+  effect_t focus_effect = {
+    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+    .as.focus.window = workspace->focused_window_id
+  };
+  plan_push_effect(plan, &focus_effect);
 }
 
 static void switch_workspace(
@@ -138,18 +179,21 @@ static void switch_workspace(
   const switch_workspace_command_t *command,
   plan_t *plan
 ) {
-  auto output_id    = command->output;
-  auto workspace_id = command->workspace;
+  auto output_id               = command->output;
+  auto workspace_id            = command->workspace;
+  workspace_id_t old_workspace = ZDWM_WORKSPACE_ID_INVALID;
 
-  if (state_output_set_current_workspace(state, output_id, workspace_id)) {
+  if (state_output_set_current_workspace(
+        state,
+        output_id,
+        workspace_id,
+        &old_workspace
+      )) {
     plan->need_relayout = true;
+    add_switch_workspace_effects(state, old_workspace, workspace_id, plan);
   }
 
-  if (state_set_current_output(state, output_id)) {
-    plan->need_relayout = true;
-  }
-
-  /* TODO: 后续考虑加上 ewmh 相关副作用 */
+  state_set_current_output(state, output_id);
 }
 
 void policy_apply_command(
