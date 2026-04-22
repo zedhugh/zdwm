@@ -453,6 +453,9 @@ bool backend_apply_effect(
   window_configure_t *cfgs = p_new(window_configure_t, effect_count);
   size_t cfg_count         = 0;
 
+  bool focus_window_changed = false;
+  xcb_window_t focus_window = XCB_WINDOW_NONE;
+
   for (size_t i = 0; i < effect_count; ++i) {
     const effect_t *e = &effects[i];
     switch (e->type) {
@@ -463,7 +466,8 @@ bool backend_apply_effect(
       xcb_unmap_window(conn, e->as.unmap.window);
       break;
     case ZDWM_EFFECT_FOCUS_WINDOW:
-      backend_focus_window(backend, e->as.focus.window);
+      focus_window         = e->as.focus.window;
+      focus_window_changed = true;
       break;
     case ZDWM_EFFECT_MOVE_WINDOW: {
       window_configure_t *cfg =
@@ -513,6 +517,8 @@ bool backend_apply_effect(
     flush_configure(conn, &cfgs[i]);
   }
   p_delete(&cfgs);
+
+  if (focus_window_changed) backend_focus_window(backend, focus_window);
 
   xcb_flush(conn);
   return true;
