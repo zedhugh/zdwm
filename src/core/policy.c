@@ -131,7 +131,7 @@ static bool manage_window(
   plan_push_effect(plan, &map_effect);
 
   if (window_need_layout(window)) {
-    plan->dirty_flags |= ZDWM_DIRTY_LAYOUT;
+    plan->need_relayout = true;
   }
 
   return true;
@@ -146,11 +146,11 @@ static bool switch_workspace(
   auto workspace_id = command->workspace;
 
   if (state_output_set_current_workspace(state, output_id, workspace_id)) {
-    plan->dirty_flags |= ZDWM_DIRTY_LAYOUT;
+    plan->need_relayout = true;
   }
 
   if (state_set_current_output(state, output_id)) {
-    plan->dirty_flags |= ZDWM_DIRTY_OUTPUT;
+    plan->need_relayout = true;
   }
 
   /* TODO: 后续考虑加上 ewmh 相关副作用 */

@@ -5,14 +5,6 @@
 
 #include "core/types.h"
 
-typedef uint32_t dirty_mask_t;
-
-typedef enum dirty_flags_t : dirty_mask_t {
-  ZDWM_DIRTY_NONE   = 0,
-  ZDWM_DIRTY_LAYOUT = 1u << 0, /* 需要重新计算布局 */
-  ZDWM_DIRTY_OUTPUT = 1u << 1, /* 当前 output 有变更 */
-} dirty_flags_t;
-
 typedef enum effect_type_t {
   ZDWM_EFFECT_MAP_WINDOW = 1,
   ZDWM_EFFECT_UNMAP_WINDOW,
@@ -74,7 +66,7 @@ typedef struct plan_t {
   effect_t *effects;
   size_t count;
   size_t capacity;
-  dirty_mask_t dirty_flags;
+  bool need_relayout;
 } plan_t;
 
 void plan_reset(plan_t *plan);
