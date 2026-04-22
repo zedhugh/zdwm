@@ -30,6 +30,8 @@
   X(_NET_WM_STATE_MAXIMIZED_VERT)      \
   X(_NET_WM_STATE_MAXIMIZED_HORZ)      \
                                        \
+  X(_NET_WM_STATE_DEMANDS_ATTENTION)   \
+                                       \
   X(_NET_WM_WINDOW_TYPE)               \
   X(_NET_WM_WINDOW_TYPE_NORMAL)        \
   X(_NET_WM_WINDOW_TYPE_DESKTOP)       \

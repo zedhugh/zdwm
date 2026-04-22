@@ -1,5 +1,6 @@
 #include "core/event.h"
 
+#include <stdint.h>
 #include <stdio.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
@@ -71,6 +72,18 @@ static window_geometry_mode_t geometry_mode_from_states(
   return ZDWM_GEOMETRY_NORMAL;
 }
 
+static bool urgent_from_states(
+  const atoms_t *atoms,
+  const xcb_atom_t *state_atoms,
+  uint32_t state_count
+) {
+  for (uint32_t i = 0; i < state_count; ++i) {
+    if (state_atoms[i] == atoms->_NET_WM_STATE_DEMANDS_ATTENTION) return true;
+  }
+
+  return false;
+}
+
 static bool handle_map_request(
   backend_t *backend,
   event_t *event,
@@ -127,6 +140,9 @@ static bool handle_map_request(
       state_count,
       &ev->props.state_count
     );
+    if (!ev->urgent) {
+      ev->urgent = urgent_from_states(atoms, state_atoms, state_count);
+    }
   }
 
   p_delete(&state_atoms);
