@@ -43,6 +43,8 @@ void window_set_geometry_mode(
 }
 
 void window_set_floating(window_t *window, bool floating) {
+  if (!floating && (window->fixed_size || window->sticky)) return;
+
   window->floating = floating;
   if (floating) window->float_rect = window->frame_rect;
 }
@@ -121,9 +123,7 @@ void window_take_metadata(
 }
 
 bool window_need_layout(const window_t *window) {
-  if (window->sticky || window->floating) {
-    return false;
-  }
+  if (window->floating) return false;
 
   switch (window->geometry_mode) {
   case ZDWM_GEOMETRY_FULLSCREEN:
