@@ -265,7 +265,8 @@ void state_output_set_workarea(
 bool state_output_set_current_workspace(
   state_t *state,
   output_id_t output_id,
-  workspace_id_t workspace_id
+  workspace_id_t workspace_id,
+  workspace_id_t *old_workspace_id
 ) {
   output_t *output = (output_t *)state_output_get(state, output_id);
   if (!output) return false;
@@ -274,6 +275,7 @@ bool state_output_set_current_workspace(
 
   if (output->current_workspace_id == workspace_id) return false;
 
+  if (old_workspace_id) *old_workspace_id = output->current_workspace_id;
   output->current_workspace_id = workspace_id;
   return true;
 }

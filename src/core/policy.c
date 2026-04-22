@@ -18,13 +18,13 @@ static workspace_id_t derive_window_workspace(const state_t *state) {
   return state->outputs[state->current_output_index].current_workspace_id;
 }
 
-static bool route_map_request(
+static void route_map_request(
   const state_t *state,
   const rules_t *rules,
   const window_map_request_event_t *e,
   command_buffer_t *out
 ) {
-  if (state_window_get(state, e->window)) return false;
+  if (state_window_get(state, e->window)) return;
 
   window_layer_type_t layer_type = window_classify_layer(&e->props);
   if (e->transient_for != ZDWM_WINDOW_ID_INVALID) {
@@ -91,11 +91,9 @@ static bool route_map_request(
       command_buffer_push(out, &switch_workspace_cmd);
     }
   }
-
-  return true;
 }
 
-bool policy_route_event(
+void policy_route_event(
   const policy_context_t *ctx,
   const event_t *event,
   command_buffer_t *out
@@ -104,14 +102,14 @@ bool policy_route_event(
   switch (event->type) {
   case ZDWM_EVENT_WINDOW_MAP_REQUEST: {
     auto rules = ctx->rules;
-    return route_map_request(state, rules, &event->as.window_map_request, out);
+    route_map_request(state, rules, &event->as.window_map_request, out);
+    break;
   }
   default:
-    return false;
   }
 }
 
-static bool manage_window(
+static void manage_window(
   const policy_context_t *ctx,
   const manage_window_command_t *command,
   plan_t *plan
@@ -122,7 +120,7 @@ static bool manage_window(
   state_window_set_workspace(state, window_id, command->workspace);
   state_window_set_floating(state, window_id, command->floating);
 
-  if (!state_workspace_show(state, command->workspace)) return false;
+  if (!state_workspace_show(state, command->workspace)) return;
 
   effect_t map_effect = {
     .type          = ZDWM_EFFECT_MAP_WINDOW,
@@ -133,11 +131,9 @@ static bool manage_window(
   if (window_need_layout(window)) {
     plan->need_relayout = true;
   }
-
-  return true;
 }
 
-static bool switch_workspace(
+static void switch_workspace(
   state_t *state,
   const switch_workspace_command_t *command,
   plan_t *plan
@@ -154,32 +150,24 @@ static bool switch_workspace(
   }
 
   /* TODO: 后续考虑加上 ewmh 相关副作用 */
-
-  return false;
 }
 
-bool policy_apply_command(
+void policy_apply_command(
   const policy_context_t *ctx,
   const command_buffer_t *command_buffer,
   plan_t *plan
 ) {
-  bool has_effect = false;
-  auto state      = ctx->state;
+  auto state = ctx->state;
   for (size_t i = 0; i < command_buffer->count; ++i) {
     auto cmd = &command_buffer->items[i];
     switch (cmd->type) {
     case ZDWM_COMMAND_MANAGE_WINDOW:
-      if (manage_window(ctx, &cmd->as.manage_window, plan)) {
-        has_effect = true;
-      }
+      manage_window(ctx, &cmd->as.manage_window, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
-      if (switch_workspace(state, &cmd->as.switch_workspace, plan)) {
-        has_effect = true;
-      }
+      switch_workspace(state, &cmd->as.switch_workspace, plan);
       break;
     default:
     }
   }
-  return has_effect;
 }

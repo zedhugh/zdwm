@@ -123,16 +123,19 @@ void state_output_set_workarea(
 /**
  * @brief 设置 output 的当前 workspace
  *
- * @param state 状态实例指针
- * @param output_id     需要切换的当前 workspace 的 output 的 id
- * @param workspace_id  目标 workspace 的 id
+ * @param state             状态实例指针
+ * @param output_id         需要切换的当前 workspace 的 output 的 id
+ * @param workspace_id      目标 workspace 的 id
+ * @param old_workspace_id  用于输出变更之前 output 显示的 workspace ，
+ *                          如果不关心，可以传 nullptr
  *
  * @return 若 workspace 需要切换返回 true ，否则返回 false
  */
 bool state_output_set_current_workspace(
   state_t *state,
   output_id_t output_id,
-  workspace_id_t workspace_id
+  workspace_id_t workspace_id,
+  workspace_id_t *old_workspace_id
 );
 size_t state_output_count(const state_t *state);
 bool state_output_valid(const state_t *state, output_id_t id);
