@@ -32,7 +32,7 @@ static void route_map_request(
     if (window) layer_type = MAX(window->layer, layer_type);
   }
 
-  command_t cmd = {
+  command_t manage_window_cmd = {
     .type             = ZDWM_COMMAND_MANAGE_WINDOW,
     .as.manage_window = {
       .workspace = derive_window_workspace(state),
@@ -59,7 +59,7 @@ static void route_map_request(
   rule_action_t action = {.workspace = ZDWM_WORKSPACE_ID_INVALID};
   bool have_rule_match = rules_resolve(rules, &e->metadata, &action);
   if (have_rule_match) {
-    manage_window_command_t *data = &cmd.as.manage_window;
+    manage_window_command_t *data = &manage_window_cmd.as.manage_window;
     if (action.workspace != ZDWM_WORKSPACE_ID_INVALID) {
       data->workspace = action.workspace;
     }
@@ -74,9 +74,9 @@ static void route_map_request(
     }
   }
 
-  command_buffer_push(out, &cmd);
+  command_buffer_push(out, &manage_window_cmd);
   if (have_rule_match && action.switch_to_workspace) {
-    workspace_id_t workspace_id  = cmd.as.manage_window.workspace;
+    workspace_id_t workspace_id  = manage_window_cmd.as.manage_window.workspace;
     const workspace_t *workspace = state_workspace_get(state, workspace_id);
 
     if (workspace) {
@@ -93,6 +93,21 @@ static void route_map_request(
   }
 }
 
+static void route_window_remove(
+  state_t *state,
+  const window_remove_event_t *e,
+  command_buffer_t *out
+) {
+  const window_t *window = state_window_get(state, e->window);
+  if (!window) return;
+
+  command_t unmanage_window_cmd = {
+    .type               = ZDWM_COMMAND_UNMANAGE_WINDOW,
+    .as.unmanage.window = e->window,
+  };
+  command_buffer_push(out, &unmanage_window_cmd);
+}
+
 void policy_route_event(
   const policy_context_t *ctx,
   const event_t *event,
@@ -100,11 +115,12 @@ void policy_route_event(
 ) {
   auto state = ctx->state;
   switch (event->type) {
-  case ZDWM_EVENT_WINDOW_MAP_REQUEST: {
-    auto rules = ctx->rules;
-    route_map_request(state, rules, &event->as.window_map_request, out);
+  case ZDWM_EVENT_WINDOW_MAP_REQUEST:
+    route_map_request(state, ctx->rules, &event->as.window_map_request, out);
     break;
-  }
+  case ZDWM_EVENT_WINDOW_REMOVE:
+    route_window_remove(state, &event->as.window_remove, out);
+    break;
   default:
   }
 }
@@ -174,6 +190,56 @@ static void add_switch_workspace_effects(
   plan_push_effect(plan, &focus_effect);
 }
 
+static void unmanage_window(state_t *state, window_id_t window, plan_t *plan) {
+  const window_t *win = state_window_get(state, window);
+  if (!win) return;
+
+  auto workspace_id = win->workspace_id;
+  auto workspace    = state_workspace_get(state, workspace_id);
+  auto output       = state_output_get(state, workspace->output_id);
+
+  auto old_focused_window = workspace->focused_window_id;
+  state_window_remove(state, window);
+  if (output->current_workspace_id != workspace_id) return;
+
+  if (old_focused_window != workspace->focused_window_id) {
+    effect_t focus_effect = {
+      .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+      .as.focus.window = workspace->focused_window_id
+    };
+    plan_push_effect(plan, &focus_effect);
+  }
+}
+
+static void focus_window(state_t *state, window_id_t window, plan_t *plan) {
+  auto win = state_window_get(state, window);
+  if (!win) return;
+
+  auto workspace_id       = win->workspace_id;
+  auto workspace          = state_workspace_get(state, workspace_id);
+  auto old_focused_window = workspace->focused_window_id;
+
+  state_workspace_set_focused_window(state, workspace_id, window);
+  if (old_focused_window == workspace->focused_window_id) return;
+
+  effect_t focus_effect = {
+    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+    .as.focus.window = workspace->focused_window_id,
+  };
+  plan_push_effect(plan, &focus_effect);
+}
+
+static void kill_window(state_t *state, window_id_t window, plan_t *plan) {
+  auto win = state_window_get(state, window);
+  if (!win) return;
+
+  effect_t kill_effect = {
+    .type           = ZDWM_EFFECT_KILL_WINDOW,
+    .as.kill.window = window,
+  };
+  plan_push_effect(plan, &kill_effect);
+}
+
 static void switch_workspace(
   state_t *state,
   const switch_workspace_command_t *command,
@@ -207,6 +273,15 @@ void policy_apply_command(
     switch (cmd->type) {
     case ZDWM_COMMAND_MANAGE_WINDOW:
       manage_window(ctx, &cmd->as.manage_window, plan);
+      break;
+    case ZDWM_COMMAND_UNMANAGE_WINDOW:
+      unmanage_window(state, cmd->as.unmanage.window, plan);
+      break;
+    case ZDWM_COMMAND_FOCUS_WINDOW:
+      focus_window(state, cmd->as.focus.window, plan);
+      break;
+    case ZDWM_COMMAND_KILL_WINDOW:
+      kill_window(state, cmd->as.kill.window, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
       switch_workspace(state, &cmd->as.switch_workspace, plan);
