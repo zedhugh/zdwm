@@ -166,7 +166,7 @@ bool state_set_current_output(state_t *state, output_id_t output_id);
 const window_t *state_window_add(state_t *state, const window_info_t *info);
 const window_t *state_window_get(const state_t *state, window_id_t id);
 const window_t *state_window_at(const state_t *state, size_t index);
-/* 删除窗口，并同步将其从对应的堆叠栈中移除 */
+/* 删除窗口，同步将其从对应的堆叠栈中移除，并调整对应 workspace 的焦点窗口 */
 void state_window_remove(state_t *state, window_id_t id);
 size_t state_window_count(const state_t *state);
 

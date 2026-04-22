@@ -386,14 +386,20 @@ void state_window_remove(state_t *state, window_id_t id) {
   p_delete(&window->class_name);
   p_delete(&window->instance_name);
 
-  for (size_t i = index + 1; i < state->window_count; i++) {
-    state->windows[i - 1] = state->windows[i];
+  if (array_erase(state->windows, state->window_count, index)) {
+    window = &state->windows[state->window_count];
+    p_clear(window, 1);
+    window->id            = ZDWM_WINDOW_ID_INVALID;
+    window->transient_for = ZDWM_WINDOW_ID_INVALID;
+    window->workspace_id  = ZDWM_WORKSPACE_ID_INVALID;
+
+    for (size_t i = 0; i < state->window_count; ++i) {
+      window = &state->windows[i];
+      if (window->transient_for != id) continue;
+
+      window->transient_for = ZDWM_WINDOW_ID_INVALID;
+    }
   }
-  window = &state->windows[state->window_count - 1];
-  p_clear(window, 1);
-  window->id           = ZDWM_WINDOW_ID_INVALID;
-  window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-  state->window_count--;
 
   layer_stack_t *layer = &state->stacks[layer_type];
   if (layer) {
