@@ -48,3 +48,14 @@ typedef enum cross_output_policy_t {
   ZDWM_CROSS_OUTPUT_KEEP_WORKSPACE,
   ZDWM_CROSS_OUTPUT_MOVE_TO_TARGET_WORKSPACE,
 } cross_output_policy_t;
+
+typedef enum modifier_bit_t {
+  ZDWM_MOD_NONE    = 0u,
+  ZDWM_MOD_SHIFT   = 1u << 0,
+  ZDWM_MOD_CONTROL = 1u << 1,
+  ZDWM_MOD_1       = 1u << 2,
+  ZDWM_MOD_2       = 1u << 3,
+  ZDWM_MOD_3       = 1u << 4,
+  ZDWM_MOD_4       = 1u << 5,
+  ZDWM_MOD_5       = 1u << 6,
+} modifier_bit_t;

@@ -63,6 +63,7 @@ target_include_directories(${RUNTIME_CONFIG_TEST_APP_NAME}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(${RUNTIME_CONFIG_TEST_APP_NAME}
+    PRIVATE ${deps_xkbcommon_MODULE_NAME}
     PRIVATE ${CMAKE_DL_LIBS}
 )
 add_dependencies(${RUNTIME_CONFIG_TEST_APP_NAME}

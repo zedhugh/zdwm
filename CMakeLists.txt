@@ -70,6 +70,7 @@ pkg_check_modules(deps REQUIRED
     xcb-xinerama
     xcb-xkb
     xcb-xrm
+    xkbcommon
     xkbcommon-x11
 
     cairo

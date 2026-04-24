@@ -20,13 +20,6 @@ typedef enum event_type_t {
   ZDWM_EVENT_CONFIGURE_REQUEST,
 } event_type_t;
 
-typedef enum modifier_bit_t {
-  ZDWM_MOD_SHIFT = 1u << 0,
-  ZDWM_MOD_CTRL  = 1u << 1,
-  ZDWM_MOD_ALT   = 1u << 2,
-  ZDWM_MOD_SUPER = 1u << 3,
-} modifier_bit_t;
-
 typedef uint32_t modifier_mask_t;
 typedef uint32_t keysym_t;
 

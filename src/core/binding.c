@@ -1,13 +1,16 @@
 #include "core/binding.h"
 
+#include <ctype.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 #include <xkbcommon/xkbcommon.h>
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
 #include "base/array.h"
+#include "base/macros.h"
 #include "base/memory.h"
 #include "core/event.h"
 
@@ -71,10 +74,44 @@ binding_table_get_mode(binding_table_t *table, zdwm_binding_mode_id_t mode_id) {
   return nullptr;
 }
 
+typedef struct mod_entry_t {
+  const char *name;
+  modifier_mask_t mask;
+} mod_entry_t;
+
+static const mod_entry_t mod_table[] = {
+  {"Shift", ZDWM_MOD_SHIFT},
+  {"Control", ZDWM_MOD_CONTROL},
+  {"Mod1", ZDWM_MOD_1},
+  {"Mod2", ZDWM_MOD_2},
+  {"Mod3", ZDWM_MOD_3},
+  {"Mod4", ZDWM_MOD_4},
+  {"Mod5", ZDWM_MOD_5},
+};
+
+static modifier_mask_t lookup_modifier(const char *name, size_t len) {
+  for (size_t i = 0; i < countof(mod_table); ++i) {
+    if (strlen(mod_table[i].name) == len &&
+        strncmp(name, mod_table[i].name, len) == 0) {
+      return mod_table[i].mask;
+    }
+  }
+  return ZDWM_MOD_NONE;
+}
+
 /**
  * @brief 解析按键序列
  *
  * @details 按键序列不合法解析失败，解析成功会设置 modifiers 与 keysym 对应的值
+ *
+ * @notice
+ * 1. modifier 仅支持 Mod1 ~ Mod5, Control, Shift
+ * 2. 必须保证一个且仅能有一个除 modifier 外的按键
+ * 3. 按键序列通过 + 链接
+ * 4. + 前后可以有多个空格
+ * 5. 两个 + 之间必须有内容，如 "++", " +  + "
+ * 6. 不能以 + 开头和结尾
+ * 7. 按键符号必须能被 xkbcommon 解析，否则按键序列也不合法
  *
  * @param key_sequence  按键序列
  * @param modifiers     返回修饰键的指针
@@ -82,12 +119,54 @@ binding_table_get_mode(binding_table_t *table, zdwm_binding_mode_id_t mode_id) {
  *
  * @return 解析成功返回 true 否则返回 false
  */
-bool parse_key_sequence(
+static bool parse_key_sequence(
   const char *key_sequence,
   modifier_mask_t *modifiers,
   xkb_keysym_t *keysym
 ) {
-  /* TODO: */
+  if (!key_sequence || !modifiers || !keysym) return false;
+
+  modifier_mask_t mods = ZDWM_MOD_NONE;
+  xkb_keysym_t key     = XKB_KEY_NoSymbol;
+
+  const char *p   = key_sequence;
+  const char *end = key_sequence + strlen(key_sequence);
+
+  while (p < end) {
+    const char *plus    = strchr(p, '+');
+    const char *seg_end = plus ? plus : end;
+
+    const char *s = p;
+    while (s < seg_end && isspace((unsigned char)*s)) ++s;
+
+    const char *e = seg_end;
+    while (e > s && isspace((unsigned char)*(e - 1))) --e;
+
+    if (s == e) return false;
+
+    if (plus) {
+      modifier_mask_t mod = lookup_modifier(s, (size_t)(e - s));
+      if (mod == ZDWM_MOD_NONE) return false;
+      mods |= mod;
+      p     = plus + 1;
+    } else {
+      char key_buf[64];
+      size_t key_len = (size_t)(e - s);
+      if (key_len >= sizeof(key_buf)) return false;
+      memcpy(key_buf, s, key_len);
+      key_buf[key_len] = '\0';
+
+      key = xkb_keysym_from_name(key_buf, XKB_KEYSYM_CASE_INSENSITIVE);
+      if (key == XKB_KEY_NoSymbol) {
+        return false;
+      } else {
+        *modifiers = mods;
+        *keysym    = key;
+        return true;
+      }
+    }
+  }
+
   return false;
 }
 
