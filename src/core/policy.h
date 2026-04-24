@@ -1,5 +1,6 @@
 #pragma once
 
+#include <zdwm/action.h>
 #include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/plan.h"
@@ -9,6 +10,7 @@
 typedef struct policy_context_t {
   state_t *state;
   const rules_t *rules;
+  const zdwm_action_ctx_t action_ctx;
 } policy_context_t;
 
 /**

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <zdwm/action.h>
 #include <zdwm/layout.h>
 #include <zdwm/rules.h>
 #include <zdwm/types.h>
@@ -75,6 +76,68 @@ typedef struct zdwm_api_t {
     zdwm_config_builder_t *builder,
     const zdwm_rule_match_t *match,
     const zdwm_rule_action_t *action
+  );
+
+  /**
+   * @brief 用户调用这个函数添加按键模式
+   *
+   * @details 按键模式名不能重复，如果添加重复的名字仅第一次成功，后续将添加失败
+   *
+   * @param builder     配置构建上下文
+   * @param mode_name   按键模式名字，不能为 nullptr 或空字符串
+   *
+   * @return 添加成功返回新增模式的 id 否则返回 ZDWM_BINDING_MODE_ID_INVALID
+   */
+  zdwm_binding_mode_id_t (*add_mode)(
+    zdwm_config_builder_t *builder,
+    const char *mode_name
+  );
+
+  /**
+   * @brief 添加按键绑定
+   *
+   * @details mode_id 对应的模式不存在或 key_sequence 不合法，都会添加失败
+   *
+   * @param builder         配置构建上下文
+   * @param bind_mode       模式 ID
+   * @param key_sequence    按键序列的字符串表达
+   * @param action_fn       用户行为函数
+   * @param action_arg      用户行为函数所需的参数
+   *
+   * @return 添加成功返回 true 否则返回 false
+   */
+  bool (*bind)(
+    zdwm_config_builder_t *builder,
+    zdwm_binding_mode_id_t bind_mode,
+    const char *key_sequence,
+    zdwm_action_fn action_fn,
+    zdwm_action_arg_t *action_arg
+  );
+
+  /**
+   * @brief 设置默认模式
+   *
+   * @param table     按键绑定表
+   * @param mode_id   按键模式 ID
+   *
+   * @return 切换成功返回 true 否则返回 false
+   */
+  bool (*set_default_mode)(
+    zdwm_config_builder_t *builder,
+    zdwm_binding_mode_id_t mode_id
+  );
+
+  /**
+   * @brief 设置初始模式
+   *
+   * @param builder 配置构建上下文
+   * @param mode_id 按键模式 ID
+   *
+   * @return 切换成功返回 true 否则返回 false
+   */
+  bool (*set_initial_mode)(
+    zdwm_config_builder_t *builder,
+    zdwm_binding_mode_id_t mode_id
   );
 } zdwm_api_t;
 

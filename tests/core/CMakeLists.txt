@@ -10,6 +10,8 @@ add_executable(${TEST_APP_NAME}
     ${SOURCE_DIR}/backend/x11/backend.c
     ${SOURCE_DIR}/backend/x11/event.c
     ${SOURCE_DIR}/backend/x11/window.c
+    ${SOURCE_DIR}/core/action.c
+    ${SOURCE_DIR}/core/binding.c
     ${SOURCE_DIR}/core/command_buffer.c
     ${SOURCE_DIR}/core/event.c
     ${SOURCE_DIR}/core/layer.c

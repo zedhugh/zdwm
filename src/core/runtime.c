@@ -2,8 +2,10 @@
 
 #include <dlfcn.h>
 
+#include "action.h"
 #include "base/memory.h"
 #include "core/backend.h"
+#include "core/binding.h"
 #include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/layout.h"
@@ -52,8 +54,10 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   layout_registry_move(&desc->layouts, &runtime->layouts);
   rules_move(&desc->rules, &runtime->rules);
   runtime->config_module_handle = desc->config_module_handle;
+  runtime->binding_table        = desc->binding_table;
   desc->backend                 = nullptr;
   desc->config_module_handle    = nullptr;
+  desc->binding_table           = nullptr;
 
   state_init(
     &runtime->state,
@@ -72,6 +76,9 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
 
 void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
   if (!desc) return;
+
+  binding_table_destroy(desc->binding_table);
+  desc->binding_table = nullptr;
 
   if (desc->backend) {
     backend_destroy(desc->backend);
@@ -97,6 +104,8 @@ void runtime_shutdown(runtime_t *runtime) {
   layout_registry_cleanup(&runtime->layouts);
   rules_cleanup(&runtime->rules);
   state_cleanup(&runtime->state);
+  binding_table_destroy(runtime->binding_table);
+  runtime->binding_table = nullptr;
   backend_destroy(runtime->backend);
   runtime->backend = nullptr;
   if (runtime->config_module_handle) dlclose(runtime->config_module_handle);
@@ -111,8 +120,11 @@ void runtime_run(runtime_t *runtime) {
   plan_t *plan                     = &runtime->plan;
 
   policy_context_t ctx = {
-    .state = &runtime->state,
-    .rules = &runtime->rules,
+    .state      = &runtime->state,
+    .rules      = &runtime->rules,
+    .action_ctx = {
+      .spawn = spawn,
+    },
   };
 
   while (runtime->running) {

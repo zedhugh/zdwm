@@ -3,6 +3,7 @@
 #include <stddef.h>
 
 #include "core/backend.h"
+#include "core/binding.h"
 #include "core/command_buffer.h"
 #include "core/layout.h"
 #include "core/plan.h"
@@ -19,6 +20,7 @@ typedef struct runtime_init_desc_t {
   workspace_desc_t *workspaces;
   size_t workspace_count;
   void *config_module_handle;
+  binding_table_t *binding_table;
 } runtime_init_desc_t;
 
 typedef struct runtime_t {
@@ -32,6 +34,7 @@ typedef struct runtime_t {
   rules_t rules;
   backend_t *backend;
   void *config_module_handle;
+  binding_table_t *binding_table;
 } runtime_t;
 
 bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc);

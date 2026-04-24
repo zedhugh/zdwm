@@ -10,10 +10,12 @@ extern "C" {
 typedef uint32_t zdwm_layout_id_t;
 typedef uint32_t zdwm_window_id_t;
 typedef uint32_t zdwm_workspace_id_t;
+typedef uint32_t zdwm_binding_mode_id_t;
 
-#define ZDWM_LAYOUT_ID_INVALID    ((zdwm_layout_id_t)UINT32_MAX)
-#define ZDWM_WINDOW_ID_INVALID    ((zdwm_window_id_t)0)
-#define ZDWM_WORKSPACE_ID_INVALID ((zdwm_workspace_id_t)UINT32_MAX)
+#define ZDWM_LAYOUT_ID_INVALID       ((zdwm_layout_id_t)UINT32_MAX)
+#define ZDWM_WINDOW_ID_INVALID       ((zdwm_window_id_t)0)
+#define ZDWM_WORKSPACE_ID_INVALID    ((zdwm_workspace_id_t)UINT32_MAX)
+#define ZDWM_BINDING_MODE_ID_INVALID ((zdwm_binding_mode_id_t)UINT32_MAX)
 
 typedef struct zdwm_rect_t {
   int32_t x;

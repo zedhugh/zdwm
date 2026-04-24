@@ -1,6 +1,16 @@
 #include "config/defaults.h"
 
+#include <zdwm/action.h>
+#include <zdwm/types.h>
+
 #include "base/macros.h"
+
+static constexpr char launcher[] =
+  "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
+
+static void spawn(const zdwm_action_ctx_t *ctx, const zdwm_action_arg_t *arg) {
+  ctx->spawn(arg->str);
+}
 
 bool config_defaults_build(
   const zdwm_api_t *api,
@@ -45,6 +55,21 @@ bool config_defaults_build(
       return false;
     }
   }
+
+  auto default_mode = api->add_mode(builder, "default");
+
+  zdwm_action_arg_t launcher_arg = {.str = launcher};
+  api->bind(builder, default_mode, "Mod4+r", spawn, &launcher_arg);
+
+#define BIND(mode, key, fn, arg) \
+  api->bind(builder, mode, key, fn, &(zdwm_action_arg_t)arg)
+
+  BIND(default_mode, "Mod4+r", spawn, {.str = launcher});
+
+#undef BIND
+
+  api->set_default_mode(builder, default_mode);
+  api->set_initial_mode(builder, default_mode);
 
   return true;
 }

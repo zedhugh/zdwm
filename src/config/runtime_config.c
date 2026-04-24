@@ -8,6 +8,7 @@
 #include "base/memory.h"
 #include "config/defaults.h"
 #include "config/loader.h"
+#include "core/binding.h"
 #include "core/layout.h"
 #include "core/rules.h"
 #include "core/runtime.h"
@@ -21,6 +22,7 @@ struct zdwm_config_builder_t {
   size_t workspace_count;
   size_t workspace_capacity;
   size_t output_count;
+  binding_table_t *binding_table;
 };
 
 void runtime_config_cleanup(runtime_init_desc_t *desc) {
@@ -30,6 +32,8 @@ void runtime_config_cleanup(runtime_init_desc_t *desc) {
       desc->layouts.slot_capacity) {
     layout_registry_cleanup(&desc->layouts);
   }
+  binding_table_destroy(desc->binding_table);
+  desc->binding_table = nullptr;
   workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
   if (desc->config_module_handle) dlclose(desc->config_module_handle);
   desc->config_module_handle = nullptr;
@@ -45,6 +49,9 @@ static void config_builder_cleanup(zdwm_config_builder_t *builder) {
   workspace_desc_list_cleanup(&builder->workspaces, &builder->workspace_count);
   builder->workspace_capacity = 0;
   builder->output_count       = 0;
+
+  binding_table_destroy(builder->binding_table);
+  builder->binding_table = nullptr;
 }
 
 static layout_id_t runtime_config_register_layout(
@@ -144,6 +151,35 @@ static bool runtime_config_add_rule(
   return true;
 }
 
+static zdwm_binding_mode_id_t
+runtime_config_add_mode(zdwm_config_builder_t *builder, const char *mode_name) {
+  return binding_table_add_mode(builder->binding_table, mode_name);
+}
+
+static bool runtime_config_bind(
+  zdwm_config_builder_t *builder,
+  zdwm_binding_mode_id_t mode,
+  const char *key,
+  zdwm_action_fn fn,
+  zdwm_action_arg_t *arg
+) {
+  return binding_table_add_bind(builder->binding_table, mode, key, fn, arg);
+}
+
+static bool runtime_config_set_default_mode(
+  zdwm_config_builder_t *builder,
+  zdwm_binding_mode_id_t mode_id
+) {
+  return binding_table_set_default_mode(builder->binding_table, mode_id);
+}
+
+static bool runtime_config_set_initial_mode(
+  zdwm_config_builder_t *builder,
+  zdwm_binding_mode_id_t mode_id
+) {
+  return binding_table_set_current_mode(builder->binding_table, mode_id);
+}
+
 static bool config_builder_finish(
   zdwm_config_builder_t *builder,
   runtime_init_desc_t *out
@@ -154,8 +190,10 @@ static bool config_builder_finish(
 
   if (!layout_registry_move(&builder->layouts, &out->layouts)) return false;
   if (!rules_move(&builder->rules, &out->rules)) return false;
+  out->binding_table          = builder->binding_table;
   out->workspaces             = builder->workspaces;
   out->workspace_count        = builder->workspace_count;
+  builder->binding_table      = nullptr;
   builder->workspaces         = nullptr;
   builder->workspace_count    = 0;
   builder->workspace_capacity = 0;
@@ -172,6 +210,7 @@ static bool runtime_config_build(
   if (!setup || !out) return false;
   zdwm_config_builder_t builder = {0};
   builder.output_count          = output_count;
+  builder.binding_table         = binding_table_create();
 
   zdwm_api_t api = {
     .abi_version = ZDWM_CONFIG_ABI_VERSION,
@@ -183,6 +222,10 @@ static bool runtime_config_build(
     .register_layout  = runtime_config_register_layout,
     .define_workspace = runtime_config_define_workspace,
     .add_rule         = runtime_config_add_rule,
+    .add_mode         = runtime_config_add_mode,
+    .bind             = runtime_config_bind,
+    .set_default_mode = runtime_config_set_default_mode,
+    .set_initial_mode = runtime_config_set_initial_mode,
   };
   bool ok = setup(&api, &builder, outputs, output_count) &&
             config_builder_finish(&builder, out);
