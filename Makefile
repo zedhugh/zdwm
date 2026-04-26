@@ -32,17 +32,22 @@ debug: $(TARGET_NAME)
 
 prepare:
 	@cmake -S $(SRC_DIR) -B $(BUILD_DIR)
-	@cp $(BUILD_DIR)/compile_commands.json $(MAKEFILE_DIR)
+	@cp -lf $(BUILD_DIR)/compile_commands.json $(MAKEFILE_DIR)
 
 build: prepare
 	${RM} $(TARGET)
 	@cmake --build $(BUILD_DIR)
-	@cp $(BUILD_DIR)/$(TARGET_NAME) $(TARGET)
+	@cp -lf $(BUILD_DIR)/$(TARGET_NAME) $(TARGET)
 
-test:
+build-test:
 	cmake -S $(SRC_DIR) -B $(BUILD_DIR) -DBUILD_TESTING=ON
 	cmake --build $(BUILD_DIR)
+
+test: build-test
 	ctest --test-dir $(BUILD_DIR)
+
+test-detail: build-test
+	ctest --test-dir $(BUILD_DIR) --rerun-failed --output-on-failure
 
 install-hooks:
 	chmod +x $(MAKEFILE_DIR).githooks/pre-commit
