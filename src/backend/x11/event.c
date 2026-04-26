@@ -91,7 +91,6 @@ static bool handle_map_request(
 ) {
   xcb_window_t window = xcb_event->window;
 
-  event_reset(event);
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
 
   window_map_request_event_t *ev = &event->as.window_map_request;
@@ -170,7 +169,6 @@ static bool handle_unmap_notify(
   event_t *event,
   const xcb_unmap_notify_event_t *xcb_event
 ) {
-  event_reset(event);
   event->type                    = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
   event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_WITHDRAWN;
@@ -183,7 +181,6 @@ static bool handle_destroy_notify(
   event_t *event,
   const xcb_destroy_notify_event_t *xcb_event
 ) {
-  event_reset(event);
   event->type                    = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
   event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_DESTROY;
@@ -196,7 +193,6 @@ static bool handle_configure_request(
   event_t *event,
   const xcb_configure_request_event_t *xcb_event
 ) {
-  event_reset(event);
   event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
   /* TODO: */
   return true;
@@ -217,6 +213,7 @@ bool backend_next_event(backend_t *backend, event_t *event) {
     switch (response_type) {
 #define EVENT(type, handler)                              \
   case type:                                              \
+    event_reset(event);                                   \
     handled = handler(backend, event, (void *)raw_event); \
     break
 
