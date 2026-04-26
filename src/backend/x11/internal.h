@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
 #define ATOM_LIST(X)                   \
@@ -76,6 +77,7 @@ typedef struct window_list_t {
 } window_list_t;
 
 struct backend_t {
+  xcb_key_symbols_t *key_symbols;
   xcb_connection_t *conn;
   xcb_screen_t *screen;
   int screenp;

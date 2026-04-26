@@ -16,6 +16,7 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_CHANGE_BORDER_WIDTH,
   ZDWM_EFFECT_CHANGE_WINDOW_LIST,
   ZDWM_EFFECT_RESTACK_WINDOWS,
+  ZDWM_EFFECT_BIND_KEY,
 } effect_type_t;
 
 typedef struct effect_only_window_id_t {
@@ -48,6 +49,16 @@ typedef struct effect_window_list_t {
   size_t count;
 } effect_window_list_t;
 
+typedef struct key_bind_t {
+  modifier_mask_t modifiers;
+  keysym_t keysym;
+} key_bind_t;
+
+typedef struct effect_bind_key_t {
+  const key_bind_t *keys;
+  size_t count;
+} effect_bind_key_t;
+
 typedef struct effect_t {
   effect_type_t type;
   union {
@@ -61,6 +72,7 @@ typedef struct effect_t {
     effect_change_border_width_t change_border_width;
     effect_window_list_t change_window_list;
     effect_window_list_t restack_windows;
+    effect_bind_key_t bind_key;
   } as;
 } effect_t;
 

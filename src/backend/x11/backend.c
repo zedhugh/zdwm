@@ -9,6 +9,7 @@
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xfixes.h>
 #include <xcb/xinerama.h>
 #include <xcb/xproto.h>
@@ -159,6 +160,8 @@ backend_t *backend_create(const char *display_name) {
   } else {
     backend->have_xfixes = false;
   }
+
+  backend->key_symbols = xcb_key_symbols_alloc(conn);
 
   atoms_init(backend);
   create_wm_check_window(backend);
@@ -456,6 +459,12 @@ find_or_push_configure(window_configure_list_t *configs, xcb_window_t window) {
   return cfg;
 }
 
+static void
+backend_bind_key(backend_t *backend, const effect_bind_key_t *bind_key) {
+  auto root = backend->screen->root;
+  window_grab_keys(backend, root, bind_key->keys, bind_key->count);
+}
+
 static void backend_merge_effects(
   backend_t *backend,
   const effect_t *effects,
@@ -516,6 +525,9 @@ static void backend_merge_effects(
     case ZDWM_EFFECT_RESTACK_WINDOWS:
       backend_restack_windows(backend, &e->as.restack_windows);
       backend_change_window_list(backend, true, &e->as.restack_windows);
+      break;
+    case ZDWM_EFFECT_BIND_KEY:
+      backend_bind_key(backend, &e->as.bind_key);
       break;
     }
   }

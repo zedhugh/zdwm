@@ -20,9 +20,6 @@ typedef enum event_type_t {
   ZDWM_EVENT_CONFIGURE_REQUEST,
 } event_type_t;
 
-typedef uint32_t modifier_mask_t;
-typedef uint32_t keysym_t;
-
 typedef struct key_press_event_t {
   modifier_mask_t modifiers;
   keysym_t keysym;

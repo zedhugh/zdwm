@@ -4,11 +4,14 @@
 #include <stdint.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
 #include "base/array.h"
+#include "base/macros.h"
 #include "base/memory.h"
 #include "core/backend.h"
+#include "core/types.h"
 #include "internal.h"
 
 static char *window_get_text_property(
@@ -325,4 +328,53 @@ void window_list_push(window_list_t *window_list, xcb_window_t window) {
 void window_list_reset(window_list_t *window_list) {
   p_clear(window_list->windows, window_list->count);
   window_list->count = 0;
+}
+
+static uint16_t get_xcb_modifier(modifier_mask_t modifiers) {
+  typedef struct modifier_map_t {
+    modifier_bit_t modifier;
+    xcb_mod_mask_t mask;
+  } modifier_map_t;
+  static constexpr modifier_map_t modifier_map[] = {
+    {ZDWM_MOD_SHIFT, XCB_MOD_MASK_SHIFT},
+    {ZDWM_MOD_CONTROL, XCB_MOD_MASK_CONTROL},
+    {ZDWM_MOD_1, XCB_MOD_MASK_1},
+    {ZDWM_MOD_2, XCB_MOD_MASK_2},
+    {ZDWM_MOD_3, XCB_MOD_MASK_3},
+    {ZDWM_MOD_4, XCB_MOD_MASK_4},
+    {ZDWM_MOD_5, XCB_MOD_MASK_5},
+  };
+
+  uint16_t mods = ZDWM_MOD_NONE;
+  for (size_t i = 0; i < countof(modifier_map); ++i) {
+    auto item = &modifier_map[i];
+    if (modifiers & item->modifier) mods |= item->mask;
+  }
+  return mods;
+}
+
+void window_grab_keys(
+  backend_t *backend,
+  xcb_window_t window,
+  const key_bind_t *keys,
+  size_t count
+) {
+  auto conn        = backend->conn;
+  auto key_symbols = backend->key_symbols;
+
+  xcb_ungrab_key(conn, XCB_GRAB_ANY, window, XCB_MOD_MASK_ANY);
+
+  xcb_grab_mode_t mode = XCB_GRAB_MODE_ASYNC;
+
+  for (size_t i = 0; i < count; ++i) {
+    auto key      = &keys[i];
+    auto keycodes = xcb_key_symbols_get_keycode(key_symbols, keys->keysym);
+    if (!keycodes) continue;
+
+    auto modifiers = get_xcb_modifier(key->modifiers);
+    for (auto keycode = keycodes; *keycode != XCB_NO_SYMBOL; ++keycode) {
+      xcb_grab_key(conn, true, window, modifiers, *keycode, mode, mode);
+    }
+    p_delete(&keycodes);
+  }
 }

@@ -7,6 +7,7 @@
 #include <xcb/xproto.h>
 
 #include "core/backend.h"
+#include "core/plan.h"
 #include "internal.h"
 
 typedef struct atoms_t atoms_t;
@@ -87,3 +88,10 @@ void window_clean_event_mask(xcb_connection_t *conn, xcb_window_t window);
 
 void window_list_push(window_list_t *window_list, xcb_window_t window);
 void window_list_reset(window_list_t *window_list);
+
+void window_grab_keys(
+  backend_t *backend,
+  xcb_window_t window,
+  const key_bind_t *keys,
+  size_t count
+);

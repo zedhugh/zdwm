@@ -12,7 +12,7 @@
 #include "base/array.h"
 #include "base/macros.h"
 #include "base/memory.h"
-#include "core/event.h"
+#include "core/types.h"
 
 typedef struct key_binding_t {
   const char *key_str;

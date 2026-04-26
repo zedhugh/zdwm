@@ -17,6 +17,9 @@ typedef zdwm_rule_match_t       rule_match_t;
 typedef zdwm_rule_action_t      rule_action_t;
 /* clang-format on */
 
+typedef uint32_t modifier_mask_t;
+typedef uint32_t keysym_t;
+
 #define ZDWM_OUTPUT_ID_INVALID ((output_id_t)UINT32_MAX)
 
 typedef struct point_t {
