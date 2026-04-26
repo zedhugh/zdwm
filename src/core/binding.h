@@ -13,7 +13,7 @@ typedef struct key_binding_t {
   modifier_mask_t modifiers;
   keysym_t keysym;
   zdwm_action_fn *fn;
-  zdwm_action_arg_t *arg;
+  zdwm_action_arg_t arg;
 } key_binding_t;
 
 /**
@@ -47,7 +47,7 @@ bool binding_table_add_bind(
   zdwm_binding_mode_id_t mode_id,
   const char *key_sequence,
   zdwm_action_fn fn,
-  zdwm_action_arg_t *arg
+  zdwm_action_arg_t arg
 );
 
 /**

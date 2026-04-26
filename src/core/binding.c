@@ -167,7 +167,7 @@ bool binding_table_add_bind(
   zdwm_binding_mode_id_t mode_id,
   const char *key_sequence,
   zdwm_action_fn fn,
-  zdwm_action_arg_t *arg
+  zdwm_action_arg_t arg
 ) {
   binding_mode_t *mode = binding_table_get_mode(table, mode_id);
   if (!mode) return false;

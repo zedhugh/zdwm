@@ -161,7 +161,7 @@ static bool runtime_config_bind(
   zdwm_binding_mode_id_t mode,
   const char *key,
   zdwm_action_fn fn,
-  zdwm_action_arg_t *arg
+  zdwm_action_arg_t arg
 ) {
   return binding_table_add_bind(builder->binding_table, mode, key, fn, arg);
 }

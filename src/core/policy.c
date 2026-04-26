@@ -27,7 +27,7 @@ static void route_key_press(
   for (size_t i = 0; i < count; ++i) {
     auto binding = &bindings[i];
     if (binding->modifiers == e->modifiers && binding->keysym == e->keysym) {
-      binding->fn(action_ctx, binding->arg);
+      binding->fn(action_ctx, &binding->arg);
     }
   }
 }

@@ -59,7 +59,7 @@ bool config_defaults_build(
   auto default_mode = api->add_mode(builder, "default");
 
 #define BIND(mode, key, fn, arg) \
-  api->bind(builder, mode, key, fn, &(zdwm_action_arg_t)arg)
+  api->bind(builder, mode, key, fn, (zdwm_action_arg_t)arg)
 
   BIND(default_mode, "Mod4+r", spawn, {.str = launcher});
 
