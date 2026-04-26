@@ -7,7 +7,6 @@
 #include <xcb/xproto.h>
 
 #include "core/backend.h"
-#include "core/plan.h"
 #include "internal.h"
 
 typedef struct atoms_t atoms_t;

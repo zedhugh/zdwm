@@ -1,9 +1,20 @@
 #pragma once
 
+#include <stddef.h>
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
+#include "core/types.h"
+
 typedef struct binding_table_t binding_table_t;
+
+typedef struct key_binding_t {
+  const char *key_str;
+  modifier_mask_t modifiers;
+  keysym_t keysym;
+  zdwm_action_fn *fn;
+  zdwm_action_arg_t *arg;
+} key_binding_t;
 
 /**
  * @brief 添加新的模式
@@ -84,3 +95,18 @@ bool binding_table_set_current_mode(
  * @return 无法切换返回 false 否则返回 true
  */
 bool binding_table_cycle_mode(binding_table_t *table, int delta);
+
+/**
+ * @brief 获取当前按键绑定列表
+ *
+ * @param table 按键绑定表
+ * @param count 保存按键个数的指针
+ *
+ * @return 返回当前按键列表的头指针，调用方仅只读访问，不持有对应的内存。
+ *
+ * @notice
+ * 1. count 指针不能为 nullptr ，若 count 传 nullptr 视为调用方错误
+ * 2. 调用方需判断返回的指针是否为 nullptr
+ */
+const key_binding_t *
+binding_table_get_current_bindings(binding_table_t *table, size_t *count);

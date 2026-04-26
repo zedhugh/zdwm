@@ -185,6 +185,9 @@ void backend_destroy(backend_t *backend) {
   p_delete(&backend->kill.windows);
   p_clear(&backend->kill, 1);
 
+  xcb_key_symbols_free(backend->key_symbols);
+  backend->key_symbols = nullptr;
+
   xcb_disconnect(backend->conn);
   backend->conn = nullptr;
   free(backend);

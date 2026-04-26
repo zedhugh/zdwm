@@ -4,6 +4,7 @@
 #include <zdwm/types.h>
 
 #include "base/macros.h"
+#include "core/binding.h"
 #include "core/command.h"
 #include "core/command_buffer.h"
 #include "core/event.h"
@@ -13,6 +14,23 @@
 #include "core/types.h"
 #include "core/window.h"
 #include "core/wm_desc.h"
+
+static void route_key_press(
+  binding_table_t *binding_table,
+  const zdwm_action_ctx_t *action_ctx,
+  const key_press_event_t *e
+) {
+  size_t count  = 0;
+  auto bindings = binding_table_get_current_bindings(binding_table, &count);
+  if (!bindings) return;
+
+  for (size_t i = 0; i < count; ++i) {
+    auto binding = &bindings[i];
+    if (binding->modifiers == e->modifiers && binding->keysym == e->keysym) {
+      binding->fn(action_ctx, binding->arg);
+    }
+  }
+}
 
 static workspace_id_t derive_window_workspace(const state_t *state) {
   return state->outputs[state->current_output_index].current_workspace_id;
@@ -115,6 +133,9 @@ void policy_route_event(
 ) {
   auto state = ctx->state;
   switch (event->type) {
+  case ZDWM_EVENT_KEY_PRESS:
+    route_key_press(ctx->bind_table, &ctx->action_ctx, &event->as.key_press);
+    break;
   case ZDWM_EVENT_WINDOW_MAP_REQUEST:
     route_map_request(state, ctx->rules, &event->as.window_map_request, out);
     break;

@@ -5,9 +5,11 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_event.h>
 #include <xcb/xcb_icccm.h>
+#include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
 #include "backend/x11/window.h"
+#include "base/macros.h"
 #include "base/memory.h"
 #include "core/backend.h"
 #include "core/types.h"
@@ -198,6 +200,47 @@ static bool handle_configure_request(
   return true;
 }
 
+static modifier_mask_t get_modifiers(uint16_t mask) {
+  typedef struct modifier_map_t {
+    modifier_bit_t modifier;
+    xcb_mod_mask_t mask;
+  } modifier_map_t;
+  static constexpr modifier_map_t modifier_map[] = {
+    {ZDWM_MOD_SHIFT, XCB_MOD_MASK_SHIFT},
+    {ZDWM_MOD_CONTROL, XCB_MOD_MASK_CONTROL},
+    {ZDWM_MOD_1, XCB_MOD_MASK_1},
+    {ZDWM_MOD_2, XCB_MOD_MASK_2},
+    {ZDWM_MOD_3, XCB_MOD_MASK_3},
+    {ZDWM_MOD_4, XCB_MOD_MASK_4},
+    {ZDWM_MOD_5, XCB_MOD_MASK_5},
+  };
+
+  auto mods = ZDWM_MOD_NONE;
+  for (size_t i = 0; i < countof(modifier_map); ++i) {
+    auto item = &modifier_map[i];
+    if (mask & item->mask) mods |= item->modifier;
+  }
+  return mods;
+}
+
+static bool handle_key_press(
+  backend_t *backend,
+  event_t *event,
+  const xcb_key_press_event_t *xcb_event
+) {
+  auto keycode = xcb_event->detail;
+
+  /* keysym without any modifiers */
+  auto keysym = xcb_key_symbols_get_keysym(backend->key_symbols, keycode, 0);
+
+  event->type                   = ZDWM_EVENT_KEY_PRESS;
+  event->as.key_press.keycode   = keycode;
+  event->as.key_press.keysym    = keysym;
+  event->as.key_press.modifiers = get_modifiers(xcb_event->state);
+
+  return true;
+}
+
 bool backend_next_event(backend_t *backend, event_t *event) {
   if (!backend || !backend->conn || !event) return false;
 
@@ -221,6 +264,7 @@ bool backend_next_event(backend_t *backend, event_t *event) {
       EVENT(XCB_UNMAP_NOTIFY, handle_unmap_notify);
       EVENT(XCB_DESTROY_NOTIFY, handle_destroy_notify);
       EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
+      EVENT(XCB_KEY_PRESS, handle_key_press);
 
 #undef EVENT
 

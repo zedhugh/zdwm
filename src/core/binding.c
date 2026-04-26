@@ -14,14 +14,6 @@
 #include "base/memory.h"
 #include "core/types.h"
 
-typedef struct key_binding_t {
-  const char *key_str;
-  modifier_mask_t modifiers;
-  xkb_keysym_t keysym;
-  zdwm_action_fn *fn;
-  zdwm_action_arg_t *arg;
-} key_binding_t;
-
 typedef struct binding_mode_t {
   zdwm_binding_mode_id_t id;
   const char *name;
@@ -270,4 +262,13 @@ bool binding_table_cycle_mode(binding_table_t *table, int delta) {
   table->current_mode = table->modes[next_index].id;
 
   return true;
+}
+
+const key_binding_t *
+binding_table_get_current_bindings(binding_table_t *table, size_t *count) {
+  auto mode = binding_table_get_mode(table, table->current_mode);
+  if (!mode || !mode->count) return nullptr;
+
+  *count = mode->count;
+  return mode->items;
 }

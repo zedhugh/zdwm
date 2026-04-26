@@ -62,3 +62,8 @@ typedef enum modifier_bit_t {
   ZDWM_MOD_4       = 1u << 5,
   ZDWM_MOD_5       = 1u << 6,
 } modifier_bit_t;
+
+typedef struct key_bind_t {
+  modifier_mask_t modifiers;
+  keysym_t keysym;
+} key_bind_t;

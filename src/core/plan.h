@@ -49,11 +49,6 @@ typedef struct effect_window_list_t {
   size_t count;
 } effect_window_list_t;
 
-typedef struct key_bind_t {
-  modifier_mask_t modifiers;
-  keysym_t keysym;
-} key_bind_t;
-
 typedef struct effect_bind_key_t {
   const key_bind_t *keys;
   size_t count;

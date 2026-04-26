@@ -1,6 +1,7 @@
 #include "core/runtime.h"
 
 #include <dlfcn.h>
+#include <stddef.h>
 
 #include "action.h"
 #include "base/memory.h"
@@ -13,6 +14,7 @@
 #include "core/policy.h"
 #include "core/rules.h"
 #include "core/state.h"
+#include "core/types.h"
 #include "core/wm_desc.h"
 
 static bool runtime_workspace_desc_has_valid_layouts(
@@ -112,6 +114,32 @@ void runtime_shutdown(runtime_t *runtime) {
   runtime->config_module_handle = nullptr;
 }
 
+void runtime_setup(runtime_t *runtime) {
+  size_t bind_count = 0;
+  auto bindings =
+    binding_table_get_current_bindings(runtime->binding_table, &bind_count);
+  if (!bindings) return;
+
+  auto backend = runtime->backend;
+  auto plan    = &runtime->plan;
+
+  plan_reset(plan);
+
+  auto keys = p_new(key_bind_t, bind_count);
+  for (size_t i = 0; i < bind_count; ++i) {
+    keys[i].keysym    = bindings[i].keysym;
+    keys[i].modifiers = bindings[i].modifiers;
+  }
+  effect_t effect_bind_key = {
+    .type        = ZDWM_EFFECT_BIND_KEY,
+    .as.bind_key = {.count = bind_count, .keys = keys},
+  };
+  plan_push_effect(plan, &effect_bind_key);
+
+  backend_apply_effect(backend, plan->effects, plan->count);
+  plan_reset(plan);
+}
+
 void runtime_run(runtime_t *runtime) {
   runtime->running = true;
 
@@ -120,6 +148,7 @@ void runtime_run(runtime_t *runtime) {
   plan_t *plan                     = &runtime->plan;
 
   policy_context_t ctx = {
+    .bind_table = runtime->binding_table,
     .state      = &runtime->state,
     .rules      = &runtime->rules,
     .action_ctx = {
