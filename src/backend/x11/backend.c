@@ -179,6 +179,9 @@ void backend_destroy(backend_t *backend) {
   p_delete(&backend->unmap.windows);
   p_clear(&backend->unmap, 1);
 
+  p_delete(&backend->map.windows);
+  p_clear(&backend->map, 1);
+
   p_delete(&backend->kill.windows);
   p_clear(&backend->kill, 1);
 
