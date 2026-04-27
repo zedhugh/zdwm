@@ -121,3 +121,5 @@ void window_take_metadata(
  * @brief 窗口是否需要参与布局计算
  */
 bool window_need_layout(const window_t *window);
+bool window_need_move(const window_t *window, int32_t x, int32_t y);
+bool window_need_resize(const window_t *window, int32_t width, int32_t height);

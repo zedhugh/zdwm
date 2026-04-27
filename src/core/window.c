@@ -135,3 +135,14 @@ bool window_need_layout(const window_t *window) {
 
   return true;
 }
+
+bool window_need_resize(const window_t *window, int32_t width, int32_t height);
+
+bool window_need_move(const window_t *window, int32_t x, int32_t y) {
+  return window->frame_rect.x != x || window->frame_rect.y != y;
+}
+
+bool window_need_resize(const window_t *window, int32_t width, int32_t height) {
+  return window->frame_rect.width != width ||
+         window->frame_rect.height != height;
+}

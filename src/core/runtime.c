@@ -2,6 +2,7 @@
 
 #include <dlfcn.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/layout.h>
 
 #include "action.h"
@@ -145,9 +146,6 @@ void runtime_setup(runtime_t *runtime) {
 }
 
 static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
-  auto plan = &runtime->plan;
-  if (!plan->need_relayout) return nullptr;
-
   auto result = &runtime->layout_result;
   zdwm_layout_result_reset(result);
 
@@ -169,11 +167,24 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
     for (size_t j = 0; j < state_window_count(state); j++) {
       auto window = state_window_at(state, j);
       if (!window || window->workspace_id != workspace->id) continue;
-      if (!window_need_layout(window)) continue;
 
-      window_id_t *window_id_slot =
-        array_push(window_ids, window_count, window_list_capacity);
-      *window_id_slot = window->id;
+      if (window_need_layout(window)) {
+        window_id_t *window_id_slot =
+          array_push(window_ids, window_count, window_list_capacity);
+        *window_id_slot = window->id;
+      } else if (window->geometry_mode == ZDWM_GEOMETRY_FULLSCREEN) {
+        layout_item_t item = {
+          .window_id = window->id,
+          .rect      = output->geometry,
+        };
+        layout_result_push(result, item);
+      } else if (window->geometry_mode == ZDWM_GEOMETRY_MAXIMIZED) {
+        layout_item_t item = {
+          .window_id = window->id,
+          .rect      = output->workarea,
+        };
+        layout_result_push(result, item);
+      }
     }
 
     if (window_count) {
@@ -194,6 +205,44 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
   return result->item_count ? result : nullptr;
 }
 
+static void runtime_apply_window_rect(
+  state_t *state,
+  window_id_t window_id,
+  rect_t rect,
+  plan_t *plan
+) {
+  auto window = state_window_get(state, window_id);
+  if (!window) return;
+
+  auto need_move   = window_need_move(window, rect.x, rect.y);
+  auto need_resize = window_need_resize(window, rect.width, rect.height);
+  if (need_move) {
+    effect_t move_window_effect = {
+      .type    = ZDWM_EFFECT_MOVE_WINDOW,
+      .as.move = {
+        .window         = window_id,
+        .left_top_point = {.x = rect.x, .y = rect.y}
+      }
+    };
+    plan_push_effect(plan, &move_window_effect);
+  }
+  if (need_resize) {
+    effect_t resize_window_effect = {
+      .type      = ZDWM_EFFECT_RESIZE_WINDOW,
+      .as.resize = {
+        .window = window_id,
+        .width  = rect.width,
+        .height = rect.height,
+      }
+    };
+    plan_push_effect(plan, &resize_window_effect);
+  }
+
+  if (need_move || need_resize) {
+    state_window_set_frame_rect(state, window_id, rect);
+  }
+}
+
 static void runtime_arrange(runtime_t *runtime) {
   auto result = runtime_layout_calc(runtime);
   if (!result) return;
@@ -201,38 +250,8 @@ static void runtime_arrange(runtime_t *runtime) {
   auto state = &runtime->state;
   auto plan  = &runtime->plan;
   for (size_t i = 0; i < result->item_count; ++i) {
-    auto window_id = result->items[i].window_id;
-    auto window    = state_window_get(state, window_id);
-
-    if (!window) continue;
-
-    auto rect       = result->items[i].rect;
-    auto frame_rect = window->frame_rect;
-
-    if (frame_rect.x != rect.x || frame_rect.y != rect.y) {
-      effect_t move_window_effect = {
-        .type    = ZDWM_EFFECT_MOVE_WINDOW,
-        .as.move = {
-          .window         = window->id,
-          .left_top_point = {.x = rect.x, .y = rect.y}
-        }
-      };
-      plan_push_effect(plan, &move_window_effect);
-    }
-
-    if (frame_rect.width != rect.width || frame_rect.height != rect.height) {
-      effect_t resize_window_effect = {
-        .type      = ZDWM_EFFECT_RESIZE_WINDOW,
-        .as.resize = {
-          .window = window_id,
-          .width  = rect.width,
-          .height = rect.height,
-        }
-      };
-      plan_push_effect(plan, &resize_window_effect);
-    }
-
-    state_window_set_frame_rect(state, window_id, rect);
+    auto item = &result->items[i];
+    runtime_apply_window_rect(state, item->window_id, item->rect, plan);
   }
 }
 
@@ -261,7 +280,7 @@ void runtime_run(runtime_t *runtime) {
 
     policy_route_event(&ctx, &event, command_buffer);
     policy_apply_command(&ctx, command_buffer, plan);
-    runtime_arrange(runtime);
+    if (plan->need_relayout) runtime_arrange(runtime);
     if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
 
     event_cleanup(&event);
