@@ -67,3 +67,15 @@ typedef struct key_bind_t {
   modifier_mask_t modifiers;
   keysym_t keysym;
 } key_bind_t;
+
+typedef enum window_state_request_type_t {
+  ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN,
+  ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED,
+  ZDWM_WINDOW_STATE_REQUEST_MINIMIZED,
+} window_state_request_type_t;
+
+typedef enum window_state_request_action_t {
+  ZDWM_WINDOW_STATE_ACTION_ADD,
+  ZDWM_WINDOW_STATE_ACTION_REMOVE,
+  ZDWM_WINDOW_STATE_ACTION_TOGGLE,
+} window_state_request_action_t;

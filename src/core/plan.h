@@ -11,6 +11,9 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_FOCUS_WINDOW,
   ZDWM_EFFECT_KILL_WINDOW,
   ZDWM_EFFECT_WITHDRAW_WINDOW,
+  ZDWM_EFFECT_MINIMIZE_WINDOW,
+  ZDWM_EFFECT_MAXIMIZE_WINDOW,
+  ZDWM_EFFECT_FULLSCREEN_WINDOW,
   ZDWM_EFFECT_MOVE_WINDOW,
   ZDWM_EFFECT_RESIZE_WINDOW,
   ZDWM_EFFECT_CHANGE_BORDER_COLOR,
@@ -55,6 +58,11 @@ typedef struct effect_bind_key_t {
   size_t count;
 } effect_bind_key_t;
 
+typedef struct effect_bool_window_t {
+  window_id_t window;
+  bool value;
+} effect_bool_window_t;
+
 typedef struct effect_t {
   effect_type_t type;
   union {
@@ -63,6 +71,9 @@ typedef struct effect_t {
     effect_only_window_id_t focus;
     effect_only_window_id_t kill;
     effect_only_window_id_t withdraw;
+    effect_bool_window_t minimize;
+    effect_bool_window_t maximize;
+    effect_bool_window_t fullscreen;
     effect_move_window_t move;
     effect_resize_window_t resize;
     effect_change_border_color_t change_border_color;

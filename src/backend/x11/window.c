@@ -340,6 +340,24 @@ void window_set_icccm_wm_state(
   xcb_icccm_set_wm_hints(conn, window, &hints);
 }
 
+void window_set_net_wm_state(
+  backend_t *backend,
+  xcb_window_t window,
+  size_t count,
+  xcb_atom_t *atoms
+) {
+  xcb_change_property(
+    backend->conn,
+    XCB_PROP_MODE_REPLACE,
+    window,
+    backend->atoms._NET_WM_STATE,
+    XCB_ATOM_ATOM,
+    32,
+    count,
+    atoms
+  );
+}
+
 void window_list_push(window_list_t *window_list, xcb_window_t window) {
   xcb_window_t *win =
     array_push(window_list->windows, window_list->count, window_list->capacity);

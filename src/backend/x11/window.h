@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
+#include <xcb/xcb.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xproto.h>
 
@@ -88,6 +89,12 @@ void window_set_icccm_wm_state(
   xcb_connection_t *conn,
   xcb_window_t window,
   xcb_icccm_wm_state_t state
+);
+void window_set_net_wm_state(
+  backend_t *backend,
+  xcb_window_t window,
+  size_t count,
+  xcb_atom_t *atoms
 );
 
 void window_list_push(window_list_t *window_list, xcb_window_t window);

@@ -502,6 +502,33 @@ static void backend_merge_effects(
         XCB_ICCCM_WM_STATE_WITHDRAWN
       );
       break;
+    case ZDWM_EFFECT_MINIMIZE_WINDOW: {
+      auto window                = e->as.minimize.window;
+      xcb_icccm_wm_state_t state = XCB_ICCCM_WM_STATE_NORMAL;
+      if (e->as.minimize.value) state = XCB_ICCCM_WM_STATE_ICONIC;
+      window_set_icccm_wm_state(backend->conn, window, state);
+    } break;
+    case ZDWM_EFFECT_MAXIMIZE_WINDOW: {
+      auto window = e->as.maximize.window;
+      if (e->as.maximize.value) {
+        xcb_atom_t max_atoms[] = {
+          backend->atoms._NET_WM_STATE_MAXIMIZED_HORZ,
+          backend->atoms._NET_WM_STATE_MAXIMIZED_VERT
+        };
+        window_set_net_wm_state(backend, window, countof(max_atoms), max_atoms);
+      } else {
+        window_set_net_wm_state(backend, window, 0, nullptr);
+      }
+    } break;
+    case ZDWM_EFFECT_FULLSCREEN_WINDOW: {
+      auto window = e->as.fullscreen.window;
+      if (e->as.fullscreen.value) {
+        auto fullscreen_atom = backend->atoms._NET_WM_STATE_FULLSCREEN;
+        window_set_net_wm_state(backend, window, 1, &fullscreen_atom);
+      } else {
+        window_set_net_wm_state(backend, window, 0, nullptr);
+      }
+    } break;
     case ZDWM_EFFECT_MOVE_WINDOW: {
       window_configure_t *cfg =
         find_or_push_configure(configs, e->as.move.window);

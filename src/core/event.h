@@ -108,21 +108,9 @@ typedef struct window_activate_request_event_t {
   window_activation_source_t source;
 } window_activate_request_event_t;
 
-typedef enum window_state_request_kind_t {
-  ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN,
-  ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED,
-  ZDWM_WINDOW_STATE_REQUEST_MINIMIZED,
-} window_state_request_kind_t;
-
-typedef enum window_state_request_action_t {
-  ZDWM_WINDOW_STATE_REQUEST_ACTION_ADD,
-  ZDWM_WINDOW_STATE_REQUEST_ACTION_REMOVE,
-  ZDWM_WINDOW_STATE_REQUEST_ACTION_TOGGLE,
-} window_state_request_action_t;
-
 typedef struct window_state_request_event_t {
   window_id_t window;
-  window_state_request_kind_t kind;
+  window_state_request_type_t type;
   window_state_request_action_t action;
 } window_state_request_event_t;
 

@@ -243,18 +243,6 @@ static void unmanage_window(state_t *state, window_id_t window, plan_t *plan) {
   }
 }
 
-static void
-withdraw_window(const state_t *state, window_id_t window, plan_t *plan) {
-  auto win = state_window_get(state, window);
-  if (!win) return;
-
-  effect_t withdraw_window_effect = {
-    .type               = ZDWM_EFFECT_WITHDRAW_WINDOW,
-    .as.withdraw.window = win->id,
-  };
-  plan_push_effect(plan, &withdraw_window_effect);
-}
-
 static void focus_window(state_t *state, window_id_t window, plan_t *plan) {
   auto win = state_window_get(state, window);
   if (!win) return;
@@ -282,6 +270,177 @@ static void kill_window(state_t *state, window_id_t window, plan_t *plan) {
     .as.kill.window = window,
   };
   plan_push_effect(plan, &kill_effect);
+}
+
+static void withdraw_window(state_t *state, window_id_t window, plan_t *plan) {
+  auto win = state_window_get(state, window);
+  if (!win) return;
+
+  effect_t withdraw_window_effect = {
+    .type               = ZDWM_EFFECT_WITHDRAW_WINDOW,
+    .as.withdraw.window = window,
+  };
+  plan_push_effect(plan, &withdraw_window_effect);
+}
+
+static void fullscreen_window(
+  state_t *state,
+  window_id_t window_id,
+  bool value,
+  plan_t *plan
+) {
+  auto window = state_window_get(state, window_id);
+  if (!window) return;
+
+  if ((value && window->geometry_mode == ZDWM_GEOMETRY_FULLSCREEN) ||
+      (!value && window->geometry_mode != ZDWM_GEOMETRY_FULLSCREEN)) {
+    return;
+  }
+
+  effect_t fullscreen_window_effect = {
+    .type          = ZDWM_EFFECT_FULLSCREEN_WINDOW,
+    .as.fullscreen = {.window = window_id, .value = value},
+  };
+  plan_push_effect(plan, &fullscreen_window_effect);
+
+  if (value) {
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_FULLSCREEN);
+    if (window->floating) {
+      state_window_set_float_rect(state, window_id, window->frame_rect);
+    }
+  } else {
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
+    if (window->floating) {
+      state_window_set_frame_rect(state, window_id, window->float_rect);
+    }
+  }
+
+  plan->need_relayout = true;
+}
+
+static void maximize_window(
+  state_t *state,
+  window_id_t window_id,
+  bool value,
+  plan_t *plan
+) {
+  auto window = state_window_get(state, window_id);
+  if (!window) return;
+
+  if ((value && window->geometry_mode == ZDWM_GEOMETRY_MAXIMIZED) ||
+      (!value && window->geometry_mode != ZDWM_GEOMETRY_MAXIMIZED)) {
+    return;
+  }
+
+  effect_t maximize_window_effect = {
+    .type        = ZDWM_EFFECT_MAXIMIZE_WINDOW,
+    .as.maximize = {.window = window_id, .value = value},
+  };
+  plan_push_effect(plan, &maximize_window_effect);
+
+  if (value) {
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MAXIMIZED);
+    if (window->floating) {
+      state_window_set_float_rect(state, window_id, window->frame_rect);
+    }
+  } else {
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
+    if (window->floating) {
+      state_window_set_frame_rect(state, window_id, window->float_rect);
+    }
+  }
+
+  plan->need_relayout = true;
+}
+
+static void minimize_window(
+  state_t *state,
+  window_id_t window_id,
+  bool value,
+  plan_t *plan
+) {
+  auto window = state_window_get(state, window_id);
+  if (!window) return;
+
+  if ((value && window->geometry_mode == ZDWM_GEOMETRY_MINIMIZED) ||
+      (!value && window->geometry_mode != ZDWM_GEOMETRY_MINIMIZED)) {
+    return;
+  }
+
+  effect_t minimize_window_effect = {
+    .type        = ZDWM_EFFECT_MINIMIZE_WINDOW,
+    .as.minimize = {.window = window_id, .value = value},
+  };
+  plan_push_effect(plan, &minimize_window_effect);
+
+  if (value) {
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MINIMIZED);
+
+    effect_t unmap_effect = {
+      .type            = ZDWM_EFFECT_UNMAP_WINDOW,
+      .as.unmap.window = window_id,
+    };
+    plan_push_effect(plan, &unmap_effect);
+    /* TODO: 可能需要处理焦点 */
+  } else {
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
+    state_workspace_set_focused_window(state, window->workspace_id, window_id);
+    effect_t map_effect = {
+      .type          = ZDWM_EFFECT_MAP_WINDOW,
+      .as.map.window = window_id
+    };
+    effect_t focus_effect = {
+      .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+      .as.focus.window = window_id,
+    };
+    plan_push_effect(plan, &map_effect);
+    plan_push_effect(plan, &focus_effect);
+  }
+
+  plan->need_relayout = true;
+}
+
+static void change_window_state(
+  state_t *state,
+  const window_state_change_command_t *command,
+  plan_t *plan
+) {
+  auto window = state_window_get(state, command->window);
+  if (!window) return;
+
+  bool value = false;
+  switch (command->action) {
+  case ZDWM_WINDOW_STATE_ACTION_ADD:
+    value = true;
+    break;
+  case ZDWM_WINDOW_STATE_ACTION_REMOVE:
+    value = false;
+    break;
+  case ZDWM_WINDOW_STATE_ACTION_TOGGLE:
+    switch (command->type) {
+    case ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN:
+      value = !(window->geometry_mode == ZDWM_GEOMETRY_FULLSCREEN);
+      break;
+    case ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED:
+      value = !(window->geometry_mode == ZDWM_GEOMETRY_MAXIMIZED);
+      break;
+    case ZDWM_WINDOW_STATE_REQUEST_MINIMIZED:
+      value = !(window->geometry_mode == ZDWM_GEOMETRY_MINIMIZED);
+      break;
+    }
+  }
+
+  switch (command->type) {
+  case ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN:
+    fullscreen_window(state, window->id, value, plan);
+    break;
+  case ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED:
+    maximize_window(state, window->id, value, plan);
+    break;
+  case ZDWM_WINDOW_STATE_REQUEST_MINIMIZED:
+    minimize_window(state, window->id, value, plan);
+    break;
+  }
 }
 
 static void switch_workspace(
@@ -321,19 +480,21 @@ void policy_apply_command(
     case ZDWM_COMMAND_UNMANAGE_WINDOW:
       unmanage_window(state, cmd->as.unmanage.window, plan);
       break;
-    case ZDWM_COMMAND_WITHDRAW_WINDOW:
-      withdraw_window(state, cmd->as.withdraw.window, plan);
-      break;
     case ZDWM_COMMAND_FOCUS_WINDOW:
       focus_window(state, cmd->as.focus.window, plan);
       break;
     case ZDWM_COMMAND_KILL_WINDOW:
       kill_window(state, cmd->as.kill.window, plan);
       break;
+    case ZDWM_COMMAND_WITHDRAW_WINDOW:
+      withdraw_window(state, cmd->as.withdraw.window, plan);
+      break;
+    case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
+      change_window_state(state, &cmd->as.state_change, plan);
+      break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
       switch_workspace(state, &cmd->as.switch_workspace, plan);
       break;
-    default:
     }
   }
 }

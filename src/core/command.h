@@ -6,9 +6,10 @@
 typedef enum command_type_t {
   ZDWM_COMMAND_MANAGE_WINDOW,
   ZDWM_COMMAND_UNMANAGE_WINDOW,
-  ZDWM_COMMAND_WITHDRAW_WINDOW,
   ZDWM_COMMAND_FOCUS_WINDOW,
   ZDWM_COMMAND_KILL_WINDOW,
+  ZDWM_COMMAND_WITHDRAW_WINDOW,
+  ZDWM_COMMAND_CHANGE_WINDOW_STATE,
   ZDWM_COMMAND_SWITCH_WORKSPACE,
 } command_type_t;
 
@@ -27,6 +28,12 @@ typedef struct only_window_command_t {
   window_id_t window;
 } only_window_command_t;
 
+typedef struct window_state_change_command_t {
+  window_id_t window;
+  window_state_request_type_t type;
+  window_state_request_action_t action;
+} window_state_change_command_t;
+
 /**
  * @brief 非 owning 的命令值对象
  * @details
@@ -41,9 +48,10 @@ typedef struct command_t {
   union {
     manage_window_command_t manage_window;
     only_window_command_t unmanage;
-    only_window_command_t withdraw;
     only_window_command_t focus;
     only_window_command_t kill;
+    only_window_command_t withdraw;
+    window_state_change_command_t state_change;
     switch_workspace_command_t switch_workspace;
   } as;
 } command_t;
