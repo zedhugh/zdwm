@@ -319,6 +319,27 @@ void window_clean_event_mask(xcb_connection_t *conn, xcb_window_t window) {
   xcb_change_window_attributes_aux(conn, window, change_mask, &value_list);
 }
 
+void window_set_icccm_wm_state(
+  xcb_connection_t *conn,
+  xcb_window_t window,
+  xcb_icccm_wm_state_t state
+) {
+  xcb_icccm_wm_hints_t hints;
+  xcb_icccm_wm_hints_set_none(&hints);
+  switch (state) {
+  case XCB_ICCCM_WM_STATE_WITHDRAWN:
+    xcb_icccm_wm_hints_set_withdrawn(&hints);
+    break;
+  case XCB_ICCCM_WM_STATE_NORMAL:
+    xcb_icccm_wm_hints_set_normal(&hints);
+    break;
+  case XCB_ICCCM_WM_STATE_ICONIC:
+    xcb_icccm_wm_hints_set_iconic(&hints);
+    break;
+  }
+  xcb_icccm_set_wm_hints(conn, window, &hints);
+}
+
 void window_list_push(window_list_t *window_list, xcb_window_t window) {
   xcb_window_t *win =
     array_push(window_list->windows, window_list->count, window_list->capacity);

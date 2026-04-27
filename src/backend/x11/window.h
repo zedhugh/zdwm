@@ -84,6 +84,11 @@ void window_kill(backend_t *backend, xcb_window_t window);
 void root_set_event_mask(backend_t *backend);
 void window_set_event_mask(xcb_connection_t *conn, xcb_window_t window);
 void window_clean_event_mask(xcb_connection_t *conn, xcb_window_t window);
+void window_set_icccm_wm_state(
+  xcb_connection_t *conn,
+  xcb_window_t window,
+  xcb_icccm_wm_state_t state
+);
 
 void window_list_push(window_list_t *window_list, xcb_window_t window);
 void window_list_reset(window_list_t *window_list);

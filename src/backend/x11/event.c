@@ -173,7 +173,11 @@ static bool handle_unmap_notify(
 ) {
   event->type                    = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
-  event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_WITHDRAWN;
+  if (XCB_EVENT_SENT(xcb_event)) {
+    event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_WITHDRAWN;
+  } else {
+    event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_DESTROY;
+  }
 
   return true;
 }
@@ -251,7 +255,8 @@ bool backend_next_event(backend_t *backend, event_t *event) {
     uint8_t response_type = XCB_EVENT_RESPONSE_TYPE(raw_event);
     bool handled          = false;
 
-    printf("xcb event type: %u\n", response_type);
+    auto label = xcb_event_get_label(response_type);
+    printf("xcb event type: %s[%u]\n", label, response_type);
 
     switch (response_type) {
 #define EVENT(type, handler)                              \

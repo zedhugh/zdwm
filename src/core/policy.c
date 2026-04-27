@@ -119,11 +119,22 @@ static void route_window_remove(
   const window_t *window = state_window_get(state, e->window);
   if (!window) return;
 
-  command_t unmanage_window_cmd = {
-    .type               = ZDWM_COMMAND_UNMANAGE_WINDOW,
-    .as.unmanage.window = e->window,
-  };
-  command_buffer_push(out, &unmanage_window_cmd);
+  switch (e->reason) {
+  case ZDWM_WINDOW_REMOVE_WITHDRAWN:
+    command_t withdrawn_window_cmd = {
+      .type               = ZDWM_COMMAND_WITHDRAW_WINDOW,
+      .as.withdraw.window = e->window,
+    };
+    command_buffer_push(out, &withdrawn_window_cmd);
+    break;
+  case ZDWM_WINDOW_REMOVE_DESTROY:
+    command_t unmanage_window_cmd = {
+      .type               = ZDWM_COMMAND_UNMANAGE_WINDOW,
+      .as.unmanage.window = e->window,
+    };
+    command_buffer_push(out, &unmanage_window_cmd);
+    break;
+  }
 }
 
 void policy_route_event(
@@ -232,6 +243,18 @@ static void unmanage_window(state_t *state, window_id_t window, plan_t *plan) {
   }
 }
 
+static void
+withdraw_window(const state_t *state, window_id_t window, plan_t *plan) {
+  auto win = state_window_get(state, window);
+  if (!win) return;
+
+  effect_t withdraw_window_effect = {
+    .type               = ZDWM_EFFECT_WITHDRAW_WINDOW,
+    .as.withdraw.window = win->id,
+  };
+  plan_push_effect(plan, &withdraw_window_effect);
+}
+
 static void focus_window(state_t *state, window_id_t window, plan_t *plan) {
   auto win = state_window_get(state, window);
   if (!win) return;
@@ -297,6 +320,9 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_UNMANAGE_WINDOW:
       unmanage_window(state, cmd->as.unmanage.window, plan);
+      break;
+    case ZDWM_COMMAND_WITHDRAW_WINDOW:
+      withdraw_window(state, cmd->as.withdraw.window, plan);
       break;
     case ZDWM_COMMAND_FOCUS_WINDOW:
       focus_window(state, cmd->as.focus.window, plan);

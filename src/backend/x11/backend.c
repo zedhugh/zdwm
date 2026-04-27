@@ -9,6 +9,7 @@
 #include <xcb/randr.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xfixes.h>
 #include <xcb/xinerama.h>
@@ -493,6 +494,13 @@ static void backend_merge_effects(
       break;
     case ZDWM_EFFECT_KILL_WINDOW:
       window_list_push(&backend->kill, e->as.kill.window);
+      break;
+    case ZDWM_EFFECT_WITHDRAW_WINDOW:
+      window_set_icccm_wm_state(
+        backend->conn,
+        e->as.withdraw.window,
+        XCB_ICCCM_WM_STATE_WITHDRAWN
+      );
       break;
     case ZDWM_EFFECT_MOVE_WINDOW: {
       window_configure_t *cfg =
