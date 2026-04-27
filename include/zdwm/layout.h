@@ -14,6 +14,7 @@ extern "C" {
 typedef struct zdwm_layout_ctx_t {
   zdwm_workspace_id_t workspace_id;
   zdwm_window_id_t focused_window_id;
+  zdwm_rect_t output_geometry;
   zdwm_rect_t workarea;
   const zdwm_window_id_t *window_ids;
   size_t window_count;
@@ -30,6 +31,11 @@ typedef struct zdwm_layout_result_t {
   size_t item_capacity;
 } zdwm_layout_result_t;
 
+/**
+ * @brief 自动布局算法
+ *
+ * @return out 有变化返回 true 否则返回 true
+ */
 typedef bool (*zdwm_layout_fn)(
   const zdwm_layout_ctx_t *ctx,
   zdwm_layout_result_t *out

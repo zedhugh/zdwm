@@ -18,8 +18,9 @@ extern "C" {
 typedef struct zdwm_config_builder_t zdwm_config_builder_t;
 
 typedef struct zdwm_builtin_layouts_t {
-  zdwm_layout_fn tile;
-  zdwm_layout_fn monocle;
+  zdwm_layout_fn fair;
+  zdwm_layout_fn fullscreen;
+  zdwm_layout_fn maximize;
 } zdwm_builtin_layouts_t;
 
 typedef struct zdwm_api_t {

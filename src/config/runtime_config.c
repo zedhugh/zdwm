@@ -14,6 +14,9 @@
 #include "core/runtime.h"
 #include "core/types.h"
 #include "core/wm_desc.h"
+#include "layouts/fair.h"
+#include "layouts/fullscreen.h"
+#include "layouts/maximize.h"
 
 struct zdwm_config_builder_t {
   layout_registry_t layouts;
@@ -216,8 +219,9 @@ static bool runtime_config_build(
     .abi_version = ZDWM_CONFIG_ABI_VERSION,
     .builtin_layouts =
       {
-        .tile    = nullptr,
-        .monocle = nullptr,
+        .fair       = fair,
+        .fullscreen = fullscreen,
+        .maximize   = maximize,
       },
     .register_layout  = runtime_config_register_layout,
     .define_workspace = runtime_config_define_workspace,

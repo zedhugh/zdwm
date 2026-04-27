@@ -53,6 +53,9 @@ add_executable(${RUNTIME_CONFIG_TEST_APP_NAME}
     ${SOURCE_DIR}/core/runtime.c
     ${SOURCE_DIR}/core/state.c
     ${SOURCE_DIR}/core/window.c
+    ${SOURCE_DIR}/layouts/fair.c
+    ${SOURCE_DIR}/layouts/fullscreen.c
+    ${SOURCE_DIR}/layouts/maximize.c
 )
 target_include_directories(${RUNTIME_CONFIG_TEST_APP_NAME} SYSTEM
     PRIVATE ${INCLUDE_DIR}
@@ -63,6 +66,7 @@ target_include_directories(${RUNTIME_CONFIG_TEST_APP_NAME}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 target_link_libraries(${RUNTIME_CONFIG_TEST_APP_NAME}
+    PRIVATE m
     PRIVATE ${deps_xkbcommon_MODULE_NAME}
     PRIVATE ${CMAKE_DL_LIBS}
 )

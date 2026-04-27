@@ -20,29 +20,42 @@ bool config_defaults_build(
 ) {
   if (!api || !builder || !outputs || output_count == 0) return false;
 
-  zdwm_layout_id_t tile_id = api->register_layout(
+  zdwm_layout_id_t fair_id = api->register_layout(
     builder,
-    "tile",
+    "fair",
     "[]=",
-    "builtin tile",
-    api->builtin_layouts.tile
+    "builtin fair",
+    api->builtin_layouts.fair
   );
-  zdwm_layout_id_t monocle_id = api->register_layout(
+  zdwm_layout_id_t maximize_id = api->register_layout(
     builder,
-    "monocle",
+    "maximize",
     "[M]",
-    "builtin monocle",
-    api->builtin_layouts.monocle
+    "builtin maximize",
+    api->builtin_layouts.maximize
+  );
+  zdwm_layout_id_t fullscreen_id = api->register_layout(
+    builder,
+    "fullscreen",
+    "[F]",
+    "builtin fullscreen",
+    api->builtin_layouts.fullscreen
   );
   zdwm_layout_id_t floating_id =
     api->register_layout(builder, "floating", "><>", "floating", nullptr);
-  if (tile_id == ZDWM_LAYOUT_ID_INVALID ||
-      monocle_id == ZDWM_LAYOUT_ID_INVALID ||
+  if (fair_id == ZDWM_LAYOUT_ID_INVALID ||
+      maximize_id == ZDWM_LAYOUT_ID_INVALID ||
+      fullscreen_id == ZDWM_LAYOUT_ID_INVALID ||
       floating_id == ZDWM_LAYOUT_ID_INVALID) {
     return false;
   }
 
-  zdwm_layout_id_t layout_ids[] = {tile_id, monocle_id, floating_id};
+  zdwm_layout_id_t layout_ids[] = {
+    fair_id,
+    maximize_id,
+    fullscreen_id,
+    floating_id,
+  };
   for (size_t i = 0; i < output_count; i++) {
     if (api->define_workspace(
           builder,
@@ -50,7 +63,7 @@ bool config_defaults_build(
           "main",
           layout_ids,
           countof(layout_ids),
-          tile_id
+          fair_id
         ) == ZDWM_WORKSPACE_ID_INVALID) {
       return false;
     }
