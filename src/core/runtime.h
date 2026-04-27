@@ -30,6 +30,7 @@ typedef struct runtime_t {
   plan_t plan;
   command_buffer_t command_buffer;
   state_t state;
+  layout_result_t layout_result;
   layout_registry_t layouts;
   rules_t rules;
   backend_t *backend;

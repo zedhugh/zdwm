@@ -2,8 +2,10 @@
 
 #include <dlfcn.h>
 #include <stddef.h>
+#include <zdwm/layout.h>
 
 #include "action.h"
+#include "base/array.h"
 #include "base/memory.h"
 #include "core/backend.h"
 #include "core/binding.h"
@@ -15,6 +17,7 @@
 #include "core/rules.h"
 #include "core/state.h"
 #include "core/types.h"
+#include "core/window.h"
 #include "core/wm_desc.h"
 
 static bool runtime_workspace_desc_has_valid_layouts(
@@ -106,6 +109,7 @@ void runtime_shutdown(runtime_t *runtime) {
   layout_registry_cleanup(&runtime->layouts);
   rules_cleanup(&runtime->rules);
   state_cleanup(&runtime->state);
+  layout_result_cleanup(&runtime->layout_result);
   binding_table_destroy(runtime->binding_table);
   runtime->binding_table = nullptr;
   backend_destroy(runtime->backend);
@@ -140,6 +144,98 @@ void runtime_setup(runtime_t *runtime) {
   plan_reset(plan);
 }
 
+static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
+  auto plan = &runtime->plan;
+  if (!plan->need_relayout) return nullptr;
+
+  auto result = &runtime->layout_result;
+  zdwm_layout_result_reset(result);
+
+  auto state = &runtime->state;
+  for (size_t i = 0; i < state->output_count; ++i) {
+    auto output = state_output_at(state, i);
+    if (!output) continue;
+
+    auto workspace = state_workspace_get(state, output->current_workspace_id);
+    if (!workspace) continue;
+
+    auto layout_slot = layout_slot_get(&runtime->layouts, workspace->layout_id);
+    if (!layout_slot || !layout_slot->fn) continue;
+
+    size_t window_count         = 0;
+    size_t window_list_capacity = 0;
+    window_id_t *window_ids     = nullptr;
+
+    for (size_t j = 0; j < state_window_count(state); j++) {
+      auto window = state_window_at(state, j);
+      if (!window || window->workspace_id != workspace->id) continue;
+      if (!window_need_layout(window)) continue;
+
+      window_id_t *window_id_slot =
+        array_push(window_ids, window_count, window_list_capacity);
+      *window_id_slot = window->id;
+    }
+
+    if (window_count) {
+      zdwm_layout_ctx_t ctx = {
+        .workspace_id      = workspace->id,
+        .focused_window_id = workspace->focused_window_id,
+        .output_geometry   = output->geometry,
+        .workarea          = output->workarea,
+        .window_ids        = window_ids,
+        .window_count      = window_count,
+      };
+      layout_slot->fn(&ctx, result);
+    }
+
+    if (window_ids) p_delete(&window_ids);
+  }
+
+  return result->item_count ? result : nullptr;
+}
+
+static void runtime_arrange(runtime_t *runtime) {
+  auto result = runtime_layout_calc(runtime);
+  if (!result) return;
+
+  auto state = &runtime->state;
+  auto plan  = &runtime->plan;
+  for (size_t i = 0; i < result->item_count; ++i) {
+    auto window_id = result->items[i].window_id;
+    auto window    = state_window_get(state, window_id);
+
+    if (!window) continue;
+
+    auto rect       = result->items[i].rect;
+    auto frame_rect = window->frame_rect;
+
+    if (frame_rect.x != rect.x || frame_rect.y != rect.y) {
+      effect_t move_window_effect = {
+        .type    = ZDWM_EFFECT_MOVE_WINDOW,
+        .as.move = {
+          .window         = window->id,
+          .left_top_point = {.x = rect.x, .y = rect.y}
+        }
+      };
+      plan_push_effect(plan, &move_window_effect);
+    }
+
+    if (frame_rect.width != rect.width || frame_rect.height != rect.height) {
+      effect_t resize_window_effect = {
+        .type      = ZDWM_EFFECT_RESIZE_WINDOW,
+        .as.resize = {
+          .window = window_id,
+          .width  = rect.width,
+          .height = rect.height,
+        }
+      };
+      plan_push_effect(plan, &resize_window_effect);
+    }
+
+    state_window_set_frame_rect(state, window_id, rect);
+  }
+}
+
 void runtime_run(runtime_t *runtime) {
   runtime->running = true;
 
@@ -165,6 +261,7 @@ void runtime_run(runtime_t *runtime) {
 
     policy_route_event(&ctx, &event, command_buffer);
     policy_apply_command(&ctx, command_buffer, plan);
+    runtime_arrange(runtime);
     if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
 
     event_cleanup(&event);

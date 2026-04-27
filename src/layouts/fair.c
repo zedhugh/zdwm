@@ -10,8 +10,6 @@ bool fair(const zdwm_layout_ctx_t *ctx, zdwm_layout_result_t *out) {
   auto count   = (int32_t)ctx->window_count;
   if (!windows || !count) return false;
 
-  zdwm_layout_result_reset(out);
-
   auto columns = (int32_t)floor(sqrt(count));
   if (columns * (columns + 1) <= count) ++columns;
 
