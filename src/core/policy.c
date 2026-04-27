@@ -205,8 +205,8 @@ static void add_switch_workspace_effects(
       plan_push_effect(plan, &unmap_effect);
     } else if (window->workspace_id == new_workspace) {
       effect_t map_effect = {
-        .type            = ZDWM_EFFECT_MAP_WINDOW,
-        .as.unmap.window = window->id,
+        .type          = ZDWM_EFFECT_MAP_WINDOW,
+        .as.map.window = window->id,
       };
       plan_push_effect(plan, &map_effect);
     }
