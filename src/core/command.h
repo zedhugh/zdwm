@@ -9,6 +9,7 @@ typedef enum command_type_t {
   ZDWM_COMMAND_FOCUS_WINDOW,
   ZDWM_COMMAND_KILL_WINDOW,
   ZDWM_COMMAND_WITHDRAW_WINDOW,
+  ZDWM_COMMAND_CONFIGURE_WINDOW,
   ZDWM_COMMAND_CHANGE_WINDOW_STATE,
   ZDWM_COMMAND_SWITCH_WORKSPACE,
 } command_type_t;
@@ -51,6 +52,7 @@ typedef struct command_t {
     only_window_command_t focus;
     only_window_command_t kill;
     only_window_command_t withdraw;
+    configure_data_t configure;
     window_state_change_command_t state_change;
     switch_workspace_command_t switch_workspace;
   } as;

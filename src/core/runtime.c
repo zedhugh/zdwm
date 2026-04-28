@@ -265,6 +265,7 @@ void runtime_run(runtime_t *runtime) {
     .bind_table = runtime->binding_table,
     .state      = &runtime->state,
     .rules      = &runtime->rules,
+    .layouts    = &runtime->layouts,
     .action_ctx = {
       .spawn = spawn,
     },

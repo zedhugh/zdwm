@@ -1,6 +1,7 @@
 #include "core/policy.h"
 
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/types.h>
 
 #include "base/macros.h"
@@ -8,6 +9,7 @@
 #include "core/command.h"
 #include "core/command_buffer.h"
 #include "core/event.h"
+#include "core/layout.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
@@ -137,6 +139,50 @@ static void route_window_remove(
   }
 }
 
+static void route_configure_request(
+  state_t *state,
+  const configure_data_t *data,
+  const layout_registry_t *layouts,
+  command_buffer_t *out
+) {
+  auto window = state_window_get(state, data->window);
+  if (!window) {
+    command_t configure_cmd = {
+      .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
+      .as.configure = *data
+    };
+    command_buffer_push(out, &configure_cmd);
+    return;
+  }
+
+  if (data->changed_fields & ZDWM_CONFIGURE_FIELD_BORDER_WIDTH) {
+    command_t configure_border_width_cmd = {
+      .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
+      .as.configure = {
+        .window         = window->id,
+        .border_width   = data->border_width,
+        .changed_fields = ZDWM_CONFIGURE_FIELD_BORDER_WIDTH,
+      }
+    };
+    command_buffer_push(out, &configure_border_width_cmd);
+    return;
+  }
+
+  if (!state_workspace_show(state, window->workspace_id)) return;
+  if (window_need_layout(window)) return;
+  auto workspace = state_workspace_get(state, window->workspace_id);
+  if (layout_get(layouts, workspace->layout_id)) return;
+
+  command_t configure_rect_cmd = {
+    .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
+    .as.configure = *data,
+  };
+  configure_rect_cmd.as.configure.changed_fields &=
+    ZDWM_CONFIGURE_FIELD_X | ZDWM_CONFIGURE_FIELD_Y |
+    ZDWM_CONFIGURE_FIELD_WIDTH | ZDWM_CONFIGURE_FIELD_HEIGHT;
+  command_buffer_push(out, &configure_rect_cmd);
+}
+
 void policy_route_event(
   const policy_context_t *ctx,
   const event_t *event,
@@ -153,6 +199,10 @@ void policy_route_event(
   case ZDWM_EVENT_WINDOW_REMOVE:
     route_window_remove(state, &event->as.window_remove, out);
     break;
+  case ZDWM_EVENT_CONFIGURE_REQUEST: {
+    auto data = &event->as.configure_request;
+    route_configure_request(state, data, ctx->layouts, out);
+  } break;
   default:
   }
 }
@@ -281,6 +331,56 @@ static void withdraw_window(state_t *state, window_id_t window, plan_t *plan) {
     .as.withdraw.window = window,
   };
   plan_push_effect(plan, &withdraw_window_effect);
+}
+
+static void
+configure_window(state_t *state, const configure_data_t *data, plan_t *plan) {
+  auto window = state_window_get(state, data->window);
+  if (!window) {
+    effect_t configure_effect = {
+      .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
+      .as.configure = *data,
+    };
+    plan_push_effect(plan, &configure_effect);
+    return;
+  }
+
+  auto rect = window->frame_rect;
+#define PICK_FIELD(FIELD_MASK, RECT_FIELD, DATA_FIELD) \
+  if (data->changed_fields & (FIELD_MASK)) rect.RECT_FIELD = data->DATA_FIELD
+
+  PICK_FIELD(ZDWM_CONFIGURE_FIELD_X, x, x);
+  PICK_FIELD(ZDWM_CONFIGURE_FIELD_Y, y, y);
+  PICK_FIELD(ZDWM_CONFIGURE_FIELD_WIDTH, width, width);
+  PICK_FIELD(ZDWM_CONFIGURE_FIELD_HEIGHT, height, height);
+
+#undef PICK_FIELD
+
+  auto need_move   = window_need_move(window, rect.x, rect.y);
+  auto need_resize = window_need_resize(window, rect.width, rect.height);
+  if (!need_move && !need_resize) return;
+
+  state_window_set_frame_rect(state, window->id, rect);
+
+  effect_t configure_effect = {
+    .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
+    .as.configure = {
+      .window = window->id,
+      .x      = rect.x,
+      .y      = rect.y,
+      .width  = rect.width,
+      .height = rect.height,
+    }
+  };
+  if (need_move) {
+    configure_effect.as.configure.changed_fields |=
+      ZDWM_CONFIGURE_FIELD_X | ZDWM_CONFIGURE_FIELD_Y;
+  }
+  if (need_resize) {
+    configure_effect.as.configure.changed_fields |=
+      ZDWM_CONFIGURE_FIELD_WIDTH | ZDWM_CONFIGURE_FIELD_HEIGHT;
+  }
+  plan_push_effect(plan, &configure_effect);
 }
 
 static void fullscreen_window(
@@ -488,6 +588,9 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_WITHDRAW_WINDOW:
       withdraw_window(state, cmd->as.withdraw.window, plan);
+      break;
+    case ZDWM_COMMAND_CONFIGURE_WINDOW:
+      configure_window(state, &cmd->as.configure, plan);
       break;
     case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
       change_window_state(state, &cmd->as.state_change, plan);
