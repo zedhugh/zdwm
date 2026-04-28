@@ -199,8 +199,27 @@ static bool handle_configure_request(
   event_t *event,
   const xcb_configure_request_event_t *xcb_event
 ) {
-  event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
-  /* TODO: */
+  event->type          = ZDWM_EVENT_CONFIGURE_REQUEST;
+  auto data            = &event->as.configure_request;
+  data->window         = xcb_event->window;
+  data->changed_fields = 0u;
+
+#define EXTRACT_FIELD(XCB_MASK, FIELD_MASK, DATA_FIELD, EVENT_FIELD) \
+  if (xcb_event->value_mask & XCB_CONFIG_WINDOW_##XCB_MASK) {        \
+    data->DATA_FIELD      = xcb_event->EVENT_FIELD;                  \
+    data->changed_fields |= ZDWM_CONFIGURE_FIELD_##FIELD_MASK;       \
+  }
+
+  EXTRACT_FIELD(X, X, x, x);
+  EXTRACT_FIELD(Y, Y, y, y);
+  EXTRACT_FIELD(WIDTH, WIDTH, width, width);
+  EXTRACT_FIELD(HEIGHT, HEIGHT, height, height);
+  EXTRACT_FIELD(BORDER_WIDTH, BORDER_WIDTH, border_width, border_width);
+  EXTRACT_FIELD(SIBLING, SIBLING, sibling, sibling);
+  EXTRACT_FIELD(STACK_MODE, STACK_MODE, stack_mode, stack_mode);
+
+#undef EXTRACT_FIELD
+
   return true;
 }
 

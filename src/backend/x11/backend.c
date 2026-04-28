@@ -466,6 +466,29 @@ find_or_push_configure(window_configure_list_t *configs, xcb_window_t window) {
   return cfg;
 }
 
+static void merge_window_configure_params(
+  backend_t *backend,
+  const configure_data_t *data
+) {
+  auto cfg = find_or_push_configure(&backend->config_list, data->window);
+
+#define FIELD_MERGE(MASK, VALUE_FIELD, DATA_FIELD) \
+  if (data->changed_fields & (MASK)) {             \
+    cfg->mask              |= (MASK);              \
+    cfg->value.VALUE_FIELD  = data->DATA_FIELD;    \
+  }
+
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_X, x, x);
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_Y, y, y);
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_WIDTH, width, width);
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_HEIGHT, height, height);
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_BORDER_WIDTH, border_width, border_width);
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_SIBLING, sibling, sibling);
+  FIELD_MERGE(ZDWM_CONFIGURE_FIELD_STACK_MODE, stack_mode, stack_mode);
+
+#undef FIELD_MERGE
+}
+
 static void
 backend_bind_key(backend_t *backend, const effect_bind_key_t *bind_key) {
   auto root = backend->screen->root;
@@ -477,8 +500,6 @@ static void backend_merge_effects(
   const effect_t *effects,
   size_t effect_count
 ) {
-  window_configure_list_t *configs = &backend->config_list;
-
   for (size_t i = 0; i < effect_count; ++i) {
     const effect_t *e = &effects[i];
     switch (e->type) {
@@ -529,20 +550,9 @@ static void backend_merge_effects(
         window_set_net_wm_state(backend, window, 0, nullptr);
       }
     } break;
-    case ZDWM_EFFECT_MOVE_WINDOW: {
-      window_configure_t *cfg =
-        find_or_push_configure(configs, e->as.move.window);
-      cfg->mask    |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
-      cfg->value.x  = e->as.move.left_top_point.x;
-      cfg->value.y  = e->as.move.left_top_point.y;
-    } break;
-    case ZDWM_EFFECT_RESIZE_WINDOW: {
-      window_configure_t *cfg =
-        find_or_push_configure(configs, e->as.resize.window);
-      cfg->mask         |= XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
-      cfg->value.width   = (uint32_t)e->as.resize.width;
-      cfg->value.height  = (uint32_t)e->as.resize.height;
-    } break;
+    case ZDWM_EFFECT_CONFIGURE_WINDOW:
+      merge_window_configure_params(backend, &e->as.configure);
+      break;
     case ZDWM_EFFECT_CHANGE_BORDER_COLOR: {
       xcb_change_window_attributes_value_list_t value = {
         .border_pixel = e->as.change_border_color.color->argb
@@ -553,12 +563,6 @@ static void backend_merge_effects(
         XCB_CW_BORDER_PIXEL,
         &value
       );
-    } break;
-    case ZDWM_EFFECT_CHANGE_BORDER_WIDTH: {
-      window_configure_t *cfg =
-        find_or_push_configure(configs, e->as.change_border_width.window);
-      cfg->mask               |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
-      cfg->value.border_width  = e->as.change_border_width.border_width;
     } break;
     case ZDWM_EFFECT_CHANGE_WINDOW_LIST:
       backend_change_window_list(backend, false, &e->as.change_window_list);

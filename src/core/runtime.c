@@ -216,27 +216,26 @@ static void runtime_apply_window_rect(
 
   auto need_move   = window_need_move(window, rect.x, rect.y);
   auto need_resize = window_need_resize(window, rect.width, rect.height);
+
+  uint32_t changed_fields = 0u;
   if (need_move) {
-    effect_t move_window_effect = {
-      .type    = ZDWM_EFFECT_MOVE_WINDOW,
-      .as.move = {
-        .window         = window_id,
-        .left_top_point = {.x = rect.x, .y = rect.y}
-      }
-    };
-    plan_push_effect(plan, &move_window_effect);
+    changed_fields |= ZDWM_CONFIGURE_FIELD_X | ZDWM_CONFIGURE_FIELD_Y;
   }
   if (need_resize) {
-    effect_t resize_window_effect = {
-      .type      = ZDWM_EFFECT_RESIZE_WINDOW,
-      .as.resize = {
-        .window = window_id,
-        .width  = rect.width,
-        .height = rect.height,
-      }
-    };
-    plan_push_effect(plan, &resize_window_effect);
+    changed_fields |= ZDWM_CONFIGURE_FIELD_WIDTH | ZDWM_CONFIGURE_FIELD_HEIGHT;
   }
+  effect_t configure_effect = {
+    .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
+    .as.configure = {
+      .window         = window_id,
+      .x              = rect.x,
+      .y              = rect.y,
+      .width          = rect.width,
+      .height         = rect.height,
+      .changed_fields = changed_fields,
+    }
+  };
+  plan_push_effect(plan, &configure_effect);
 
   if (need_move || need_resize) {
     state_window_set_frame_rect(state, window_id, rect);

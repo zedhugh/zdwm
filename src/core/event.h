@@ -114,23 +114,6 @@ typedef struct window_state_request_event_t {
   window_state_request_action_t action;
 } window_state_request_event_t;
 
-typedef enum configure_request_field_t {
-  ZDWM_CONFIGURE_REQUEST_FIELD_NONE   = 0,
-  ZDWM_CONFIGURE_REQUEST_FIELD_X      = 1u << 0,
-  ZDWM_CONFIGURE_REQUEST_FIELD_Y      = 1u << 1,
-  ZDWM_CONFIGURE_REQUEST_FIELD_WIDTH  = 1u << 2,
-  ZDWM_CONFIGURE_REQUEST_FIELD_HEIGHT = 1u << 3,
-} configure_request_field_t;
-
-typedef struct configure_request_event_t {
-  window_id_t window;
-  uint32_t changed_fields;
-  int32_t x;
-  int32_t y;
-  int32_t width;
-  int32_t height;
-} configure_request_event_t;
-
 typedef struct event_t {
   event_type_t type;
   union {
@@ -145,7 +128,7 @@ typedef struct event_t {
     window_hints_changed_event_t window_hints_changed;
     window_activate_request_event_t window_activate_request;
     window_state_request_event_t window_state_request;
-    configure_request_event_t configure_request;
+    configure_data_t configure_request;
   } as;
 } event_t;
 

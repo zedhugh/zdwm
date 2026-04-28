@@ -79,3 +79,25 @@ typedef enum window_state_request_action_t {
   ZDWM_WINDOW_STATE_ACTION_REMOVE,
   ZDWM_WINDOW_STATE_ACTION_TOGGLE,
 } window_state_request_action_t;
+
+typedef enum configure_field_t {
+  ZDWM_CONFIGURE_FIELD_X            = 1u << 0,
+  ZDWM_CONFIGURE_FIELD_Y            = 1u << 1,
+  ZDWM_CONFIGURE_FIELD_WIDTH        = 1u << 2,
+  ZDWM_CONFIGURE_FIELD_HEIGHT       = 1u << 3,
+  ZDWM_CONFIGURE_FIELD_BORDER_WIDTH = 1u << 4,
+  ZDWM_CONFIGURE_FIELD_SIBLING      = 1u << 5,
+  ZDWM_CONFIGURE_FIELD_STACK_MODE   = 1u << 6,
+} configure_field_t;
+
+typedef struct configure_data_t {
+  window_id_t window;
+  uint32_t changed_fields;
+  int32_t x;
+  int32_t y;
+  int32_t width;
+  int32_t height;
+  uint32_t border_width;
+  window_id_t sibling;
+  uint32_t stack_mode;
+} configure_data_t;

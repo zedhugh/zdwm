@@ -60,7 +60,7 @@ typedef struct atoms_t {
 
 typedef struct window_configure_t {
   xcb_window_t window;
-  uint16_t mask;
+  uint32_t mask;
   xcb_configure_window_value_list_t value;
 } window_configure_t;
 

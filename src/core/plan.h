@@ -14,10 +14,8 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_MINIMIZE_WINDOW,
   ZDWM_EFFECT_MAXIMIZE_WINDOW,
   ZDWM_EFFECT_FULLSCREEN_WINDOW,
-  ZDWM_EFFECT_MOVE_WINDOW,
-  ZDWM_EFFECT_RESIZE_WINDOW,
+  ZDWM_EFFECT_CONFIGURE_WINDOW,
   ZDWM_EFFECT_CHANGE_BORDER_COLOR,
-  ZDWM_EFFECT_CHANGE_BORDER_WIDTH,
   ZDWM_EFFECT_CHANGE_WINDOW_LIST,
   ZDWM_EFFECT_RESTACK_WINDOWS,
   ZDWM_EFFECT_BIND_KEY,
@@ -42,11 +40,6 @@ typedef struct effect_change_border_color_t {
   window_id_t window;
   const color_t *color;
 } effect_change_border_color_t;
-
-typedef struct effect_change_border_width_t {
-  window_id_t window;
-  uint32_t border_width;
-} effect_change_border_width_t;
 
 typedef struct effect_window_list_t {
   const window_id_t *windows;
@@ -74,10 +67,8 @@ typedef struct effect_t {
     effect_bool_window_t minimize;
     effect_bool_window_t maximize;
     effect_bool_window_t fullscreen;
-    effect_move_window_t move;
-    effect_resize_window_t resize;
+    configure_data_t configure;
     effect_change_border_color_t change_border_color;
-    effect_change_border_width_t change_border_width;
     effect_window_list_t change_window_list;
     effect_window_list_t restack_windows;
     effect_bind_key_t bind_key;
