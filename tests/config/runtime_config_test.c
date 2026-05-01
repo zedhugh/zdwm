@@ -36,17 +36,20 @@ static backend_t *test_backend_create(void) {
 
 static void assert_default_layouts(const runtime_init_desc_t *desc) {
   assert(desc);
-  assert(layout_registry_count(&desc->layouts) == 3);
+  assert(layout_registry_count(&desc->layouts) == 4);
 
-  const layout_slot_t *tile     = layout_registry_at(&desc->layouts, 0);
-  const layout_slot_t *monocle  = layout_registry_at(&desc->layouts, 1);
-  const layout_slot_t *floating = layout_registry_at(&desc->layouts, 2);
+  const layout_slot_t *fair       = layout_registry_at(&desc->layouts, 0);
+  const layout_slot_t *maximize   = layout_registry_at(&desc->layouts, 1);
+  const layout_slot_t *fullscreen = layout_registry_at(&desc->layouts, 2);
+  const layout_slot_t *floating   = layout_registry_at(&desc->layouts, 3);
 
-  assert(tile);
-  assert(monocle);
+  assert(fair);
+  assert(maximize);
+  assert(fullscreen);
   assert(floating);
-  assert(strcmp(tile->name, "tile") == 0);
-  assert(strcmp(monocle->name, "monocle") == 0);
+  assert(strcmp(fair->name, "fair") == 0);
+  assert(strcmp(maximize->name, "maximize") == 0);
+  assert(strcmp(fullscreen->name, "fullscreen") == 0);
   assert(strcmp(floating->name, "floating") == 0);
 }
 
