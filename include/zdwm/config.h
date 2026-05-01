@@ -140,6 +140,21 @@ typedef struct zdwm_api_t {
     zdwm_config_builder_t *builder,
     zdwm_binding_mode_id_t mode_id
   );
+
+  /**
+   * @brief 设置边框配置信息
+   *
+   * @param builder 配置构建上下文
+   * @param width   边框宽度
+   * @param normal  普通窗口边框颜色
+   * @param focused 焦点窗口边框颜色
+   */
+  void (*set_border_config)(
+    zdwm_config_builder_t *builder,
+    uint32_t width,
+    const char *normal,
+    const char *focused
+  );
 } zdwm_api_t;
 
 /**

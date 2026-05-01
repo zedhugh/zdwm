@@ -2,6 +2,7 @@ set(TEST_APP_NAME "zdwm-tests")
 
 add_executable(${TEST_APP_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${SOURCE_DIR}/base/color.c
     ${SOURCE_DIR}/base/log.c
     ${SOURCE_DIR}/backend/output_utils.c
     ${SOURCE_DIR}/config/defaults.c

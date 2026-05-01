@@ -59,6 +59,7 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   runtime->backend = desc->backend;
   layout_registry_move(&desc->layouts, &runtime->layouts);
   rules_move(&desc->rules, &runtime->rules);
+  runtime->border               = desc->border;
   runtime->config_module_handle = desc->config_module_handle;
   runtime->binding_table        = desc->binding_table;
   desc->backend                 = nullptr;

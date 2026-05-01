@@ -27,14 +27,6 @@ typedef struct point_t {
   int32_t y;
 } point_t;
 
-typedef struct color_t {
-  uint32_t rgba;
-  uint32_t argb;
-
-  /* RGBA color channels for Cairo, each channel in the range [0, 1] */
-  double red, green, blue, alpha;
-} color_t;
-
 typedef enum window_geometry_mode_t {
   ZDWM_GEOMETRY_NORMAL,
   ZDWM_GEOMETRY_MAXIMIZED,

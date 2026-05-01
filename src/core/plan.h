@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "base/color.h"
 #include "core/types.h"
 
 typedef enum effect_type_t {

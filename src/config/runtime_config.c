@@ -5,6 +5,7 @@
 #include <zdwm/config.h>
 
 #include "base/array.h"
+#include "base/color.h"
 #include "base/memory.h"
 #include "config/defaults.h"
 #include "config/loader.h"
@@ -25,6 +26,7 @@ struct zdwm_config_builder_t {
   size_t workspace_count;
   size_t workspace_capacity;
   size_t output_count;
+  border_config_t border;
   binding_table_t *binding_table;
 };
 
@@ -183,6 +185,17 @@ static bool runtime_config_set_initial_mode(
   return binding_table_set_current_mode(builder->binding_table, mode_id);
 }
 
+static void runtime_config_set_border_config(
+  zdwm_config_builder_t *builder,
+  uint32_t width,
+  const char *normal,
+  const char *focused
+) {
+  builder->border.width = width;
+  color_parse(normal, &builder->border.normal_color);
+  color_parse(focused, &builder->border.focused_color);
+}
+
 static bool config_builder_finish(
   zdwm_config_builder_t *builder,
   runtime_init_desc_t *out
@@ -193,6 +206,7 @@ static bool config_builder_finish(
 
   if (!layout_registry_move(&builder->layouts, &out->layouts)) return false;
   if (!rules_move(&builder->rules, &out->rules)) return false;
+  out->border                 = builder->border;
   out->binding_table          = builder->binding_table;
   out->workspaces             = builder->workspaces;
   out->workspace_count        = builder->workspace_count;
@@ -223,13 +237,14 @@ static bool runtime_config_build(
         .fullscreen = fullscreen,
         .maximize   = maximize,
       },
-    .register_layout  = runtime_config_register_layout,
-    .define_workspace = runtime_config_define_workspace,
-    .add_rule         = runtime_config_add_rule,
-    .add_mode         = runtime_config_add_mode,
-    .bind             = runtime_config_bind,
-    .set_default_mode = runtime_config_set_default_mode,
-    .set_initial_mode = runtime_config_set_initial_mode,
+    .register_layout   = runtime_config_register_layout,
+    .define_workspace  = runtime_config_define_workspace,
+    .add_rule          = runtime_config_add_rule,
+    .add_mode          = runtime_config_add_mode,
+    .bind              = runtime_config_bind,
+    .set_default_mode  = runtime_config_set_default_mode,
+    .set_initial_mode  = runtime_config_set_initial_mode,
+    .set_border_config = runtime_config_set_border_config,
   };
   bool ok = setup(&api, &builder, outputs, output_count) &&
             config_builder_finish(&builder, out);
