@@ -97,9 +97,6 @@ void window_set_net_wm_state(
   xcb_atom_t *atoms
 );
 
-void window_list_push(window_list_t *window_list, xcb_window_t window);
-void window_list_reset(window_list_t *window_list);
-
 void window_grab_keys(
   backend_t *backend,
   xcb_window_t window,

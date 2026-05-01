@@ -264,6 +264,17 @@ static bool handle_key_press(
   return true;
 }
 
+static bool handle_enter_notify(
+  backend_t *backend,
+  event_t *event,
+  const xcb_enter_notify_event_t *xcb_event
+) {
+  event->type                    = ZDWM_EVENT_POINTER_ENTER;
+  event->as.pointer_enter.window = xcb_event->event;
+
+  return true;
+}
+
 bool backend_next_event(backend_t *backend, event_t *event) {
   if (!backend || !backend->conn || !event) return false;
 
@@ -289,6 +300,7 @@ bool backend_next_event(backend_t *backend, event_t *event) {
       EVENT(XCB_DESTROY_NOTIFY, handle_destroy_notify);
       EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
       EVENT(XCB_KEY_PRESS, handle_key_press);
+      EVENT(XCB_ENTER_NOTIFY, handle_enter_notify);
 
 #undef EVENT
 

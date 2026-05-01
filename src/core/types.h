@@ -4,6 +4,8 @@
 #include <zdwm/rules.h>
 #include <zdwm/types.h>
 
+#include "base/color.h"
+
 /* clang-format off */
 typedef zdwm_layout_id_t        layout_id_t;
 typedef zdwm_window_id_t        window_id_t;
@@ -93,3 +95,13 @@ typedef struct configure_data_t {
   window_id_t sibling;
   uint32_t stack_mode;
 } configure_data_t;
+
+typedef struct border_config_t {
+  uint32_t width;
+  color_t normal_color;
+  color_t focused_color;
+} border_config_t;
+
+typedef struct only_window_data_t {
+  window_id_t window;
+} only_window_data_t;

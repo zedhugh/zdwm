@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <zdwm/types.h>
 
+#include "base/color.h"
 #include "base/macros.h"
+#include "base/window_list.h"
 #include "core/binding.h"
 #include "core/command.h"
 #include "core/command_buffer.h"
@@ -32,6 +34,15 @@ static void route_key_press(
       binding->fn(action_ctx, &binding->arg);
     }
   }
+}
+
+static void
+route_pointer_enter(state_t *state, window_id_t window, command_buffer_t *out) {
+  command_t focus_command = {
+    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
+    .as.focus.window = window,
+  };
+  command_buffer_push(out, &focus_command);
 }
 
 static workspace_id_t derive_window_workspace(const state_t *state) {
@@ -155,19 +166,6 @@ static void route_configure_request(
     return;
   }
 
-  if (data->changed_fields & ZDWM_CONFIGURE_FIELD_BORDER_WIDTH) {
-    command_t configure_border_width_cmd = {
-      .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
-      .as.configure = {
-        .window         = window->id,
-        .border_width   = data->border_width,
-        .changed_fields = ZDWM_CONFIGURE_FIELD_BORDER_WIDTH,
-      }
-    };
-    command_buffer_push(out, &configure_border_width_cmd);
-    return;
-  }
-
   if (!state_workspace_show(state, window->workspace_id)) return;
   if (window_need_layout(window)) return;
   auto workspace = state_workspace_get(state, window->workspace_id);
@@ -193,6 +191,8 @@ void policy_route_event(
   case ZDWM_EVENT_KEY_PRESS:
     route_key_press(ctx->bind_table, &ctx->action_ctx, &event->as.key_press);
     break;
+  case ZDWM_EVENT_POINTER_ENTER:
+    route_pointer_enter(state, event->as.pointer_enter.window, out);
   case ZDWM_EVENT_WINDOW_MAP_REQUEST:
     route_map_request(state, ctx->rules, &event->as.window_map_request, out);
     break;
@@ -207,17 +207,82 @@ void policy_route_event(
   }
 }
 
+static void adjust_layout_windows_border_width(
+  state_t *state,
+  uint32_t border_width,
+  workspace_id_t workspace_id
+) {
+  window_list_t list = {0};
+  state_get_windows_need_layout_in_workspace(state, workspace_id, &list);
+  if (list.count <= 1) border_width = 0;
+  for (size_t i = 0; i < list.count; ++i) {
+    auto window_id = list.windows[i];
+    state_window_set_border_width(state, window_id, border_width);
+  }
+}
+
+static void window_change_border_color(
+  window_id_t window_id,
+  const color_t *color,
+  plan_t *plan
+) {
+  effect_t change_border_color_effect = {
+    .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
+    .as.change_border_color = {.window = window_id, .color = color}
+  };
+  plan_push_effect(plan, &change_border_color_effect);
+}
+
+static void set_foucs_window(
+  const policy_context_t *ctx,
+  workspace_id_t workspace_id,
+  window_id_t window_id,
+  plan_t *plan
+) {
+  auto state  = ctx->state;
+  auto border = ctx->border;
+
+  auto workspace = state_workspace_get(state, workspace_id);
+  if (!workspace) return;
+
+  auto old_focused_window_id = workspace->focused_window_id;
+  if (window_id == old_focused_window_id) return;
+
+  state_workspace_set_focused_window(state, workspace_id, window_id);
+  effect_t focus_effect = {
+    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+    .as.focus.window = window_id,
+  };
+  plan_push_effect(plan, &focus_effect);
+
+  if (state_window_get(state, window_id)) {
+    window_change_border_color(window_id, &border->focused_color, plan);
+  }
+  if (state_window_get(state, old_focused_window_id)) {
+    auto color = &border->normal_color;
+    window_change_border_color(old_focused_window_id, color, plan);
+  }
+}
+
 static void manage_window(
   const policy_context_t *ctx,
   const manage_window_command_t *command,
   plan_t *plan
 ) {
-  auto state     = ctx->state;
-  auto window    = state_window_add(state, &command->info);
-  auto window_id = window->id;
-  state_window_set_workspace(state, window_id, command->workspace);
-  state_workspace_set_focused_window(state, command->workspace, window_id);
+  auto state        = ctx->state;
+  auto window       = state_window_add(state, &command->info);
+  auto window_id    = window->id;
+  auto workspace_id = command->workspace;
+  state_window_set_workspace(state, window_id, workspace_id);
   state_window_set_floating(state, window_id, command->floating);
+  set_foucs_window(ctx, workspace_id, window_id, plan);
+
+  auto need_layout = window_need_layout(window);
+  if (need_layout) {
+    adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
+  } else {
+    state_window_set_border_width(state, window_id, ctx->border->width);
+  }
 
   if (!state_workspace_show(state, command->workspace)) return;
 
@@ -234,7 +299,26 @@ static void manage_window(
 
   if (window_need_layout(window)) {
     plan->need_relayout = true;
+
+    return;
   }
+
+  effect_t configure_effect = {
+    .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
+    .as.configure = {
+      .window = window_id,
+      .x      = window->frame_rect.x,
+      .y      = window->frame_rect.y,
+      .width  = window->frame_rect.width - 2 * (int32_t)window->border_width,
+      .height = window->frame_rect.height - 2 * (int32_t)window->border_width,
+      .border_width   = window->border_width,
+      .changed_fields = ZDWM_CONFIGURE_FIELD_X | ZDWM_CONFIGURE_FIELD_Y |
+                        ZDWM_CONFIGURE_FIELD_WIDTH |
+                        ZDWM_CONFIGURE_FIELD_HEIGHT |
+                        ZDWM_CONFIGURE_FIELD_BORDER_WIDTH,
+    }
+  };
+  plan_push_effect(plan, &configure_effect);
 }
 
 static void add_switch_workspace_effects(
@@ -272,7 +356,9 @@ static void add_switch_workspace_effects(
   plan_push_effect(plan, &focus_effect);
 }
 
-static void unmanage_window(state_t *state, window_id_t window, plan_t *plan) {
+static void
+unmanage_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
+  auto state          = ctx->state;
   const window_t *win = state_window_get(state, window);
   if (!win) return;
 
@@ -282,6 +368,12 @@ static void unmanage_window(state_t *state, window_id_t window, plan_t *plan) {
 
   auto old_focused_window = workspace->focused_window_id;
   state_window_remove(state, window);
+
+  if (window_need_layout(win)) {
+    adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
+    plan->need_relayout = true;
+  }
+
   if (output->current_workspace_id != workspace_id) return;
 
   if (old_focused_window != workspace->focused_window_id) {
@@ -293,15 +385,17 @@ static void unmanage_window(state_t *state, window_id_t window, plan_t *plan) {
   }
 }
 
-static void focus_window(state_t *state, window_id_t window, plan_t *plan) {
-  auto win = state_window_get(state, window);
+static void
+focus_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
+  auto state = ctx->state;
+  auto win   = state_window_get(state, window);
   if (!win) return;
 
   auto workspace_id       = win->workspace_id;
   auto workspace          = state_workspace_get(state, workspace_id);
   auto old_focused_window = workspace->focused_window_id;
 
-  state_workspace_set_focused_window(state, workspace_id, window);
+  set_foucs_window(ctx, workspace_id, window, plan);
   if (old_focused_window == workspace->focused_window_id) return;
 
   effect_t focus_effect = {
@@ -578,10 +672,10 @@ void policy_apply_command(
       manage_window(ctx, &cmd->as.manage_window, plan);
       break;
     case ZDWM_COMMAND_UNMANAGE_WINDOW:
-      unmanage_window(state, cmd->as.unmanage.window, plan);
+      unmanage_window(ctx, cmd->as.unmanage.window, plan);
       break;
     case ZDWM_COMMAND_FOCUS_WINDOW:
-      focus_window(state, cmd->as.focus.window, plan);
+      focus_window(ctx, cmd->as.focus.window, plan);
       break;
     case ZDWM_COMMAND_KILL_WINDOW:
       kill_window(state, cmd->as.kill.window, plan);

@@ -3,7 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "base/color.h"
 #include "core/backend.h"
 #include "core/binding.h"
 #include "core/command_buffer.h"
@@ -12,12 +11,6 @@
 #include "core/rules.h"
 #include "core/state.h"
 #include "core/types.h"
-
-typedef struct border_config_t {
-  uint32_t width;
-  color_t normal_color;
-  color_t focused_color;
-} border_config_t;
 
 typedef struct runtime_init_desc_t {
   backend_t *backend;

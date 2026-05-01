@@ -46,12 +46,6 @@ typedef struct pointer_motion_event_t {
   point_t local;
 } pointer_motion_event_t;
 
-typedef struct pointer_enter_event_t {
-  window_id_t window;
-  point_t root;
-  point_t local;
-} pointer_enter_event_t;
-
 typedef struct window_map_request_event_t {
   window_id_t window;
   window_id_t transient_for;
@@ -121,7 +115,7 @@ typedef struct event_t {
     pointer_button_event_t pointer_button_press;
     pointer_button_event_t pointer_button_release;
     pointer_motion_event_t pointer_motion;
-    pointer_enter_event_t pointer_enter;
+    only_window_data_t pointer_enter;
     window_map_request_event_t window_map_request;
     window_remove_event_t window_remove;
     window_metadata_change_event_t window_metadata_change;

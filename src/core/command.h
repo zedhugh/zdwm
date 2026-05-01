@@ -25,10 +25,6 @@ typedef struct switch_workspace_command_t {
   workspace_id_t workspace;
 } switch_workspace_command_t;
 
-typedef struct only_window_command_t {
-  window_id_t window;
-} only_window_command_t;
-
 typedef struct window_state_change_command_t {
   window_id_t window;
   window_state_request_type_t type;
@@ -48,10 +44,10 @@ typedef struct command_t {
   command_type_t type;
   union {
     manage_window_command_t manage_window;
-    only_window_command_t unmanage;
-    only_window_command_t focus;
-    only_window_command_t kill;
-    only_window_command_t withdraw;
+    only_window_data_t unmanage;
+    only_window_data_t focus;
+    only_window_data_t kill;
+    only_window_data_t withdraw;
     configure_data_t configure;
     window_state_change_command_t state_change;
     switch_workspace_command_t switch_workspace;

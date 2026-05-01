@@ -224,6 +224,7 @@ static void runtime_apply_window_rect(
   }
   if (need_resize) {
     changed_fields |= ZDWM_CONFIGURE_FIELD_WIDTH | ZDWM_CONFIGURE_FIELD_HEIGHT;
+    changed_fields |= ZDWM_CONFIGURE_FIELD_BORDER_WIDTH;
   }
   effect_t configure_effect = {
     .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
@@ -231,8 +232,9 @@ static void runtime_apply_window_rect(
       .window         = window_id,
       .x              = rect.x,
       .y              = rect.y,
-      .width          = rect.width,
-      .height         = rect.height,
+      .width          = rect.width - 2 * (int32_t)window->border_width,
+      .height         = rect.height - 2 * (int32_t)window->border_width,
+      .border_width   = window->border_width,
       .changed_fields = changed_fields,
     }
   };
@@ -266,6 +268,7 @@ void runtime_run(runtime_t *runtime) {
     .bind_table = runtime->binding_table,
     .state      = &runtime->state,
     .rules      = &runtime->rules,
+    .border     = &runtime->border,
     .layouts    = &runtime->layouts,
     .action_ctx = {
       .spawn = spawn,

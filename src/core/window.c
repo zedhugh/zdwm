@@ -1,6 +1,7 @@
 #include "core/window.h"
 
 #include "base/memory.h"
+#include "core/types.h"
 
 window_layer_type_t window_classify_layer(const window_layer_props_t *props) {
   for (size_t i = 0; i < props->type_count; ++i) {
@@ -96,6 +97,10 @@ void window_set_instance(window_t *window, const char *instance_name) {
   window->instance_name = p_strdup_nullable(instance_name);
 }
 
+void window_set_border_width(window_t *window, uint32_t border_width) {
+  window->border_width = border_width;
+}
+
 void window_set_skip_taskbar(window_t *window, bool skip_taskbar) {
   window->skip_taskbar = skip_taskbar;
 }
@@ -145,4 +150,15 @@ bool window_need_move(const window_t *window, int32_t x, int32_t y) {
 bool window_need_resize(const window_t *window, int32_t width, int32_t height) {
   return window->frame_rect.width != width ||
          window->frame_rect.height != height;
+}
+
+bool window_should_has_border(const window_t *window) {
+  switch (window->geometry_mode) {
+  case ZDWM_GEOMETRY_MAXIMIZED:
+  case ZDWM_GEOMETRY_FULLSCREEN:
+    return false;
+  case ZDWM_GEOMETRY_NORMAL:
+  case ZDWM_GEOMETRY_MINIMIZED:
+  }
+  return window->floating;
 }

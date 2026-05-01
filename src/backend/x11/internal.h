@@ -6,6 +6,8 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#include "base/window_list.h"
+
 #define ATOM_LIST(X)                   \
   X(COMPOUND_TEXT)                     \
   X(UTF8_STRING)                       \
@@ -69,12 +71,6 @@ typedef struct window_configure_list_t {
   size_t count;
   size_t capacity;
 } window_configure_list_t;
-
-typedef struct window_list_t {
-  xcb_window_t *windows;
-  size_t count;
-  size_t capacity;
-} window_list_t;
 
 struct backend_t {
   xcb_key_symbols_t *key_symbols;

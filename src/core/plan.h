@@ -22,10 +22,6 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_BIND_KEY,
 } effect_type_t;
 
-typedef struct effect_only_window_id_t {
-  window_id_t window;
-} effect_only_window_id_t;
-
 typedef struct effect_move_window_t {
   window_id_t window;
   point_t left_top_point;
@@ -60,11 +56,11 @@ typedef struct effect_bool_window_t {
 typedef struct effect_t {
   effect_type_t type;
   union {
-    effect_only_window_id_t map;
-    effect_only_window_id_t unmap;
-    effect_only_window_id_t focus;
-    effect_only_window_id_t kill;
-    effect_only_window_id_t withdraw;
+    only_window_data_t map;
+    only_window_data_t unmap;
+    only_window_data_t focus;
+    only_window_data_t kill;
+    only_window_data_t withdraw;
     effect_bool_window_t minimize;
     effect_bool_window_t maximize;
     effect_bool_window_t fullscreen;

@@ -21,6 +21,7 @@
 #include "base/log.h"
 #include "base/macros.h"
 #include "base/memory.h"
+#include "base/window_list.h"
 #include "core/plan.h"
 #include "core/types.h"
 #include "internal.h"
@@ -177,14 +178,9 @@ void backend_destroy(backend_t *backend) {
   p_delete(&backend->config_list.cfgs);
   p_clear(&backend->config_list, 1);
 
-  p_delete(&backend->unmap.windows);
-  p_clear(&backend->unmap, 1);
-
-  p_delete(&backend->map.windows);
-  p_clear(&backend->map, 1);
-
-  p_delete(&backend->kill.windows);
-  p_clear(&backend->kill, 1);
+  window_list_cleanup(&backend->unmap);
+  window_list_cleanup(&backend->map);
+  window_list_cleanup(&backend->kill);
 
   xcb_key_symbols_free(backend->key_symbols);
   backend->key_symbols = nullptr;

@@ -39,6 +39,7 @@ add_executable(${RUNTIME_CONFIG_TEST_APP_NAME}
     ${CMAKE_CURRENT_SOURCE_DIR}/runtime_config_test.c
     ${SOURCE_DIR}/base/color.c
     ${SOURCE_DIR}/base/log.c
+    ${SOURCE_DIR}/base/window_list.c
     ${SOURCE_DIR}/config/defaults.c
     ${SOURCE_DIR}/config/loader.c
     ${SOURCE_DIR}/config/runtime_config.c

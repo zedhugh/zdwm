@@ -80,6 +80,7 @@ bool config_defaults_build(
 
   api->set_default_mode(builder, default_mode);
   api->set_initial_mode(builder, default_mode);
+  api->set_border_config(builder, 2, "#444444", "#005577");
 
   return true;
 }

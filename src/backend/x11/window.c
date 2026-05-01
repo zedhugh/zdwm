@@ -7,7 +7,6 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
-#include "base/array.h"
 #include "base/macros.h"
 #include "base/memory.h"
 #include "core/backend.h"
@@ -356,17 +355,6 @@ void window_set_net_wm_state(
     count,
     atoms
   );
-}
-
-void window_list_push(window_list_t *window_list, xcb_window_t window) {
-  xcb_window_t *win =
-    array_push(window_list->windows, window_list->count, window_list->capacity);
-  *win = window;
-}
-
-void window_list_reset(window_list_t *window_list) {
-  p_clear(window_list->windows, window_list->count);
-  window_list->count = 0;
 }
 
 static uint16_t get_xcb_modifier(modifier_mask_t modifiers) {

@@ -87,6 +87,7 @@ typedef struct window_t {
   char *class_name;
   char *instance_name;
 
+  uint32_t border_width;
   bool skip_taskbar;
 } window_t;
 
@@ -110,6 +111,7 @@ void window_set_app_id(window_t *window, const char *app_id);
 void window_set_role(window_t *window, const char *role);
 void window_set_class(window_t *window, const char *class_name);
 void window_set_instance(window_t *window, const char *instance_name);
+void window_set_border_width(window_t *window, uint32_t border_width);
 void window_set_skip_taskbar(window_t *window, bool skip_taskbar);
 void window_take_metadata(
   window_t *window,
@@ -123,3 +125,4 @@ void window_take_metadata(
 bool window_need_layout(const window_t *window);
 bool window_need_move(const window_t *window, int32_t x, int32_t y);
 bool window_need_resize(const window_t *window, int32_t width, int32_t height);
+bool window_should_has_border(const window_t *window);

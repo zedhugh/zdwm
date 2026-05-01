@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "base/window_list.h"
 #include "core/layer.h"
 #include "core/types.h"
 #include "core/window.h"
@@ -201,6 +202,11 @@ void state_window_set_fixed_size(
   window_id_t window_id,
   bool fixed_size
 );
+void state_window_set_border_width(
+  state_t *state,
+  window_id_t window_id,
+  uint32_t border_width
+);
 void state_window_set_skip_taskbar(
   state_t *state,
   window_id_t window_id,
@@ -264,3 +270,18 @@ bool state_window_set_instance(
 
 bool state_stack_raise(state_t *state, window_id_t window_id);
 bool state_stack_lower(state_t *state, window_id_t window_id);
+
+/**
+ * @brief 获取 workspace_id 对应 workspace 需要自动布局的窗口列表
+ *
+ * @details 该函数不负责 window_list_out 参数的初始化
+ *
+ * @param state             状态实例指针
+ * @param workspace_id      目标 workspace 的 id
+ * @param window_list_out   存储窗口列表结果的结构体指针
+ */
+void state_get_windows_need_layout_in_workspace(
+  const state_t *state,
+  workspace_id_t workspace_id,
+  window_list_t *window_list_out
+);

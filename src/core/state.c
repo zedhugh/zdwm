@@ -8,6 +8,7 @@
 #include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
+#include "base/window_list.h"
 #include "core/layer.h"
 #include "core/types.h"
 #include "core/window.h"
@@ -479,6 +480,15 @@ void state_window_set_fixed_size(
   if (window) window_set_fixed_size(window, fixed_size);
 }
 
+void state_window_set_border_width(
+  state_t *state,
+  window_id_t window_id,
+  uint32_t border_width
+) {
+  window_t *window = (window_t *)state_window_get(state, window_id);
+  if (window) window_set_border_width(window, border_width);
+}
+
 void state_window_set_skip_taskbar(
   state_t *state,
   window_id_t window_id,
@@ -598,4 +608,17 @@ bool state_stack_lower(state_t *state, window_id_t window_id) {
   if (!layer) return false;
 
   return layer_stack_lower(layer, window_id);
+}
+
+void state_get_windows_need_layout_in_workspace(
+  const state_t *state,
+  workspace_id_t workspace_id,
+  window_list_t *window_list_out
+) {
+  for (size_t i = 0; i < state->window_count; ++i) {
+    auto window = &state->windows[i];
+    if (window->workspace_id == workspace_id && window_need_layout(window)) {
+      window_list_push(window_list_out, window->id);
+    }
+  }
 }

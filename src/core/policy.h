@@ -9,11 +9,13 @@
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
+#include "core/types.h"
 
 typedef struct policy_context_t {
   binding_table_t *bind_table;
   state_t *state;
   const rules_t *rules;
+  const border_config_t *border;
   const layout_registry_t *layouts;
   const zdwm_action_ctx_t action_ctx;
 } policy_context_t;
