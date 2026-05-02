@@ -105,3 +105,7 @@ typedef struct border_config_t {
 typedef struct only_window_data_t {
   window_id_t window;
 } only_window_data_t;
+
+static inline bool window_id_invalid(window_id_t window_id) {
+  return window_id == ZDWM_WINDOW_ID_INVALID;
+}

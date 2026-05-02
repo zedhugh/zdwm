@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <zdwm/types.h>
 
-#include "base/color.h"
 #include "base/macros.h"
 #include "base/window_list.h"
 #include "core/binding.h"
@@ -222,18 +221,6 @@ static void adjust_layout_windows_border_width(
   window_list_reset(&list);
 }
 
-static void window_change_border_color(
-  window_id_t window_id,
-  const color_t *color,
-  plan_t *plan
-) {
-  effect_t change_border_color_effect = {
-    .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
-    .as.change_border_color = {.window = window_id, .color = color}
-  };
-  plan_push_effect(plan, &change_border_color_effect);
-}
-
 static void set_foucs_window(
   const policy_context_t *ctx,
   workspace_id_t workspace_id,
@@ -250,18 +237,15 @@ static void set_foucs_window(
   if (window_id == old_focused_window_id) return;
 
   state_workspace_set_focused_window(state, workspace_id, window_id);
-  effect_t focus_effect = {
-    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
-    .as.focus.window = window_id,
-  };
-  plan_push_effect(plan, &focus_effect);
+  plan_push_focus_effect(plan, window_id);
 
   if (state_window_get(state, window_id)) {
-    window_change_border_color(window_id, &border->focused_color, plan);
+    auto color = &border->focused_color;
+    plan_push_change_border_color_effect(plan, window_id, color);
   }
   if (state_window_get(state, old_focused_window_id)) {
     auto color = &border->normal_color;
-    window_change_border_color(old_focused_window_id, color, plan);
+    plan_push_change_border_color_effect(plan, old_focused_window_id, color);
   }
 }
 
@@ -287,16 +271,8 @@ static void manage_window(
 
   if (!state_workspace_show(state, command->workspace)) return;
 
-  effect_t map_effect = {
-    .type          = ZDWM_EFFECT_MAP_WINDOW,
-    .as.map.window = window_id,
-  };
-  effect_t focus_effect = {
-    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
-    .as.focus.window = window_id,
-  };
-  plan_push_effect(plan, &map_effect);
-  plan_push_effect(plan, &focus_effect);
+  plan_push_map_effect(plan, window_id);
+  plan_push_focus_effect(plan, window_id);
 
   if (window_need_layout(window)) {
     plan->need_relayout = true;
@@ -333,28 +309,16 @@ static void add_switch_workspace_effects(
     if (window->sticky) continue;
 
     if (window->workspace_id == old_workspace) {
-      effect_t unmap_effect = {
-        .type            = ZDWM_EFFECT_UNMAP_WINDOW,
-        .as.unmap.window = window->id,
-      };
-      plan_push_effect(plan, &unmap_effect);
+      plan_push_unmap_effect(plan, window->id);
     } else if (window->workspace_id == new_workspace) {
-      effect_t map_effect = {
-        .type          = ZDWM_EFFECT_MAP_WINDOW,
-        .as.map.window = window->id,
-      };
-      plan_push_effect(plan, &map_effect);
+      plan_push_map_effect(plan, window->id);
     }
   }
 
   const workspace_t *workspace = state_workspace_get(state, new_workspace);
   if (!workspace) return;
 
-  effect_t focus_effect = {
-    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
-    .as.focus.window = workspace->focused_window_id
-  };
-  plan_push_effect(plan, &focus_effect);
+  plan_push_focus_effect(plan, workspace->focused_window_id);
 }
 
 static void
@@ -378,11 +342,7 @@ unmanage_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
   if (output->current_workspace_id != workspace_id) return;
 
   if (old_focused_window != workspace->focused_window_id) {
-    effect_t focus_effect = {
-      .type            = ZDWM_EFFECT_FOCUS_WINDOW,
-      .as.focus.window = workspace->focused_window_id
-    };
-    plan_push_effect(plan, &focus_effect);
+    plan_push_focus_effect(plan, workspace->focused_window_id);
   }
 }
 
@@ -399,33 +359,21 @@ focus_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
   set_foucs_window(ctx, workspace_id, window, plan);
   if (old_focused_window == workspace->focused_window_id) return;
 
-  effect_t focus_effect = {
-    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
-    .as.focus.window = workspace->focused_window_id,
-  };
-  plan_push_effect(plan, &focus_effect);
+  plan_push_focus_effect(plan, workspace->focused_window_id);
 }
 
 static void kill_window(state_t *state, window_id_t window, plan_t *plan) {
   auto win = state_window_get(state, window);
   if (!win) return;
 
-  effect_t kill_effect = {
-    .type           = ZDWM_EFFECT_KILL_WINDOW,
-    .as.kill.window = window,
-  };
-  plan_push_effect(plan, &kill_effect);
+  plan_push_kill_effect(plan, window);
 }
 
 static void withdraw_window(state_t *state, window_id_t window, plan_t *plan) {
   auto win = state_window_get(state, window);
   if (!win) return;
 
-  effect_t withdraw_window_effect = {
-    .type               = ZDWM_EFFECT_WITHDRAW_WINDOW,
-    .as.withdraw.window = window,
-  };
-  plan_push_effect(plan, &withdraw_window_effect);
+  plan_push_withdraw_effect(plan, window);
 }
 
 static void
@@ -494,11 +442,7 @@ static void fullscreen_window(
   }
 
   state_window_set_border_width(state, window_id, 0);
-  effect_t fullscreen_window_effect = {
-    .type          = ZDWM_EFFECT_FULLSCREEN_WINDOW,
-    .as.fullscreen = {.window = window_id, .value = value},
-  };
-  plan_push_effect(plan, &fullscreen_window_effect);
+  plan_push_fullscreen_effect(plan, window_id, value);
 
   if (value) {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_FULLSCREEN);
@@ -536,11 +480,7 @@ static void maximize_window(
   }
 
   state_window_set_border_width(state, window_id, 0);
-  effect_t maximize_window_effect = {
-    .type        = ZDWM_EFFECT_MAXIMIZE_WINDOW,
-    .as.maximize = {.window = window_id, .value = value},
-  };
-  plan_push_effect(plan, &maximize_window_effect);
+  plan_push_maximize_effect(plan, window_id, value);
 
   if (value) {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MAXIMIZED);
@@ -576,48 +516,25 @@ static void minimize_window(
     return;
   }
 
-  effect_t minimize_window_effect = {
-    .type        = ZDWM_EFFECT_MINIMIZE_WINDOW,
-    .as.minimize = {.window = window_id, .value = value},
-  };
-  plan_push_effect(plan, &minimize_window_effect);
+  plan_push_minimize_effect(plan, window_id, value);
 
   if (value) {
-    effect_t unmap_effect = {
-      .type            = ZDWM_EFFECT_UNMAP_WINDOW,
-      .as.unmap.window = window_id,
-    };
-    plan_push_effect(plan, &unmap_effect);
+    plan_push_unmap_effect(plan, window_id);
 
     auto workspace = state_workspace_get(state, window->workspace_id);
     auto old_focused_window_id = workspace->focused_window_id;
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MINIMIZED);
     auto new_focused_window_id = workspace->focused_window_id;
     if (old_focused_window_id != new_focused_window_id) {
-      effect_t change_old_border_color_effect = {
-        .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
-        .as.change_border_color = {
-          .window = old_focused_window_id,
-          .color  = &ctx->border->normal_color
-        }
-      };
-      effect_t change_new_border_color_effect = {
-        .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
-        .as.change_border_color = {
-          .window = new_focused_window_id,
-          .color  = &ctx->border->normal_color
-        }
-      };
-      plan_push_effect(plan, &change_old_border_color_effect);
-      plan_push_effect(plan, &change_new_border_color_effect);
+      auto color = &ctx->border->normal_color;
+      plan_push_change_border_color_effect(plan, old_focused_window_id, color);
+
+      color = &ctx->border->focused_color;
+      plan_push_change_border_color_effect(plan, new_focused_window_id, color);
     }
   } else {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
-    effect_t map_effect = {
-      .type          = ZDWM_EFFECT_MAP_WINDOW,
-      .as.map.window = window_id
-    };
-    plan_push_effect(plan, &map_effect);
+    plan_push_map_effect(plan, window_id);
     set_foucs_window(ctx, window->workspace_id, window_id, plan);
   }
 
