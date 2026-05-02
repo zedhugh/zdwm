@@ -212,13 +212,14 @@ static void adjust_layout_windows_border_width(
   uint32_t border_width,
   workspace_id_t workspace_id
 ) {
-  window_list_t list = {0};
+  static window_list_t list = {0};
   state_get_windows_need_layout_in_workspace(state, workspace_id, &list);
   if (list.count <= 1) border_width = 0;
   for (size_t i = 0; i < list.count; ++i) {
     auto window_id = list.windows[i];
     state_window_set_border_width(state, window_id, border_width);
   }
+  window_list_reset(&list);
 }
 
 static void window_change_border_color(
@@ -478,11 +479,12 @@ configure_window(state_t *state, const configure_data_t *data, plan_t *plan) {
 }
 
 static void fullscreen_window(
-  state_t *state,
+  const policy_context_t *ctx,
   window_id_t window_id,
   bool value,
   plan_t *plan
 ) {
+  auto state  = ctx->state;
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
@@ -491,6 +493,7 @@ static void fullscreen_window(
     return;
   }
 
+  state_window_set_border_width(state, window_id, 0);
   effect_t fullscreen_window_effect = {
     .type          = ZDWM_EFFECT_FULLSCREEN_WINDOW,
     .as.fullscreen = {.window = window_id, .value = value},
@@ -499,25 +502,31 @@ static void fullscreen_window(
 
   if (value) {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_FULLSCREEN);
+    state_window_set_border_width(state, window_id, 0);
     if (window->floating) {
       state_window_set_float_rect(state, window_id, window->frame_rect);
     }
   } else {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
+    state_window_set_border_width(state, window_id, ctx->border->width);
     if (window->floating) {
       state_window_set_frame_rect(state, window_id, window->float_rect);
     }
   }
 
+  auto workspace_id = window->workspace_id;
+  adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
   plan->need_relayout = true;
 }
 
 static void maximize_window(
-  state_t *state,
+  const policy_context_t *ctx,
   window_id_t window_id,
   bool value,
   plan_t *plan
 ) {
+  auto state = ctx->state;
+
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
@@ -526,6 +535,7 @@ static void maximize_window(
     return;
   }
 
+  state_window_set_border_width(state, window_id, 0);
   effect_t maximize_window_effect = {
     .type        = ZDWM_EFFECT_MAXIMIZE_WINDOW,
     .as.maximize = {.window = window_id, .value = value},
@@ -534,25 +544,30 @@ static void maximize_window(
 
   if (value) {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MAXIMIZED);
+    state_window_set_border_width(state, window_id, 0);
     if (window->floating) {
       state_window_set_float_rect(state, window_id, window->frame_rect);
     }
   } else {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
+    state_window_set_border_width(state, window_id, ctx->border->width);
     if (window->floating) {
       state_window_set_frame_rect(state, window_id, window->float_rect);
     }
   }
 
+  auto workspace_id = window->workspace_id;
+  adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
   plan->need_relayout = true;
 }
 
 static void minimize_window(
-  state_t *state,
+  const policy_context_t *ctx,
   window_id_t window_id,
   bool value,
   plan_t *plan
 ) {
+  auto state  = ctx->state;
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
@@ -568,37 +583,56 @@ static void minimize_window(
   plan_push_effect(plan, &minimize_window_effect);
 
   if (value) {
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MINIMIZED);
-
     effect_t unmap_effect = {
       .type            = ZDWM_EFFECT_UNMAP_WINDOW,
       .as.unmap.window = window_id,
     };
     plan_push_effect(plan, &unmap_effect);
-    /* TODO: 可能需要处理焦点 */
+
+    auto workspace = state_workspace_get(state, window->workspace_id);
+    auto old_focused_window_id = workspace->focused_window_id;
+    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MINIMIZED);
+    auto new_focused_window_id = workspace->focused_window_id;
+    if (old_focused_window_id != new_focused_window_id) {
+      effect_t change_old_border_color_effect = {
+        .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
+        .as.change_border_color = {
+          .window = old_focused_window_id,
+          .color  = &ctx->border->normal_color
+        }
+      };
+      effect_t change_new_border_color_effect = {
+        .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
+        .as.change_border_color = {
+          .window = new_focused_window_id,
+          .color  = &ctx->border->normal_color
+        }
+      };
+      plan_push_effect(plan, &change_old_border_color_effect);
+      plan_push_effect(plan, &change_new_border_color_effect);
+    }
   } else {
     state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
-    state_workspace_set_focused_window(state, window->workspace_id, window_id);
     effect_t map_effect = {
       .type          = ZDWM_EFFECT_MAP_WINDOW,
       .as.map.window = window_id
     };
-    effect_t focus_effect = {
-      .type            = ZDWM_EFFECT_FOCUS_WINDOW,
-      .as.focus.window = window_id,
-    };
     plan_push_effect(plan, &map_effect);
-    plan_push_effect(plan, &focus_effect);
+    set_foucs_window(ctx, window->workspace_id, window_id, plan);
   }
 
+  auto workspace_id = window->workspace_id;
+  adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
   plan->need_relayout = true;
 }
 
 static void change_window_state(
-  state_t *state,
+  const policy_context_t *ctx,
   const window_state_change_command_t *command,
   plan_t *plan
 ) {
+  auto state = ctx->state;
+
   auto window = state_window_get(state, command->window);
   if (!window) return;
 
@@ -626,13 +660,13 @@ static void change_window_state(
 
   switch (command->type) {
   case ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN:
-    fullscreen_window(state, window->id, value, plan);
+    fullscreen_window(ctx, window->id, value, plan);
     break;
   case ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED:
-    maximize_window(state, window->id, value, plan);
+    maximize_window(ctx, window->id, value, plan);
     break;
   case ZDWM_WINDOW_STATE_REQUEST_MINIMIZED:
-    minimize_window(state, window->id, value, plan);
+    minimize_window(ctx, window->id, value, plan);
     break;
   }
 }
@@ -687,7 +721,7 @@ void policy_apply_command(
       configure_window(state, &cmd->as.configure, plan);
       break;
     case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
-      change_window_state(state, &cmd->as.state_change, plan);
+      change_window_state(ctx, &cmd->as.state_change, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
       switch_workspace(state, &cmd->as.switch_workspace, plan);

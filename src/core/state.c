@@ -442,6 +442,13 @@ void state_window_set_geometry_mode(
 ) {
   window_t *window = (window_t *)state_window_get(state, window_id);
   if (window) window_set_geometry_mode(window, geometry_mode);
+
+  if (geometry_mode != ZDWM_GEOMETRY_MINIMIZED) return;
+
+  auto workspace = state_workspace_get(state, window->workspace_id);
+  if (workspace->focused_window_id == window_id) {
+    state_workspace_adjust_focused_window(state, window->workspace_id);
+  }
 }
 
 void state_window_set_floating(
