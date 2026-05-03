@@ -22,8 +22,10 @@ typedef struct window_info_t {
   const char *class_name;
   const char *instance_name;
 
-  window_geometry_mode_t geometry_mode;
   window_layer_type_t layer_type;
+  bool fullscreen;
+  bool maximized;
+  bool minimized;
   bool urgent;
   bool fixed_size;
   bool skip_taskbar;

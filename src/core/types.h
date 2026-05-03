@@ -29,13 +29,6 @@ typedef struct point_t {
   int32_t y;
 } point_t;
 
-typedef enum window_geometry_mode_t {
-  ZDWM_GEOMETRY_NORMAL,
-  ZDWM_GEOMETRY_MAXIMIZED,
-  ZDWM_GEOMETRY_FULLSCREEN,
-  ZDWM_GEOMETRY_MINIMIZED,
-} window_geometry_mode_t;
-
 typedef enum focus_direction_t {
   ZDWM_FOCUS_PREV,
   ZDWM_FOCUS_NEXT,

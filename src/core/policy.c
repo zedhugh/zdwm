@@ -77,11 +77,13 @@ static void route_map_request(
              .class_name    = e->metadata.class_name,
              .instance_name = e->metadata.instance_name,
 
-             .geometry_mode = e->geometry_mode,
-             .layer_type    = layer_type,
-             .urgent        = e->urgent,
-             .fixed_size    = e->fixed_size,
-             .skip_taskbar  = e->skip_taskbar,
+             .layer_type   = layer_type,
+             .fullscreen   = e->fullscreen,
+             .maximized    = e->maximized,
+             .minimized    = e->minimized,
+             .urgent       = e->urgent,
+             .fixed_size   = e->fixed_size,
+             .skip_taskbar = e->skip_taskbar,
       },
     },
   };
@@ -93,15 +95,9 @@ static void route_map_request(
     if (action.workspace != ZDWM_WORKSPACE_ID_INVALID) {
       data->workspace = action.workspace;
     }
-    if (action.floating) {
-      data->floating = true;
-    }
-
-    if (action.fullscreen) {
-      data->info.geometry_mode = ZDWM_GEOMETRY_FULLSCREEN;
-    } else if (action.maximize) {
-      data->info.geometry_mode = ZDWM_GEOMETRY_MAXIMIZED;
-    }
+    if (action.floating) data->floating = true;
+    if (action.fullscreen) data->info.fullscreen = true;
+    if (action.maximize) data->info.maximized = true;
   }
 
   command_buffer_push(out, &manage_window_cmd);
@@ -436,22 +432,17 @@ static void fullscreen_window(
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
-  if ((value && window->geometry_mode == ZDWM_GEOMETRY_FULLSCREEN) ||
-      (!value && window->geometry_mode != ZDWM_GEOMETRY_FULLSCREEN)) {
-    return;
-  }
+  if (window->fullscreen == value) return;
 
-  state_window_set_border_width(state, window_id, 0);
   plan_push_fullscreen_effect(plan, window_id, value);
 
+  state_window_set_fullscreen(state, window_id, value);
   if (value) {
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_FULLSCREEN);
     state_window_set_border_width(state, window_id, 0);
     if (window->floating) {
       state_window_set_float_rect(state, window_id, window->frame_rect);
     }
   } else {
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
     state_window_set_border_width(state, window_id, ctx->border->width);
     if (window->floating) {
       state_window_set_frame_rect(state, window_id, window->float_rect);
@@ -474,22 +465,17 @@ static void maximize_window(
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
-  if ((value && window->geometry_mode == ZDWM_GEOMETRY_MAXIMIZED) ||
-      (!value && window->geometry_mode != ZDWM_GEOMETRY_MAXIMIZED)) {
-    return;
-  }
+  if (window->maximized == value) return;
 
-  state_window_set_border_width(state, window_id, 0);
   plan_push_maximize_effect(plan, window_id, value);
 
+  state_window_set_maximized(state, window_id, value);
   if (value) {
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MAXIMIZED);
     state_window_set_border_width(state, window_id, 0);
     if (window->floating) {
       state_window_set_float_rect(state, window_id, window->frame_rect);
     }
   } else {
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
     state_window_set_border_width(state, window_id, ctx->border->width);
     if (window->floating) {
       state_window_set_frame_rect(state, window_id, window->float_rect);
@@ -511,19 +497,16 @@ static void minimize_window(
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
-  if ((value && window->geometry_mode == ZDWM_GEOMETRY_MINIMIZED) ||
-      (!value && window->geometry_mode != ZDWM_GEOMETRY_MINIMIZED)) {
-    return;
-  }
+  if (window->minimized == value) return;
 
   plan_push_minimize_effect(plan, window_id, value);
 
+  state_window_set_minimized(state, window_id, value);
   if (value) {
     plan_push_unmap_effect(plan, window_id);
 
     auto workspace = state_workspace_get(state, window->workspace_id);
     auto old_focused_window_id = workspace->focused_window_id;
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_MINIMIZED);
     auto new_focused_window_id = workspace->focused_window_id;
     if (old_focused_window_id != new_focused_window_id) {
       auto color = &ctx->border->normal_color;
@@ -533,7 +516,6 @@ static void minimize_window(
       plan_push_change_border_color_effect(plan, new_focused_window_id, color);
     }
   } else {
-    state_window_set_geometry_mode(state, window_id, ZDWM_GEOMETRY_NORMAL);
     plan_push_map_effect(plan, window_id);
     set_foucs_window(ctx, window->workspace_id, window_id, plan);
   }
@@ -564,13 +546,22 @@ static void change_window_state(
   case ZDWM_WINDOW_STATE_ACTION_TOGGLE:
     switch (command->type) {
     case ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN:
-      value = !(window->geometry_mode == ZDWM_GEOMETRY_FULLSCREEN);
+      value = !window->fullscreen;
       break;
     case ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED:
-      value = !(window->geometry_mode == ZDWM_GEOMETRY_MAXIMIZED);
+      value = !window->maximized;
       break;
     case ZDWM_WINDOW_STATE_REQUEST_MINIMIZED:
-      value = !(window->geometry_mode == ZDWM_GEOMETRY_MINIMIZED);
+      value = !window->minimized;
+      break;
+    case ZDWM_WINDOW_STATE_REQUEST_SKIP_TASKBAR:
+      value = !window->skip_taskbar;
+      break;
+    case ZDWM_WINDOW_STATE_REQUEST_URGENT:
+      value = !window->urgent;
+      break;
+    case ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE:
+      value = !window->fixed_size;
       break;
     }
   }
@@ -584,6 +575,16 @@ static void change_window_state(
     break;
   case ZDWM_WINDOW_STATE_REQUEST_MINIMIZED:
     minimize_window(ctx, window->id, value, plan);
+    break;
+  /* TODO: 下面三个可能需要添加处理，尤其是 fixed_size 和 floating 相关 */
+  case ZDWM_WINDOW_STATE_REQUEST_SKIP_TASKBAR:
+    state_window_set_skip_taskbar(state, window->id, value);
+    break;
+  case ZDWM_WINDOW_STATE_REQUEST_URGENT:
+    state_window_set_urgent(state, window->id, value);
+    break;
+  case ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE:
+    state_window_set_fixed_size(state, window->id, value);
     break;
   }
 }

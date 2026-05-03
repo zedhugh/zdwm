@@ -338,7 +338,9 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
     window->layer         = info->layer_type;
   }
 
-  window_set_geometry_mode(window, info->geometry_mode);
+  window_set_fullscreen(window, info->fullscreen);
+  window_set_maximized(window, info->maximized);
+  window_set_minimized(window, info->minimized);
   window_set_urgent(window, info->urgent);
   window_set_fixed_size(window, info->fixed_size);
   window_set_frame_rect(window, info->frame_rect);
@@ -435,20 +437,31 @@ void state_window_set_workspace(
   state_workspace_adjust_focused_window(state, workspace_id);
 }
 
-void state_window_set_geometry_mode(
+void state_window_set_fullscreen(
   state_t *state,
   window_id_t window_id,
-  window_geometry_mode_t geometry_mode
+  bool fullscreen
 ) {
-  window_t *window = (window_t *)state_window_get(state, window_id);
-  if (window) window_set_geometry_mode(window, geometry_mode);
+  auto window = (window_t *)state_window_get(state, window_id);
+  if (window) window_set_fullscreen(window, fullscreen);
+}
 
-  if (geometry_mode != ZDWM_GEOMETRY_MINIMIZED) return;
+void state_window_set_maximized(
+  state_t *state,
+  window_id_t window_id,
+  bool maximized
+) {
+  auto window = (window_t *)state_window_get(state, window_id);
+  if (window) window_set_maximized(window, maximized);
+}
 
-  auto workspace = state_workspace_get(state, window->workspace_id);
-  if (workspace->focused_window_id == window_id) {
-    state_workspace_adjust_focused_window(state, window->workspace_id);
-  }
+void state_window_set_minimized(
+  state_t *state,
+  window_id_t window_id,
+  bool minimized
+) {
+  auto window = (window_t *)state_window_get(state, window_id);
+  if (window) window_set_minimized(window, minimized);
 }
 
 void state_window_set_floating(

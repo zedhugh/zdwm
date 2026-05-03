@@ -173,13 +173,13 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
         window_id_t *window_id_slot =
           array_push(window_ids, window_count, window_list_capacity);
         *window_id_slot = window->id;
-      } else if (window->geometry_mode == ZDWM_GEOMETRY_FULLSCREEN) {
+      } else if (window->fullscreen) {
         layout_item_t item = {
           .window_id = window->id,
           .rect      = output->geometry,
         };
         layout_result_push(result, item);
-      } else if (window->geometry_mode == ZDWM_GEOMETRY_MAXIMIZED) {
+      } else if (window->maximized) {
         layout_item_t item = {
           .window_id = window->id,
           .rect      = output->workarea,

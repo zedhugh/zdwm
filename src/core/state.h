@@ -177,10 +177,20 @@ void state_window_set_workspace(
   window_id_t window_id,
   workspace_id_t workspace_id
 );
-void state_window_set_geometry_mode(
+void state_window_set_fullscreen(
   state_t *state,
   window_id_t window_id,
-  window_geometry_mode_t geometry_mode
+  bool fullscreen
+);
+void state_window_set_maximized(
+  state_t *state,
+  window_id_t window_id,
+  bool maximized
+);
+void state_window_set_minimized(
+  state_t *state,
+  window_id_t window_id,
+  bool minimized
 );
 void state_window_set_floating(
   state_t *state,

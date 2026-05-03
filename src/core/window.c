@@ -36,11 +36,16 @@ void window_metadata_cleanup(window_metadata_t *metadata) {
   p_delete(&metadata->instance_name);
 }
 
-void window_set_geometry_mode(
-  window_t *window,
-  window_geometry_mode_t geometry_mode
-) {
-  window->geometry_mode = geometry_mode;
+void window_set_fullscreen(window_t *window, bool fullscreen) {
+  window->fullscreen = fullscreen;
+}
+
+void window_set_maximized(window_t *window, bool maximized) {
+  window->maximized = maximized;
+}
+
+void window_set_minimized(window_t *window, bool minimized) {
+  window->minimized = minimized;
 }
 
 void window_set_floating(window_t *window, bool floating) {
@@ -62,6 +67,10 @@ void window_set_urgent(window_t *window, bool urgent) {
 void window_set_fixed_size(window_t *window, bool fixed_size) {
   window->fixed_size = fixed_size;
   if (fixed_size) window_set_floating(window, true);
+}
+
+void window_set_skip_taskbar(window_t *window, bool skip_taskbar) {
+  window->skip_taskbar = skip_taskbar;
 }
 
 void window_set_float_rect(window_t *window, rect_t rect) {
@@ -101,10 +110,6 @@ void window_set_border_width(window_t *window, uint32_t border_width) {
   window->border_width = border_width;
 }
 
-void window_set_skip_taskbar(window_t *window, bool skip_taskbar) {
-  window->skip_taskbar = skip_taskbar;
-}
-
 void window_take_metadata(
   window_t *window,
   window_metadata_t *metadata,
@@ -130,18 +135,12 @@ void window_take_metadata(
 bool window_need_layout(const window_t *window) {
   if (window->floating) return false;
 
-  switch (window->geometry_mode) {
-  case ZDWM_GEOMETRY_FULLSCREEN:
-  case ZDWM_GEOMETRY_MAXIMIZED:
-  case ZDWM_GEOMETRY_MINIMIZED:
+  if (window->fullscreen || window->maximized || window->minimized) {
     return false;
-  default:
   }
 
   return true;
 }
-
-bool window_need_resize(const window_t *window, int32_t width, int32_t height);
 
 bool window_need_move(const window_t *window, int32_t x, int32_t y) {
   return window->frame_rect.x != x || window->frame_rect.y != y;
@@ -153,12 +152,6 @@ bool window_need_resize(const window_t *window, int32_t width, int32_t height) {
 }
 
 bool window_should_has_border(const window_t *window) {
-  switch (window->geometry_mode) {
-  case ZDWM_GEOMETRY_MAXIMIZED:
-  case ZDWM_GEOMETRY_FULLSCREEN:
-    return false;
-  case ZDWM_GEOMETRY_NORMAL:
-  case ZDWM_GEOMETRY_MINIMIZED:
-  }
+  if (window->fullscreen || window->maximized) return false;
   return window->floating;
 }

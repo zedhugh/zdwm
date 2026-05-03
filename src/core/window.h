@@ -70,11 +70,14 @@ typedef struct window_t {
   workspace_id_t workspace_id;
 
   window_layer_type_t layer;
-  window_geometry_mode_t geometry_mode;
+  bool fullscreen;
+  bool maximized;
+  bool minimized;
   bool floating;
   bool sticky;
   bool urgent;
   bool fixed_size;
+  bool skip_taskbar;
 
   /* 几何信息（均为包含边框后的外框矩形） */
   rect_t float_rect; /* floating 模式下记忆的外框矩形 */
@@ -88,7 +91,6 @@ typedef struct window_t {
   char *instance_name;
 
   uint32_t border_width;
-  bool skip_taskbar;
 } window_t;
 
 window_layer_type_t window_classify_layer(const window_layer_props_t *props);
@@ -96,14 +98,14 @@ window_layer_type_t window_classify_layer(const window_layer_props_t *props);
 void window_layer_props_cleanup(window_layer_props_t *props);
 void window_metadata_cleanup(window_metadata_t *metadata);
 
-void window_set_geometry_mode(
-  window_t *window,
-  window_geometry_mode_t geometry_mode
-);
+void window_set_fullscreen(window_t *window, bool fullscreen);
+void window_set_maximized(window_t *window, bool maximized);
+void window_set_minimized(window_t *window, bool minimized);
 void window_set_floating(window_t *window, bool floating);
 void window_set_sticky(window_t *window, bool sticky);
 void window_set_urgent(window_t *window, bool urgent);
 void window_set_fixed_size(window_t *window, bool fixed_size);
+void window_set_skip_taskbar(window_t *window, bool skip_taskbar);
 void window_set_float_rect(window_t *window, rect_t rect);
 void window_set_frame_rect(window_t *window, rect_t rect);
 void window_set_title(window_t *window, const char *title);
@@ -112,7 +114,6 @@ void window_set_role(window_t *window, const char *role);
 void window_set_class(window_t *window, const char *class_name);
 void window_set_instance(window_t *window, const char *instance_name);
 void window_set_border_width(window_t *window, uint32_t border_width);
-void window_set_skip_taskbar(window_t *window, bool skip_taskbar);
 void window_take_metadata(
   window_t *window,
   window_metadata_t *metadata,

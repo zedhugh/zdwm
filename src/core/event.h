@@ -53,7 +53,9 @@ typedef struct window_map_request_event_t {
   bool skip_taskbar;
   bool urgent;
   bool fixed_size;
-  window_geometry_mode_t geometry_mode;
+  bool fullscreen;
+  bool maximized;
+  bool minimized;
   rect_t rect;
 
   window_layer_props_t props;

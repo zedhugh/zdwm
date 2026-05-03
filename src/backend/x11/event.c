@@ -51,27 +51,32 @@ static bool derive_skip_taskbar(
   return false;
 }
 
-static window_geometry_mode_t geometry_mode_from_hints(
-  const xcb_icccm_wm_hints_t *hints
-) {
-  if (hints->initial_state == XCB_ICCCM_WM_STATE_ICONIC)
-    return ZDWM_GEOMETRY_MINIMIZED;
-  return ZDWM_GEOMETRY_NORMAL;
+static bool minimized_from_hints(const xcb_icccm_wm_hints_t *hints) {
+  return hints->initial_state == XCB_ICCCM_WM_STATE_ICONIC;
 }
 
-static window_geometry_mode_t geometry_mode_from_states(
+static bool maximized_from_states(
   const atoms_t *atoms,
   const xcb_atom_t *state_atoms,
   uint32_t state_count
 ) {
   for (uint32_t i = 0; i < state_count; i++) {
-    if (state_atoms[i] == atoms->_NET_WM_STATE_FULLSCREEN)
-      return ZDWM_GEOMETRY_FULLSCREEN;
     if (state_atoms[i] == atoms->_NET_WM_STATE_MAXIMIZED_VERT ||
         state_atoms[i] == atoms->_NET_WM_STATE_MAXIMIZED_HORZ)
-      return ZDWM_GEOMETRY_MAXIMIZED;
+      return true;
   }
-  return ZDWM_GEOMETRY_NORMAL;
+  return false;
+}
+
+static bool fullscreen_from_states(
+  const atoms_t *atoms,
+  const xcb_atom_t *state_atoms,
+  uint32_t state_count
+) {
+  for (uint32_t i = 0; i < state_count; i++) {
+    if (state_atoms[i] == atoms->_NET_WM_STATE_FULLSCREEN) return true;
+  }
+  return false;
 }
 
 static bool urgent_from_states(
@@ -98,7 +103,6 @@ static bool handle_map_request(
   window_map_request_event_t *ev = &event->as.window_map_request;
   ev->window                     = (window_id_t)window;
   ev->transient_for              = window_get_transient_for(backend, window);
-  ev->geometry_mode              = ZDWM_GEOMETRY_NORMAL;
 
   xcb_get_window_attributes_reply_t *wa =
     window_get_attributes(backend, window);
@@ -108,8 +112,8 @@ static bool handle_map_request(
 
   xcb_icccm_wm_hints_t wm_hints = {0};
   if (window_get_wm_hints(backend, window, &wm_hints)) {
-    ev->urgent        = (bool)xcb_icccm_wm_hints_get_urgency(&wm_hints);
-    ev->geometry_mode = geometry_mode_from_hints(&wm_hints);
+    ev->urgent    = (bool)xcb_icccm_wm_hints_get_urgency(&wm_hints);
+    ev->minimized = minimized_from_hints(&wm_hints);
   }
 
   if (!window_get_fixed_size(backend, window, &ev->fixed_size)) return false;
@@ -128,12 +132,9 @@ static bool handle_map_request(
     return false;
   }
 
-  if (ev->geometry_mode == ZDWM_GEOMETRY_NORMAL && state_atoms) {
-    ev->geometry_mode =
-      geometry_mode_from_states(atoms, state_atoms, state_count);
-  }
-
   if (state_atoms) {
+    ev->maximized    = maximized_from_states(atoms, state_atoms, state_count);
+    ev->fullscreen   = fullscreen_from_states(atoms, state_atoms, state_count);
     ev->skip_taskbar = derive_skip_taskbar(atoms, state_atoms, state_count);
     ev->props.states = derive_window_states(
       atoms,
@@ -409,18 +410,16 @@ static bool handle_client_message(
       data->action = ZDWM_WINDOW_STATE_ACTION_TOGGLE;
       break;
     }
-    auto properties    = &xcb_event->data.data32[1];
-    uint32_t count     = 2;
-    auto geometry_mode = geometry_mode_from_states(atoms, properties, count);
-    switch (geometry_mode) {
-    case ZDWM_GEOMETRY_FULLSCREEN:
-      data->type = ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN;
-      return true;
-    case ZDWM_GEOMETRY_MAXIMIZED:
+    auto properties = &xcb_event->data.data32[1];
+    uint32_t count  = 2;
+
+    if (maximized_from_states(atoms, properties, count)) {
       data->type = ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED;
       return true;
-    case ZDWM_GEOMETRY_MINIMIZED:
-    case ZDWM_GEOMETRY_NORMAL:
+    }
+    if (fullscreen_from_states(atoms, properties, count)) {
+      data->type = ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN;
+      return true;
     }
 
     if (derive_skip_taskbar(atoms, properties, count)) {
