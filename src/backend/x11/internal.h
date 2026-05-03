@@ -14,6 +14,7 @@
                                        \
   X(WM_WINDOW_ROLE)                    \
   X(WM_NAME)                           \
+  X(WM_CHANGE_STATE)                   \
   X(_NET_WM_NAME)                      \
                                        \
   X(WM_PROTOCOLS)                      \

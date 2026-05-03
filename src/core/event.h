@@ -76,21 +76,6 @@ typedef struct window_metadata_change_event_t {
   window_metadata_t metadata;
 } window_metadata_change_event_t;
 
-typedef enum window_hint_changed_flags_t {
-  ZDWM_WINDOW_HINT_CHANGED_NONE         = 0,
-  ZDWM_WINDOW_HINT_CHANGED_URGENT       = 1u << 0,
-  ZDWM_WINDOW_HINT_CHANGED_FIXED_SIZE   = 1u << 1,
-  ZDWM_WINDOW_HINT_CHANGED_SKIP_TASKBAR = 1u << 2,
-} window_hint_changed_flags_t;
-
-typedef struct window_hints_changed_event_t {
-  window_id_t window;
-  uint32_t changed_fields;
-  bool urgent;
-  bool fixed_size;
-  bool skip_taskbar;
-} window_hints_changed_event_t;
-
 typedef enum window_activation_source_t {
   ZDWM_WINDOW_ACTIVATION_SOURCE_LEGACY      = 0,
   ZDWM_WINDOW_ACTIVATION_SOURCE_APPLICATION = 1,
@@ -119,7 +104,6 @@ typedef struct event_t {
     window_map_request_event_t window_map_request;
     window_remove_event_t window_remove;
     window_metadata_change_event_t window_metadata_change;
-    window_hints_changed_event_t window_hints_changed;
     window_activate_request_event_t window_activate_request;
     window_state_request_event_t window_state_request;
     configure_data_t configure_request;

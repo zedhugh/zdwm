@@ -275,6 +275,170 @@ static bool handle_enter_notify(
   return true;
 }
 
+static bool handle_property_notify(
+  backend_t *backend,
+  event_t *event,
+  const xcb_property_notify_event_t *xcb_event
+) {
+  auto window_id = xcb_event->window;
+  if (xcb_event->atom == backend->atoms.WM_NAME ||
+      xcb_event->atom == backend->atoms._NET_WM_NAME) {
+    event->type = ZDWM_EVENT_WINDOW_METADATA_CHANGED;
+
+    auto data            = &event->as.window_metadata_change;
+    data->window         = window_id;
+    data->metadata.title = window_get_title(backend, window_id);
+    data->changed_fields = ZDWM_WINDOW_METADATA_CHANGE_TITLE;
+    return true;
+  }
+
+  if (xcb_event->atom == backend->atoms.WM_WINDOW_ROLE) {
+    event->type = ZDWM_EVENT_WINDOW_METADATA_CHANGED;
+
+    auto data            = &event->as.window_metadata_change;
+    data->window         = window_id;
+    data->metadata.role  = window_get_role(backend, window_id);
+    data->changed_fields = ZDWM_WINDOW_METADATA_CHANGE_ROLE;
+    return true;
+  }
+
+  if (xcb_event->atom == XCB_ATOM_WM_CLASS) {
+    event->type = ZDWM_EVENT_WINDOW_METADATA_CHANGED;
+
+    auto data    = &event->as.window_metadata_change;
+    data->window = window_id;
+    window_get_class(
+      backend,
+      window_id,
+      &data->metadata.class_name,
+      &data->metadata.instance_name
+    );
+    data->changed_fields =
+      ZDWM_WINDOW_METADATA_CHANGE_CLASS | ZDWM_WINDOW_METADATA_CHANGE_INSTANCE;
+    return true;
+  }
+
+  if (xcb_event->atom == XCB_ATOM_WM_HINTS) {
+    xcb_icccm_wm_hints_t hints = {0};
+    auto handled = window_get_wm_hints(backend, window_id, &hints);
+    if (!handled) return false;
+
+    event->type = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+
+    auto data    = &event->as.window_state_request;
+    data->window = window_id;
+    if (hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY) {
+      data->type   = ZDWM_WINDOW_STATE_REQUEST_URGENT;
+      data->action = xcb_icccm_wm_hints_get_urgency(&hints)
+                       ? ZDWM_WINDOW_STATE_ACTION_ADD
+                       : ZDWM_WINDOW_STATE_ACTION_REMOVE;
+      return true;
+    }
+    return false;
+  }
+
+  if (xcb_event->atom == XCB_ATOM_WM_NORMAL_HINTS) {
+    bool fixed_size = false;
+    if (!window_get_fixed_size(backend, window_id, &fixed_size)) return false;
+
+    event->type = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+
+    auto data    = &event->as.window_state_request;
+    data->window = window_id;
+    data->type   = ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE;
+    data->action = fixed_size ? ZDWM_WINDOW_STATE_ACTION_ADD
+                              : ZDWM_WINDOW_STATE_ACTION_REMOVE;
+    return true;
+  }
+
+  return false;
+}
+
+static bool handle_client_message(
+  backend_t *backend,
+  event_t *event,
+  const xcb_client_message_event_t *xcb_event
+) {
+  auto atoms = &backend->atoms;
+
+  if (xcb_event->type == atoms->_NET_ACTIVE_WINDOW) {
+    event->type = ZDWM_EVENT_WINDOW_ACTIVATE_REQUEST;
+    event->as.window_activate_request.window = xcb_event->window;
+    event->as.window_activate_request.source = xcb_event->data.data32[0];
+    return true;
+  }
+
+  if (xcb_event->type == atoms->WM_CHANGE_STATE) {
+    if (xcb_event->data.data32[0] == XCB_ICCCM_WM_STATE_ICONIC) {
+      event->type                           = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+      event->as.window_state_request.window = xcb_event->window;
+      event->as.window_state_request.type = ZDWM_WINDOW_STATE_REQUEST_MINIMIZED;
+      event->as.window_state_request.action = ZDWM_WINDOW_STATE_ACTION_ADD;
+      return true;
+    }
+    return false;
+  }
+
+  if (xcb_event->type == atoms->_NET_WM_STATE) {
+    event->type  = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+    auto data    = &event->as.window_state_request;
+    data->window = xcb_event->window;
+    /**
+     * _NET_WM_STATE 协议数据格式为
+     * data.data32 = {
+     *   action,         // 操作类型（添加/移除/切换）
+     *   property1,      // 第一个状态原子（如_NET_WM_STATE_FULLSCREEN）
+     *   property2,      // 第二个状态原子（可选，通常为0）
+     *   0,              // 预留字段（固定为0）
+     *   0               // 预留字段（固定为0）
+     * };
+     * action 值可能为
+     *   _NET_WM_STATE_ADD（1）​​：添加全屏状态，窗口进入全屏模式
+     *   _NET_WM_STATE_REMOVE（0）：移除全屏状态，窗口退出全屏模式
+     *   _NET_WM_STATE_TOGGLE（2）：切换全屏状态（若当前全屏则退出，反之进入）
+     */
+    auto action = xcb_event->data.data32[0];
+    switch (action) {
+    case 0:
+      data->action = ZDWM_WINDOW_STATE_ACTION_REMOVE;
+      break;
+    case 1:
+      data->action = ZDWM_WINDOW_STATE_ACTION_ADD;
+      break;
+    case 2:
+      data->action = ZDWM_WINDOW_STATE_ACTION_TOGGLE;
+      break;
+    }
+    auto properties    = &xcb_event->data.data32[1];
+    uint32_t count     = 2;
+    auto geometry_mode = geometry_mode_from_states(atoms, properties, count);
+    switch (geometry_mode) {
+    case ZDWM_GEOMETRY_FULLSCREEN:
+      data->type = ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN;
+      return true;
+    case ZDWM_GEOMETRY_MAXIMIZED:
+      data->type = ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED;
+      return true;
+    case ZDWM_GEOMETRY_MINIMIZED:
+    case ZDWM_GEOMETRY_NORMAL:
+    }
+
+    if (derive_skip_taskbar(atoms, properties, count)) {
+      data->type = ZDWM_WINDOW_STATE_REQUEST_SKIP_TASKBAR;
+      return true;
+    }
+
+    if (urgent_from_states(atoms, properties, count)) {
+      data->type = ZDWM_WINDOW_STATE_REQUEST_URGENT;
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
+}
+
 bool backend_next_event(backend_t *backend, event_t *event) {
   if (!backend || !backend->conn || !event) return false;
 
@@ -301,6 +465,8 @@ bool backend_next_event(backend_t *backend, event_t *event) {
       EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
       EVENT(XCB_KEY_PRESS, handle_key_press);
       EVENT(XCB_ENTER_NOTIFY, handle_enter_notify);
+      EVENT(XCB_PROPERTY_NOTIFY, handle_property_notify);
+      EVENT(XCB_CLIENT_MESSAGE, handle_client_message);
 
 #undef EVENT
 
