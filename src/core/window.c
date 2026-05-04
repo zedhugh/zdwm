@@ -51,6 +51,8 @@ void window_set_minimized(window_t *window, bool minimized) {
 void window_set_floating(window_t *window, bool floating) {
   if (!floating && (window->fixed_size || window->sticky)) return;
 
+  if (floating == window->floating) return;
+
   window->floating = floating;
   if (floating) window->float_rect = window->frame_rect;
 }

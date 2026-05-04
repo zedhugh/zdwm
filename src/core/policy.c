@@ -423,6 +423,60 @@ static void fullscreen_window(
   window_id_t window_id,
   bool value,
   plan_t *plan
+);
+static void maximize_window(
+  const policy_context_t *ctx,
+  window_id_t window_id,
+  bool value,
+  plan_t *plan
+);
+
+static void add_window_floating_effect(
+  const policy_context_t *ctx,
+  const window_t *window,
+  plan_t *plan
+) {
+  effect_t configure_effect = {
+    .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
+    .as.configure = {
+      .window       = window->id,
+      .border_width = ctx->border->width,
+      .x            = window->frame_rect.x,
+      .y            = window->frame_rect.y,
+      .width  = window->frame_rect.width - 2 * (int32_t)ctx->border->width,
+      .height = window->frame_rect.height - 2 * (int32_t)ctx->border->width,
+      .changed_fields = ZDWM_CONFIGURE_FIELD_X | ZDWM_CONFIGURE_FIELD_Y |
+                        ZDWM_CONFIGURE_FIELD_WIDTH |
+                        ZDWM_CONFIGURE_FIELD_HEIGHT |
+                        ZDWM_CONFIGURE_FIELD_BORDER_WIDTH
+    }
+  };
+  plan_push_effect(plan, &configure_effect);
+}
+
+static void floating_window(
+  const policy_context_t *ctx,
+  window_id_t window_id,
+  bool value,
+  plan_t *plan
+) {
+  auto window = state_window_get(ctx->state, window_id);
+  if (!window) return;
+
+  bool old_floating = window->floating;
+  state_window_set_floating(ctx->state, window_id, value);
+  if (old_floating == window->floating) return;
+
+  if (window->floating) add_window_floating_effect(ctx, window, plan);
+
+  plan->need_relayout = true;
+}
+
+static void fullscreen_window(
+  const policy_context_t *ctx,
+  window_id_t window_id,
+  bool value,
+  plan_t *plan
 ) {
   auto state  = ctx->state;
   auto window = state_window_get(state, window_id);
@@ -437,11 +491,13 @@ static void fullscreen_window(
     state_window_set_border_width(state, window_id, 0);
     if (window->floating) {
       state_window_set_float_rect(state, window_id, window->frame_rect);
+      add_window_floating_effect(ctx, window, plan);
     }
   } else {
     state_window_set_border_width(state, window_id, ctx->border->width);
     if (window->floating) {
       state_window_set_frame_rect(state, window_id, window->float_rect);
+      add_window_floating_effect(ctx, window, plan);
     }
   }
 
@@ -470,11 +526,13 @@ static void maximize_window(
     state_window_set_border_width(state, window_id, 0);
     if (window->floating) {
       state_window_set_float_rect(state, window_id, window->frame_rect);
+      add_window_floating_effect(ctx, window, plan);
     }
   } else {
     state_window_set_border_width(state, window_id, ctx->border->width);
     if (window->floating) {
       state_window_set_frame_rect(state, window_id, window->float_rect);
+      add_window_floating_effect(ctx, window, plan);
     }
   }
 
@@ -585,6 +643,52 @@ static void change_window_state(
   }
 }
 
+static void command_window_set_floating(
+  const policy_context_t *ctx,
+  const window_bool_state_t *data,
+  plan_t *plan
+) {
+  floating_window(ctx, data->window, data->state, plan);
+}
+
+static void command_window_set_sticky(
+  const policy_context_t *ctx,
+  const window_bool_state_t *data,
+  plan_t *plan
+) {
+  auto window = state_window_get(ctx->state, data->window);
+  if (!window || window->sticky == data->state) return;
+
+  if (!window->floating) {
+  }
+  state_window_set_sticky(ctx->state, data->window, data->state);
+  if (data->state) return;
+}
+
+static void command_window_set_minimized(
+  const policy_context_t *ctx,
+  const window_bool_state_t *data,
+  plan_t *plan
+) {
+  minimize_window(ctx, data->window, data->state, plan);
+}
+
+static void command_window_set_maximized(
+  const policy_context_t *ctx,
+  const window_bool_state_t *data,
+  plan_t *plan
+) {
+  maximize_window(ctx, data->window, data->state, plan);
+}
+
+static void command_window_set_fullscreen(
+  const policy_context_t *ctx,
+  const window_bool_state_t *data,
+  plan_t *plan
+) {
+  fullscreen_window(ctx, data->window, data->state, plan);
+}
+
 static void
 switch_workspace(state_t *state, workspace_id_t workspace_id, plan_t *plan) {
   auto workspace = state_workspace_get(state, workspace_id);
@@ -635,6 +739,21 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
       change_window_state(ctx, &cmd->as.state_change, plan);
+      break;
+    case ZDWM_COMMAND_WINDOW_SET_FLOATING:
+      command_window_set_floating(ctx, &cmd->as.floating, plan);
+      break;
+    case ZDWM_COMMAND_WINDOW_SET_STICKY:
+      command_window_set_sticky(ctx, &cmd->as.sticky, plan);
+      break;
+    case ZDWM_COMMAND_WINDOW_SET_MINIMIZED:
+      command_window_set_minimized(ctx, &cmd->as.minimized, plan);
+      break;
+    case ZDWM_COMMAND_WINDOW_SET_MAXIMIZED:
+      command_window_set_maximized(ctx, &cmd->as.maximized, plan);
+      break;
+    case ZDWM_COMMAND_WINDOW_SET_FULLSCREEN:
+      command_window_set_fullscreen(ctx, &cmd->as.fullscreen, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
       switch_workspace(state, cmd->as.switch_workspace.workspace, plan);

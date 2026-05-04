@@ -11,6 +11,11 @@ typedef enum command_type_t {
   ZDWM_COMMAND_WITHDRAW_WINDOW,
   ZDWM_COMMAND_CONFIGURE_WINDOW,
   ZDWM_COMMAND_CHANGE_WINDOW_STATE,
+  ZDWM_COMMAND_WINDOW_SET_FLOATING,
+  ZDWM_COMMAND_WINDOW_SET_STICKY,
+  ZDWM_COMMAND_WINDOW_SET_MINIMIZED,
+  ZDWM_COMMAND_WINDOW_SET_MAXIMIZED,
+  ZDWM_COMMAND_WINDOW_SET_FULLSCREEN,
   ZDWM_COMMAND_SWITCH_WORKSPACE,
 } command_type_t;
 
@@ -29,6 +34,11 @@ typedef struct window_state_change_command_t {
   window_state_request_type_t type;
   window_state_request_action_t action;
 } window_state_change_command_t;
+
+typedef struct window_bool_state_t {
+  window_id_t window;
+  bool state;
+} window_bool_state_t;
 
 /**
  * @brief 非 owning 的命令值对象
@@ -49,6 +59,11 @@ typedef struct command_t {
     only_window_data_t withdraw;
     configure_data_t configure;
     window_state_change_command_t state_change;
+    window_bool_state_t floating;
+    window_bool_state_t sticky;
+    window_bool_state_t minimized;
+    window_bool_state_t maximized;
+    window_bool_state_t fullscreen;
     switch_workspace_command_t switch_workspace;
   } as;
 } command_t;
