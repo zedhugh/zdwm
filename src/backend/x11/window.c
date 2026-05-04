@@ -395,7 +395,7 @@ void window_grab_keys(
 
   for (size_t i = 0; i < count; ++i) {
     auto key      = &keys[i];
-    auto keycodes = xcb_key_symbols_get_keycode(key_symbols, keys->keysym);
+    auto keycodes = xcb_key_symbols_get_keycode(key_symbols, key->keysym);
     if (!keycodes) continue;
 
     auto modifiers = get_xcb_modifier(key->modifiers);
