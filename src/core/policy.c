@@ -241,6 +241,22 @@ static void set_foucs_window(
   }
 }
 
+static void push_window_list_effect(const state_t *state, plan_t *plan) {
+  window_list_t list = {0};
+  for (size_t i = 0; i < state_window_count(state); ++i) {
+    auto window = state_window_at(state, i);
+    window_list_push(&list, window->id);
+  }
+  effect_t effect = {
+    .type                  = ZDWM_EFFECT_CHANGE_WINDOW_LIST,
+    .as.change_window_list = {
+      .windows = list.windows,
+      .count   = list.count,
+    },
+  };
+  plan_push_effect(plan, &effect);
+}
+
 static void manage_window(
   const policy_context_t *ctx,
   const manage_window_command_t *command,
@@ -253,6 +269,7 @@ static void manage_window(
   state_window_set_workspace(state, window_id, workspace_id);
   state_window_set_floating(state, window_id, command->floating);
   set_foucs_window(ctx, workspace_id, window_id, plan);
+  push_window_list_effect(state, plan);
 
   auto need_layout = window_need_layout(window);
   if (need_layout) {
@@ -325,6 +342,8 @@ unmanage_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
 
   auto old_focused_window = workspace->focused_window_id;
   state_window_remove(state, window);
+
+  push_window_list_effect(state, plan);
 
   if (window_need_layout(win)) {
     adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
