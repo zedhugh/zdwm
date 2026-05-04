@@ -20,7 +20,7 @@ void window_list_reset(window_list_t *window_list) {
 }
 
 void window_list_cleanup(window_list_t *window_list) {
-  p_delete(window_list->windows);
+  p_delete(&window_list->windows);
   window_list->count    = 0;
   window_list->capacity = 0;
 }
