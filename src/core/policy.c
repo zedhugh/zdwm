@@ -101,22 +101,18 @@ static void route_map_request(
   }
 
   command_buffer_push(out, &manage_window_cmd);
-  if (have_rule_match && action.switch_to_workspace) {
-    workspace_id_t workspace_id  = manage_window_cmd.as.manage_window.workspace;
-    const workspace_t *workspace = state_workspace_get(state, workspace_id);
+  if (!have_rule_match || !action.switch_to_workspace) return;
 
-    if (workspace) {
-      command_t switch_workspace_cmd = {
-        .type                = ZDWM_COMMAND_SWITCH_WORKSPACE,
-        .as.switch_workspace = {
-          .output    = workspace->output_id,
-          .workspace = workspace_id,
-        },
-      };
+  workspace_id_t workspace_id  = manage_window_cmd.as.manage_window.workspace;
+  const workspace_t *workspace = state_workspace_get(state, workspace_id);
+  if (!workspace) return;
 
-      command_buffer_push(out, &switch_workspace_cmd);
-    }
-  }
+  command_t switch_workspace_cmd = {
+    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+    .as.switch_workspace.workspace = workspace_id,
+  };
+
+  command_buffer_push(out, &switch_workspace_cmd);
 }
 
 static void route_window_remove(
@@ -589,13 +585,12 @@ static void change_window_state(
   }
 }
 
-static void switch_workspace(
-  state_t *state,
-  const switch_workspace_command_t *command,
-  plan_t *plan
-) {
-  auto output_id               = command->output;
-  auto workspace_id            = command->workspace;
+static void
+switch_workspace(state_t *state, workspace_id_t workspace_id, plan_t *plan) {
+  auto workspace = state_workspace_get(state, workspace_id);
+  if (!workspace) return;
+
+  auto output_id               = workspace->output_id;
   workspace_id_t old_workspace = ZDWM_WORKSPACE_ID_INVALID;
 
   if (state_output_set_current_workspace(
@@ -642,7 +637,7 @@ void policy_apply_command(
       change_window_state(ctx, &cmd->as.state_change, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
-      switch_workspace(state, &cmd->as.switch_workspace, plan);
+      switch_workspace(state, cmd->as.switch_workspace.workspace, plan);
       break;
     }
   }

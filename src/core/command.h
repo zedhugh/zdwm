@@ -21,7 +21,6 @@ typedef struct manage_window_command_t {
 } manage_window_command_t;
 
 typedef struct switch_workspace_command_t {
-  output_id_t output;
   workspace_id_t workspace;
 } switch_workspace_command_t;
 
