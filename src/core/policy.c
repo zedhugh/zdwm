@@ -183,6 +183,7 @@ void policy_route_event(
     break;
   case ZDWM_EVENT_POINTER_ENTER:
     route_pointer_enter(state, event->as.pointer_enter.window, out);
+    break;
   case ZDWM_EVENT_WINDOW_MAP_REQUEST:
     route_map_request(state, ctx->rules, &event->as.window_map_request, out);
     break;
