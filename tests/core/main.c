@@ -1,3 +1,6 @@
+#include <errno.h>
+#include <unistd.h>
+
 #include "base/log.h"
 #include "config/runtime_config.h"
 #include "core/backend.h"
@@ -32,13 +35,22 @@ static void bootstrap(runtime_t *runtime) {
   }
 };
 
-int main(void) {
+char **cmd_argv = nullptr;
+
+int main(int argc, char *argv[]) {
+  cmd_argv = argv;
+
   runtime_t runtime = {0};
 
   bootstrap(&runtime);
   runtime_setup(&runtime);
   runtime_run(&runtime);
   runtime_shutdown(&runtime);
+
+  if (runtime.will_restart) {
+    execvp(cmd_argv[0], cmd_argv);
+    fatal("execv() failed: %s", strerror(errno));
+  }
 
   return 0;
 }

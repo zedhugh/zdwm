@@ -17,7 +17,8 @@ typedef struct policy_context_t {
   const rules_t *rules;
   const border_config_t *border;
   const layout_registry_t *layouts;
-  const zdwm_action_ctx_t action_ctx;
+  const zdwm_action_api_t action_api;
+  zdwm_runtime_t *runtime;
 } policy_context_t;
 
 /**

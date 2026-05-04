@@ -3,13 +3,46 @@
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
+#include "base/log.h"
 #include "base/macros.h"
 
 static constexpr char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
 
-static void spawn(const zdwm_action_ctx_t *ctx, const zdwm_action_arg_t *arg) {
-  ctx->spawn(arg->str);
+typedef struct raise_or_run_arg_t {
+  const char *class_name;
+  const char *command;
+} raise_or_run_arg_t;
+
+static raise_or_run_arg_t terminal = {"XTerm", "xterm"};
+static raise_or_run_arg_t editor   = {"Emacs", "emacsclient -a '' -r -n"};
+static raise_or_run_arg_t browser  = {"firefox", "firefox-bin"};
+static raise_or_run_arg_t chrome   = {"Google-chrome", "google-chrome-stable"};
+
+static void spawn(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  api->spawn(arg->str);
+}
+
+static void quit(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  logger("quit: restart: %s\n", arg->b ? "true" : "false");
+  api->quit(runtime, arg->b);
+}
+
+static void raise_or_run(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  auto args = (raise_or_run_arg_t *)arg->ptr;
+  api->raise_or_run(runtime, args->class_name, args->command);
 }
 
 bool config_defaults_build(
@@ -71,10 +104,20 @@ bool config_defaults_build(
 
   auto default_mode = api->add_mode(builder, "default");
 
-#define BIND(mode, key, fn, arg) \
-  api->bind(builder, mode, key, fn, (zdwm_action_arg_t)arg)
+#define Alt   "Mod1"
+#define Super "Mod4"
+#define BIND(MODE, KEY, FN, ARG) \
+  api->bind(builder, MODE, KEY, FN, (zdwm_action_arg_t)ARG)
 
-  BIND(default_mode, "Mod4+r", spawn, {.str = launcher});
+  BIND(default_mode, Super "+r", spawn, {.str = launcher});
+  BIND(default_mode, Super "+Shift+q", quit, {.b = false});
+  BIND(default_mode, Super "+Control+r", quit, {.b = true});
+
+  BIND(default_mode, Super "+Return", spawn, {.str = terminal.command});
+  BIND(default_mode, Alt "+Control+r", raise_or_run, {.ptr = &terminal});
+  BIND(default_mode, Super "+e", raise_or_run, {.ptr = &editor});
+  BIND(default_mode, Super "+q", raise_or_run, {.ptr = &browser});
+  BIND(default_mode, Super "+a", raise_or_run, {.ptr = &chrome});
 
 #undef BIND
 

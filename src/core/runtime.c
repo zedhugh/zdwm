@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <zdwm/layout.h>
 
-#include "action.h"
 #include "base/array.h"
 #include "base/memory.h"
+#include "core/action.h"
 #include "core/backend.h"
 #include "core/binding.h"
 #include "core/command_buffer.h"
@@ -270,8 +270,11 @@ void runtime_run(runtime_t *runtime) {
     .rules      = &runtime->rules,
     .border     = &runtime->border,
     .layouts    = &runtime->layouts,
-    .action_ctx = {
-      .spawn = spawn,
+    .runtime    = runtime,
+    .action_api = {
+      .spawn        = spawn,
+      .quit         = quit,
+      .raise_or_run = raise_or_run,
     },
   };
 
