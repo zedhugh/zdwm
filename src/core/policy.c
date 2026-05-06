@@ -205,6 +205,25 @@ static void route_window_activate_request(
   }
 }
 
+static void route_window_state_request(
+  state_t *state,
+  const window_state_request_event_t *e,
+  command_buffer_t *out
+) {
+  auto window = state_window_get(state, e->window);
+  if (!window) return;
+
+  command_t change_window_state_cmd = {
+    .type            = ZDWM_COMMAND_CHANGE_WINDOW_STATE,
+    .as.state_change = {
+      .type   = e->type,
+      .window = e->window,
+      .action = e->action,
+    }
+  };
+  command_buffer_push(out, &change_window_state_cmd);
+}
+
 static void route_configure_request(
   state_t *state,
   const configure_data_t *data,
@@ -262,6 +281,9 @@ void policy_route_event(
     auto data = &event->as.window_activate_request;
     route_window_activate_request(state, data, out);
   } break;
+  case ZDWM_EVENT_WINDOW_STATE_REQUEST:
+    route_window_state_request(state, &event->as.window_state_request, out);
+    break;
   case ZDWM_EVENT_CONFIGURE_REQUEST: {
     auto data = &event->as.configure_request;
     route_configure_request(state, data, ctx->layouts, out);
