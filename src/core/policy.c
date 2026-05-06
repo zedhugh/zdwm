@@ -167,6 +167,44 @@ static void route_window_metadata_changed(
   }
 }
 
+static void route_window_activate_request(
+  state_t *state,
+  const window_activate_request_event_t *e,
+  command_buffer_t *out
+) {
+  auto window = state_window_get(state, e->window);
+  if (!window) return;
+
+  switch (e->source) {
+  case ZDWM_WINDOW_ACTIVATION_SOURCE_LEGACY:
+    break;
+  case ZDWM_WINDOW_ACTIVATION_SOURCE_APPLICATION: {
+    command_t change_window_state_cmd = {
+      .type            = ZDWM_COMMAND_CHANGE_WINDOW_STATE,
+      .as.state_change = {
+        .type   = ZDWM_WINDOW_STATE_REQUEST_URGENT,
+        .window = window->id,
+        .action = ZDWM_WINDOW_STATE_ACTION_ADD,
+      }
+    };
+    command_buffer_push(out, &change_window_state_cmd);
+  } break;
+  case ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER: {
+    command_t switch_workspace_cmd = {
+      .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+      .as.switch_workspace.workspace = window->workspace_id,
+    };
+    command_buffer_push(out, &switch_workspace_cmd);
+
+    command_t focus_cmd = {
+      .type            = ZDWM_COMMAND_FOCUS_WINDOW,
+      .as.focus.window = window->id,
+    };
+    command_buffer_push(out, &focus_cmd);
+  } break;
+  }
+}
+
 static void route_configure_request(
   state_t *state,
   const configure_data_t *data,
@@ -220,6 +258,10 @@ void policy_route_event(
   case ZDWM_EVENT_WINDOW_METADATA_CHANGED:
     route_window_metadata_changed(state, &event->as.window_metadata_change);
     break;
+  case ZDWM_EVENT_WINDOW_ACTIVATE_REQUEST: {
+    auto data = &event->as.window_activate_request;
+    route_window_activate_request(state, data, out);
+  } break;
   case ZDWM_EVENT_CONFIGURE_REQUEST: {
     auto data = &event->as.configure_request;
     route_configure_request(state, data, ctx->layouts, out);
