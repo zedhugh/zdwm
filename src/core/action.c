@@ -173,7 +173,7 @@ void cycle_layout(runtime_t *runtime, int32_t delta) {
   runtime->plan.need_relayout = true;
 }
 
-void cycle_current_output(zdwm_runtime_t *runtime, int32_t delta) {
+void cycle_current_output(runtime_t *runtime, int32_t delta) {
   auto state = &runtime->state;
   state_cycle_current_output(state, delta);
 }

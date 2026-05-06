@@ -3,7 +3,6 @@
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
-#include "base/log.h"
 #include "base/macros.h"
 
 static constexpr char launcher[] =
@@ -32,7 +31,6 @@ static void quit(
   const zdwm_action_api_t *api,
   const zdwm_action_arg_t *arg
 ) {
-  logger("quit: restart: %s\n", arg->b ? "true" : "false");
   api->quit(runtime, arg->b);
 }
 
@@ -43,6 +41,30 @@ static void raise_or_run(
 ) {
   auto args = (raise_or_run_arg_t *)arg->ptr;
   api->raise_or_run(runtime, args->class_name, args->command);
+}
+
+static void toggle_fullscreen(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  api->toggle_fullscreen(runtime);
+}
+
+static void toggle_maximize(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  api->toggle_maximize(runtime);
+}
+
+static void toggle_floating(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  api->toggle_floating(runtime);
 }
 
 bool config_defaults_build(
@@ -118,6 +140,9 @@ bool config_defaults_build(
   BIND(default_mode, Super "+e", raise_or_run, {.ptr = &editor});
   BIND(default_mode, Super "+q", raise_or_run, {.ptr = &browser});
   BIND(default_mode, Super "+a", raise_or_run, {.ptr = &chrome});
+  BIND(default_mode, Super "+f", toggle_fullscreen, {0});
+  BIND(default_mode, Super "+m", toggle_maximize, {0});
+  BIND(default_mode, Super "+Control+space", toggle_floating, {0});
 
 #undef BIND
 
