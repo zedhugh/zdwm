@@ -140,6 +140,33 @@ static void route_window_remove(
   }
 }
 
+static void route_window_metadata_changed(
+  state_t *state,
+  const window_metadata_change_event_t *e
+) {
+  auto window = state_window_get(state, e->window);
+  if (!window) return;
+
+  auto window_id = e->window;
+  auto metadata  = &e->metadata;
+
+  if (e->changed_fields & ZDWM_WINDOW_METADATA_CHANGE_TITLE) {
+    state_window_set_title(state, window_id, metadata->title);
+  }
+  if (e->changed_fields & ZDWM_WINDOW_METADATA_CHANGE_APP_ID) {
+    state_window_set_app_id(state, window_id, metadata->app_id);
+  }
+  if (e->changed_fields & ZDWM_WINDOW_METADATA_CHANGE_ROLE) {
+    state_window_set_role(state, window_id, metadata->role);
+  }
+  if (e->changed_fields & ZDWM_WINDOW_METADATA_CHANGE_CLASS) {
+    state_window_set_class(state, window_id, metadata->class_name);
+  }
+  if (e->changed_fields & ZDWM_WINDOW_METADATA_CHANGE_INSTANCE) {
+    state_window_set_instance(state, window_id, metadata->instance_name);
+  }
+}
+
 static void route_configure_request(
   state_t *state,
   const configure_data_t *data,
@@ -189,6 +216,9 @@ void policy_route_event(
     break;
   case ZDWM_EVENT_WINDOW_REMOVE:
     route_window_remove(state, &event->as.window_remove, out);
+    break;
+  case ZDWM_EVENT_WINDOW_METADATA_CHANGED:
+    route_window_metadata_changed(state, &event->as.window_metadata_change);
     break;
   case ZDWM_EVENT_CONFIGURE_REQUEST: {
     auto data = &event->as.configure_request;
