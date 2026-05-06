@@ -46,4 +46,5 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc);
 void runtime_init_desc_cleanup(runtime_init_desc_t *desc);
 void runtime_shutdown(runtime_t *runtime);
 void runtime_setup(runtime_t *runtime);
+void runtime_scan(runtime_t *runtime);
 void runtime_run(runtime_t *runtime);

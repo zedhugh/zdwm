@@ -22,8 +22,10 @@
 #include "base/macros.h"
 #include "base/memory.h"
 #include "base/window_list.h"
+#include "core/event.h"
 #include "core/plan.h"
 #include "core/types.h"
+#include "core/window.h"
 #include "internal.h"
 
 typedef struct atom_item_t {
@@ -624,4 +626,55 @@ bool backend_apply_effect(
 
   xcb_flush(backend->conn);
   return true;
+}
+
+backend_scan_result_t *backend_scan_windows(backend_t *backend) {
+  auto conn   = backend->conn;
+  auto root   = backend->screen->root;
+  auto cookie = xcb_query_tree_unchecked(conn, root);
+  auto reply  = xcb_query_tree_reply(conn, cookie, nullptr);
+  if (!reply) return nullptr;
+
+  auto length = xcb_query_tree_children_length(reply);
+  if (!length) {
+    p_delete(&reply);
+    return nullptr;
+  }
+
+  auto list = xcb_query_tree_children(reply);
+
+  backend_scan_result_t *result = p_new(backend_scan_result_t, 1);
+
+  for (int i = 0; i < length; i++) {
+    auto slot = (window_map_request_event_t *)
+      array_push(result->windows, result->count, result->capacity);
+    if (!populate_window_event(backend, list[i], slot)) {
+      window_layer_props_cleanup(&slot->props);
+      window_metadata_cleanup(&slot->metadata);
+      result->count--;
+    }
+  }
+
+  p_delete(&reply);
+
+  if (result->count == 0) {
+    backend_scan_result_destroy(result);
+    result = nullptr;
+    return nullptr;
+  }
+
+  return result;
+}
+
+void backend_scan_result_destroy(backend_scan_result_t *result) {
+  if (!result) return;
+
+  for (size_t i = 0; i < result->count; i++) {
+    window_map_request_event_t *ev = &result->windows[i];
+    window_layer_props_cleanup(&ev->props);
+    window_metadata_cleanup(&ev->metadata);
+  }
+
+  p_delete(&result->windows);
+  p_delete(&result);
 }

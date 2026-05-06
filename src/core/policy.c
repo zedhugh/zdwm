@@ -53,6 +53,7 @@ static void route_map_request(
   const window_map_request_event_t *e,
   command_buffer_t *out
 ) {
+  if (e->override_redirect) return;
   if (state_window_get(state, e->window)) return;
 
   window_layer_type_t layer_type = window_classify_layer(&e->props);

@@ -37,3 +37,17 @@ bool backend_apply_effect(
   const effect_t *effects,
   size_t effect_count
 );
+
+typedef struct backend_scan_result_t {
+  window_map_request_event_t *windows;
+  size_t count;
+  size_t capacity;
+} backend_scan_result_t;
+
+/**
+ * @brief 扫描已有窗口
+ *
+ * @details 仅扫描窗口并获取其基础信息
+ */
+backend_scan_result_t *backend_scan_windows(backend_t *backend);
+void backend_scan_result_destroy(backend_scan_result_t *result);

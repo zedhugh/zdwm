@@ -7,6 +7,7 @@
 #include <xcb/xproto.h>
 
 #include "base/window_list.h"
+#include "core/event.h"
 
 #define ATOM_LIST(X)                   \
   X(COMPOUND_TEXT)                     \
@@ -94,3 +95,9 @@ struct backend_t {
   window_list_t map;
   window_list_t kill;
 };
+
+bool populate_window_event(
+  struct backend_t *backend,
+  xcb_window_t window,
+  window_map_request_event_t *ev
+);

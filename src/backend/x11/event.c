@@ -91,18 +91,13 @@ static bool urgent_from_states(
   return false;
 }
 
-static bool handle_map_request(
+bool populate_window_event(
   backend_t *backend,
-  event_t *event,
-  const xcb_map_request_event_t *xcb_event
+  xcb_window_t window,
+  window_map_request_event_t *ev
 ) {
-  xcb_window_t window = xcb_event->window;
-
-  event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
-
-  window_map_request_event_t *ev = &event->as.window_map_request;
-  ev->window                     = (window_id_t)window;
-  ev->transient_for              = window_get_transient_for(backend, window);
+  ev->window        = (window_id_t)window;
+  ev->transient_for = window_get_transient_for(backend, window);
 
   xcb_get_window_attributes_reply_t *wa =
     window_get_attributes(backend, window);
@@ -165,6 +160,19 @@ static bool handle_map_request(
   );
 
   return true;
+}
+
+static bool handle_map_request(
+  backend_t *backend,
+  event_t *event,
+  const xcb_map_request_event_t *xcb_event
+) {
+  event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
+  return populate_window_event(
+    backend,
+    xcb_event->window,
+    &event->as.window_map_request
+  );
 }
 
 static bool handle_unmap_notify(

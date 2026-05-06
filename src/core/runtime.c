@@ -257,20 +257,14 @@ static void runtime_arrange(runtime_t *runtime) {
   }
 }
 
-void runtime_run(runtime_t *runtime) {
-  runtime->running = true;
-
-  backend_t *backend               = runtime->backend;
-  command_buffer_t *command_buffer = &runtime->command_buffer;
-  plan_t *plan                     = &runtime->plan;
-
+policy_context_t policy_context_init(runtime_t *runtime) {
   policy_context_t ctx = {
-    .bind_table = runtime->binding_table,
-    .state      = &runtime->state,
-    .rules      = &runtime->rules,
-    .border     = &runtime->border,
-    .layouts    = &runtime->layouts,
-    .runtime    = runtime,
+    .bind_table = (runtime)->binding_table,
+    .state      = &(runtime)->state,
+    .rules      = &(runtime)->rules,
+    .border     = &(runtime)->border,
+    .layouts    = &(runtime)->layouts,
+    .runtime    = (runtime),
     .action_api = {
       .spawn                = spawn,
       .quit                 = quit,
@@ -284,6 +278,46 @@ void runtime_run(runtime_t *runtime) {
       .cycle_current_output = cycle_current_output,
     },
   };
+  return ctx;
+}
+
+void runtime_scan(runtime_t *runtime) {
+  auto result = backend_scan_windows(runtime->backend);
+  if (!result) return;
+
+  policy_context_t ctx = policy_context_init(runtime);
+
+  auto backend        = runtime->backend;
+  auto command_buffer = &runtime->command_buffer;
+  auto plan           = &runtime->plan;
+
+  command_buffer_reset(command_buffer);
+  plan_reset(plan);
+
+  for (size_t i = 0; i < result->count; i++) {
+    event_t event = {
+      .type                  = ZDWM_EVENT_WINDOW_MAP_REQUEST,
+      .as.window_map_request = result->windows[i],
+    };
+    policy_route_event(&ctx, &event, command_buffer);
+  }
+
+  policy_apply_command(&ctx, command_buffer, plan);
+  if (plan->need_relayout) runtime_arrange(runtime);
+  if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
+
+  backend_scan_result_destroy(result);
+  result = nullptr;
+}
+
+void runtime_run(runtime_t *runtime) {
+  runtime->running = true;
+
+  backend_t *backend               = runtime->backend;
+  command_buffer_t *command_buffer = &runtime->command_buffer;
+  plan_t *plan                     = &runtime->plan;
+
+  policy_context_t ctx = policy_context_init(runtime);
 
   while (runtime->running) {
     event_t event = {0};
