@@ -369,13 +369,14 @@ unmanage_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
   auto workspace_id = win->workspace_id;
   auto workspace    = state_workspace_get(state, workspace_id);
   auto output       = state_output_get(state, workspace->output_id);
+  auto need_layout  = window_need_layout(win);
 
   auto old_focused_window = workspace->focused_window_id;
   state_window_remove(state, window);
 
   push_window_list_effect(state, plan);
 
-  if (window_need_layout(win)) {
+  if (need_layout) {
     adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
     plan->need_relayout = true;
   }
