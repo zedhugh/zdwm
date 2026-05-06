@@ -36,6 +36,7 @@ typedef struct zdwm_action_api_t {
   );
   void (*cycle_layout)(zdwm_runtime_t *runtime, int32_t delta);
   void (*cycle_current_output)(zdwm_runtime_t *runtime, int32_t delta);
+  void (*focus_window)(zdwm_runtime_t *runtime, int32_t delta);
 } zdwm_action_api_t;
 
 typedef void zdwm_action_fn(

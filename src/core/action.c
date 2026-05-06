@@ -177,3 +177,50 @@ void cycle_current_output(runtime_t *runtime, int32_t delta) {
   auto state = &runtime->state;
   state_cycle_current_output(state, delta);
 }
+
+void focus_window(runtime_t *runtime, int32_t delta) {
+  auto state     = &runtime->state;
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+
+  size_t count = state_window_count(state);
+  if (!count) return;
+
+  size_t indices[count];
+  size_t num = 0;
+  for (size_t i = 0; i < count; ++i) {
+    auto window = state_window_at(state, i);
+    if (window->workspace_id == workspace->id) {
+      indices[num++] = i;
+    }
+  }
+  if (!num) return;
+
+  size_t current = 0;
+  if (!window_id_invalid(workspace->focused_window_id)) {
+    for (size_t i = 0; i < num; ++i) {
+      auto window = state_window_at(state, indices[i]);
+      if (window->id == workspace->focused_window_id) {
+        current = i;
+        break;
+      }
+    }
+  }
+
+  int64_t next = ((int64_t)current + (int64_t)delta) % (int64_t)num;
+  if (next < 0) next += (int64_t)num;
+
+  auto target = state_window_at(state, indices[next]);
+
+  command_t focus_cmd = {
+    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
+    .as.focus.window = target->id,
+  };
+  command_buffer_push(&runtime->command_buffer, &focus_cmd);
+
+  command_t raise_cmd = {
+    .type            = ZDWM_COMMAND_RAISE_WINDOW,
+    .as.raise.window = target->id,
+  };
+  command_buffer_push(&runtime->command_buffer, &raise_cmd);
+}

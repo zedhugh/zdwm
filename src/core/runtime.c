@@ -276,6 +276,7 @@ policy_context_t policy_context_init(runtime_t *runtime) {
       .switch_workspace     = switch_workspace,
       .cycle_layout         = cycle_layout,
       .cycle_current_output = cycle_current_output,
+      .focus_window         = focus_window,
     },
   };
   return ctx;

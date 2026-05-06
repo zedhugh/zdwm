@@ -67,6 +67,14 @@ static void toggle_floating(
   api->toggle_floating(runtime);
 }
 
+static void focus_window(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  api->focus_window(runtime, arg->i);
+}
+
 bool config_defaults_build(
   const zdwm_api_t *api,
   zdwm_config_builder_t *builder,
@@ -143,6 +151,8 @@ bool config_defaults_build(
   BIND(default_mode, Super "+f", toggle_fullscreen, {0});
   BIND(default_mode, Super "+m", toggle_maximize, {0});
   BIND(default_mode, Super "+Control+space", toggle_floating, {0});
+  BIND(default_mode, Alt "+j", focus_window, {.i = 1});
+  BIND(default_mode, Alt "+k", focus_window, {.i = -1});
 
 #undef BIND
 

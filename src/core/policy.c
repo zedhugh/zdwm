@@ -476,6 +476,26 @@ static void kill_window(state_t *state, window_id_t window, plan_t *plan) {
   plan_push_kill_effect(plan, window);
 }
 
+static void raise_window(state_t *state, window_id_t window, plan_t *plan) {
+  if (!state_stack_raise(state, window)) return;
+
+  window_list_t list = {0};
+  for (size_t i = 0; i < countof(state->stacks); ++i) {
+    for (size_t j = 0; j < state->stacks[i].count; ++j) {
+      auto window_id = state->stacks[i].order[j];
+      window_list_push(&list, window_id);
+    }
+  }
+  effect_t restack_windows_effect = {
+    .type               = ZDWM_EFFECT_RESTACK_WINDOWS,
+    .as.restack_windows = {
+      .windows = list.windows,
+      .count   = list.count,
+    },
+  };
+  plan_push_effect(plan, &restack_windows_effect);
+}
+
 static void withdraw_window(state_t *state, window_id_t window, plan_t *plan) {
   auto win = state_window_get(state, window);
   if (!win) return;
@@ -845,6 +865,9 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_KILL_WINDOW:
       kill_window(state, cmd->as.kill.window, plan);
+      break;
+    case ZDWM_COMMAND_RAISE_WINDOW:
+      raise_window(state, cmd->as.raise.window, plan);
       break;
     case ZDWM_COMMAND_WITHDRAW_WINDOW:
       withdraw_window(state, cmd->as.withdraw.window, plan);
