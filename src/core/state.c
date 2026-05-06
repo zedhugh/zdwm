@@ -355,6 +355,7 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
   window_set_urgent(window, info->urgent);
   window_set_fixed_size(window, info->fixed_size);
   window_set_frame_rect(window, info->frame_rect);
+  window_set_float_rect(window, info->frame_rect);
   window_set_title(window, info->title);
   window_set_app_id(window, info->app_id);
   window_set_role(window, info->role);

@@ -54,7 +54,8 @@ void window_set_floating(window_t *window, bool floating) {
   if (floating == window->floating) return;
 
   window->floating = floating;
-  if (floating) window->float_rect = window->frame_rect;
+  if (floating) window_set_frame_rect(window, window->float_rect);
+  else window_set_float_rect(window, window->frame_rect);
 }
 
 void window_set_sticky(window_t *window, bool sticky) {
