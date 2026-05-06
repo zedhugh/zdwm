@@ -145,24 +145,35 @@ static void state_workspace_adjust_focused_window(
   workspace->focused_window_id = ZDWM_WINDOW_ID_INVALID;
 }
 
-bool state_workspace_cycle_layout(state_t *state, workspace_id_t workspace_id) {
+bool state_workspace_cycle_layout(
+  state_t *state,
+  workspace_id_t workspace_id,
+  int32_t delta
+) {
   workspace_t *workspace =
     (workspace_t *)state_workspace_get(state, workspace_id);
   if (!workspace) return false;
 
-  size_t next_index = 0;
+  int32_t index     = 0;
   bool matched      = false;
-  for (size_t i = 0; i < workspace->layout_count; i++) {
+  auto layout_count = (int32_t)workspace->layout_count;
+  for (int32_t i = 0; i < layout_count; i++) {
     if (workspace->layout_id == workspace->available_layouts[i]) {
-      next_index = (i + 1) % workspace->layout_count;
-      matched    = true;
+      index   = i;
+      matched = true;
       break;
     }
   }
 
   if (!matched) return false;
 
-  auto next_layout_id  = workspace->available_layouts[next_index];
+  auto new_index  = index + delta;
+  new_index      %= layout_count;
+  if (new_index < 0) new_index += layout_count;
+
+  if (new_index == index) return false;
+
+  auto next_layout_id  = workspace->available_layouts[new_index];
   workspace->layout_id = next_layout_id;
   return true;
 }

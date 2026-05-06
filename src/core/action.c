@@ -2,6 +2,7 @@
 
 #include <paths.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -150,4 +151,29 @@ void toggle_sticky(runtime_t *runtime) {
     }
   };
   command_buffer_push(&runtime->command_buffer, &window_set_sticky_cmd);
+}
+
+void switch_workspace(runtime_t *runtime, workspace_id_t workspace_id) {
+  auto workspace = state_workspace_get(&runtime->state, workspace_id);
+  if (!workspace) return;
+
+  command_t switch_workspace_cmd = {
+    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+    .as.switch_workspace.workspace = workspace_id
+  };
+  command_buffer_push(&runtime->command_buffer, &switch_workspace_cmd);
+}
+
+void cycle_layout(runtime_t *runtime, int32_t delta) {
+  auto state     = &runtime->state;
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+  if (!state_workspace_cycle_layout(state, workspace->id, delta)) return;
+
+  runtime->plan.need_relayout = true;
+}
+
+void cycle_current_output(zdwm_runtime_t *runtime, int32_t delta) {
+  auto state = &runtime->state;
+  state_cycle_current_output(state, delta);
 }

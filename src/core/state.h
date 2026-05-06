@@ -81,7 +81,11 @@ void state_cleanup(state_t *state);
  */
 const workspace_t *state_workspace_get(const state_t *state, workspace_id_t id);
 const workspace_t *state_workspace_at(const state_t *state, size_t index);
-bool state_workspace_cycle_layout(state_t *state, workspace_id_t workspace_id);
+bool state_workspace_cycle_layout(
+  state_t *state,
+  workspace_id_t workspace_id,
+  int32_t delta
+);
 bool state_workspace_set_layout_by_index(
   state_t *state,
   workspace_id_t workspace_id,
