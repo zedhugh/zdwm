@@ -10,6 +10,7 @@
 #include "base/macros.h"
 #include "core/command.h"
 #include "core/command_buffer.h"
+#include "core/runtime.h"
 #include "core/state.h"
 #include "core/types.h"
 #include "core/window.h"
@@ -66,7 +67,7 @@ get_next_window_by_class(state_t *state, const char *class_name) {
 }
 
 void raise_or_run(
-  zdwm_runtime_t *runtime,
+  runtime_t *runtime,
   const char *class_name,
   const char *command
 ) {
@@ -87,4 +88,66 @@ void raise_or_run(
     .as.focus.window = window->id,
   };
   command_buffer_push(&runtime->command_buffer, &focus_cmd);
+}
+
+static const window_t *get_current_focused_window(const state_t *state) {
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+  return state_window_get(state, workspace->focused_window_id);
+}
+
+void toggle_fullscreen(runtime_t *runtime) {
+  auto window = get_current_focused_window(&runtime->state);
+  if (!window) return;
+
+  command_t window_set_fullscreen_cmd = {
+    .type          = ZDWM_COMMAND_WINDOW_SET_FULLSCREEN,
+    .as.fullscreen = {
+      .window = window->id,
+      .state  = !window->fullscreen,
+    }
+  };
+  command_buffer_push(&runtime->command_buffer, &window_set_fullscreen_cmd);
+}
+
+void toggle_maximize(runtime_t *runtime) {
+  auto window = get_current_focused_window(&runtime->state);
+  if (!window) return;
+
+  command_t window_set_maximized_cmd = {
+    .type         = ZDWM_COMMAND_WINDOW_SET_MAXIMIZED,
+    .as.maximized = {
+      .window = window->id,
+      .state  = !window->maximized,
+    }
+  };
+  command_buffer_push(&runtime->command_buffer, &window_set_maximized_cmd);
+}
+
+void toggle_floating(runtime_t *runtime) {
+  auto window = get_current_focused_window(&runtime->state);
+  if (!window) return;
+
+  command_t window_set_floating_cmd = {
+    .type        = ZDWM_COMMAND_WINDOW_SET_FLOATING,
+    .as.floating = {
+      .window = window->id,
+      .state  = !window->floating,
+    }
+  };
+  command_buffer_push(&runtime->command_buffer, &window_set_floating_cmd);
+}
+
+void toggle_sticky(runtime_t *runtime) {
+  auto window = get_current_focused_window(&runtime->state);
+  if (!window) return;
+
+  command_t window_set_sticky_cmd = {
+    .type      = ZDWM_COMMAND_WINDOW_SET_STICKY,
+    .as.sticky = {
+      .window = window->id,
+      .state  = !window->sticky,
+    }
+  };
+  command_buffer_push(&runtime->command_buffer, &window_set_sticky_cmd);
 }
