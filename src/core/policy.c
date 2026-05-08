@@ -92,7 +92,7 @@ static void route_map_request(
   bool have_rule_match = rules_resolve(rules, &e->metadata, &action);
   if (have_rule_match) {
     manage_window_command_t *data = &manage_window_cmd.as.manage_window;
-    if (action.workspace != ZDWM_WORKSPACE_ID_INVALID) {
+    if (!workspace_id_invalid(action.workspace)) {
       data->workspace = action.workspace;
     }
     if (action.floating) data->floating = true;

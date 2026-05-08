@@ -105,3 +105,7 @@ typedef struct only_window_data_t {
 static inline bool window_id_invalid(window_id_t window_id) {
   return window_id == ZDWM_WINDOW_ID_INVALID;
 }
+
+static inline bool workspace_id_invalid(workspace_id_t workspace_id) {
+  return workspace_id == ZDWM_WORKSPACE_ID_INVALID;
+}

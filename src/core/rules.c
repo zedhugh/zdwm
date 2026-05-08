@@ -55,7 +55,7 @@ rule_match_window(const rule_match_t *match, const window_metadata_t *meta) {
 static void rule_action_merge(const rule_action_t *src, rule_action_t *dest) {
   if (!src || !dest) return;
 
-  if (src->workspace != ZDWM_WORKSPACE_ID_INVALID) {
+  if (!workspace_id_invalid(src->workspace)) {
     dest->workspace = src->workspace;
   }
   dest->switch_to_workspace |= src->switch_to_workspace;

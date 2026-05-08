@@ -54,7 +54,7 @@ void state_init(
     workspace->layout_count = workspace_desc->layout_count;
     workspace->name         = p_strdup(workspace_desc->name);
 
-    if (output->current_workspace_id == ZDWM_WORKSPACE_ID_INVALID) {
+    if (workspace_id_invalid(output->current_workspace_id)) {
       output->current_workspace_id = workspace->id;
     }
   }
@@ -62,7 +62,7 @@ void state_init(
 
   for (size_t i = 0; i < state->output_count; i++) {
     const output_t *output = &state->outputs[i];
-    if (output->current_workspace_id == ZDWM_WORKSPACE_ID_INVALID) {
+    if (workspace_id_invalid(output->current_workspace_id)) {
       fatal("output at index %zu has no workspace", i);
     }
   }

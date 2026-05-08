@@ -127,7 +127,7 @@ static bool
 rule_action_valid(const rule_action_t *action, size_t workspace_count) {
   if (!action) return false;
 
-  if (action->workspace == ZDWM_WORKSPACE_ID_INVALID) {
+  if (workspace_id_invalid(action->workspace)) {
     return action->switch_to_workspace || action->fullscreen ||
            action->maximize || action->floating;
   }
