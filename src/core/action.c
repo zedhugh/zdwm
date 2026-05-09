@@ -164,6 +164,45 @@ void switch_workspace(runtime_t *runtime, workspace_id_t workspace_id) {
   command_buffer_push(&runtime->command_buffer, &switch_workspace_cmd);
 }
 
+void switch_workspace_in_current_output(
+  runtime_t *runtime,
+  workspace_id_t workspace_id
+) {
+  auto state     = &runtime->state;
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, workspace_id);
+  if (workspace->output_id != output->id) return;
+
+  command_t switch_workspace_cmd = {
+    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+    .as.switch_workspace.workspace = workspace_id
+  };
+  command_buffer_push(&runtime->command_buffer, &switch_workspace_cmd);
+}
+
+void switch_workspace_by_index_in_current_output(
+  runtime_t *runtime,
+  uint32_t index
+) {
+  auto state     = &runtime->state;
+  auto output    = state_output_at(state, state->current_output_index);
+  uint32_t count = 0;
+  for (size_t i = 0; i < state_window_count(state); ++i) {
+    auto workspace = state_workspace_at(state, i);
+    if (workspace->output_id != output->id) continue;
+
+    if (count == index) {
+      command_t switch_workspace_cmd = {
+        .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+        .as.switch_workspace.workspace = workspace->id,
+      };
+      command_buffer_push(&runtime->command_buffer, &switch_workspace_cmd);
+      return;
+    }
+    count++;
+  }
+}
+
 void cycle_layout(runtime_t *runtime, int32_t delta) {
   auto state     = &runtime->state;
   auto output    = state_output_at(state, state->current_output_index);

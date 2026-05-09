@@ -19,6 +19,14 @@ void switch_workspace(
   zdwm_runtime_t *runtime,
   zdwm_workspace_id_t workspace_id
 );
+void switch_workspace_in_current_output(
+  zdwm_runtime_t *runtime,
+  zdwm_workspace_id_t workspace_id
+);
+void switch_workspace_by_index_in_current_output(
+  zdwm_runtime_t *runtime,
+  uint32_t index
+);
 void cycle_layout(zdwm_runtime_t *runtime, int32_t delta);
 void cycle_current_output(zdwm_runtime_t *runtime, int32_t delta);
 void focus_window(zdwm_runtime_t *runtime, int32_t delta);

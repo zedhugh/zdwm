@@ -1,9 +1,14 @@
 #include "config/defaults.h"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
+#include "base/log.h"
 #include "base/macros.h"
+#include "core/types.h"
 
 static constexpr char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
@@ -67,6 +72,14 @@ static void toggle_floating(
   api->toggle_floating(runtime);
 }
 
+static void switch_workspace(
+  zdwm_runtime_t *runtime,
+  const zdwm_action_api_t *api,
+  const zdwm_action_arg_t *arg
+) {
+  api->switch_workspace_by_index_in_current_output(runtime, arg->ui);
+}
+
 static void focus_window(
   zdwm_runtime_t *runtime,
   const zdwm_action_api_t *api,
@@ -119,17 +132,26 @@ bool config_defaults_build(
     fullscreen_id,
     floating_id,
   };
+
   for (size_t i = 0; i < output_count; i++) {
-    if (api->define_workspace(
-          builder,
-          i,
-          "main",
-          layout_ids,
-          countof(layout_ids),
-          fair_id
-        ) == ZDWM_WORKSPACE_ID_INVALID) {
-      return false;
+#define DEF_WORKSPACE(NAME) \
+  api->define_workspace(    \
+    builder,                \
+    i,                      \
+    (NAME),                 \
+    layout_ids,             \
+    countof(layout_ids),    \
+    fair_id                 \
+  )
+    char *workspace_names[] = {"1 terminal", "2 Editor", "3 Browser"};
+    for (size_t j = 0; j < countof(workspace_names); ++j) {
+      auto workspace = DEF_WORKSPACE(workspace_names[j]);
+      if (workspace_id_invalid(workspace)) {
+        logger("== define workspace \"%s\" failed\n", workspace_names[j]);
+        return false;
+      }
     }
+#undef DEF_WORKSPACE
   }
 
   auto default_mode = api->add_mode(builder, "default");
@@ -154,11 +176,17 @@ bool config_defaults_build(
   BIND(default_mode, Alt "+j", focus_window, {.i = 1});
   BIND(default_mode, Alt "+k", focus_window, {.i = -1});
 
+  char buffer[64] = {0};
+  for (uint32_t i = 0; i < 9; ++i) {
+    snprintf(buffer, sizeof(buffer), "%s+%d", Super, i + 1);
+    BIND(default_mode, buffer, switch_workspace, {.ui = i});
+  }
+
 #undef BIND
 
   api->set_default_mode(builder, default_mode);
   api->set_initial_mode(builder, default_mode);
-  api->set_border_config(builder, 2, "#444444", "#005577");
+  api->set_border_config(builder, 2, "#1c2022", "#606060");
 
   return true;
 }

@@ -257,7 +257,7 @@ static void runtime_arrange(runtime_t *runtime) {
   }
 }
 
-policy_context_t policy_context_init(runtime_t *runtime) {
+static policy_context_t policy_context_init(runtime_t *runtime) {
   policy_context_t ctx = {
     .bind_table = (runtime)->binding_table,
     .state      = &(runtime)->state,
@@ -266,14 +266,19 @@ policy_context_t policy_context_init(runtime_t *runtime) {
     .layouts    = &(runtime)->layouts,
     .runtime    = (runtime),
     .action_api = {
-      .spawn                = spawn,
-      .quit                 = quit,
-      .raise_or_run         = raise_or_run,
-      .toggle_fullscreen    = toggle_fullscreen,
-      .toggle_maximize      = toggle_maximize,
-      .toggle_floating      = toggle_floating,
-      .toggle_sticky        = toggle_sticky,
-      .switch_workspace     = switch_workspace,
+      .spawn             = spawn,
+      .quit              = quit,
+      .raise_or_run      = raise_or_run,
+      .toggle_fullscreen = toggle_fullscreen,
+      .toggle_maximize   = toggle_maximize,
+      .toggle_floating   = toggle_floating,
+      .toggle_sticky     = toggle_sticky,
+
+      .switch_workspace                   = switch_workspace,
+      .switch_workspace_in_current_output = switch_workspace_in_current_output,
+      .switch_workspace_by_index_in_current_output =
+        switch_workspace_by_index_in_current_output,
+
       .cycle_layout         = cycle_layout,
       .cycle_current_output = cycle_current_output,
       .focus_window         = focus_window,
