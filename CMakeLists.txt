@@ -10,8 +10,6 @@ set(SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src")
 set(INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 set(BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
-add_compile_definitions(LOG_FILE="$ENV{HOME}/${APP_NAME}-log.txt")
-
 # generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -28,58 +26,54 @@ project(${APP_NAME}
 option(BUILD_TESTING "Build tests" OFF)
 
 add_executable(${APP_NAME}
-    ${SOURCE_DIR}/wm.c
+    ${SOURCE_DIR}/backend/output_utils.c
+    ${SOURCE_DIR}/backend/x11/backend.c
+    ${SOURCE_DIR}/backend/x11/event.c
+    ${SOURCE_DIR}/backend/x11/window.c
+
+    ${SOURCE_DIR}/base/color.c
     ${SOURCE_DIR}/base/log.c
-    ${SOURCE_DIR}/buffer.c
-    ${SOURCE_DIR}/backtrace.c
-    ${SOURCE_DIR}/monitor.c
-    ${SOURCE_DIR}/client.c
-    ${SOURCE_DIR}/text.c
-    ${SOURCE_DIR}/color.c
-    ${SOURCE_DIR}/xcursor.c
-    ${SOURCE_DIR}/xwindow.c
-    ${SOURCE_DIR}/event.c
-    ${SOURCE_DIR}/action.c
-    ${SOURCE_DIR}/xkb.c
-    ${SOURCE_DIR}/atoms.c
-    ${SOURCE_DIR}/layout.c
-    ${SOURCE_DIR}/xres.c
-    ${SOURCE_DIR}/status.c
-    ${SOURCE_DIR}/audio.c
-    ${SOURCE_DIR}/rect.c
-    ${SOURCE_DIR}/wallpaper.c
-    ${SOURCE_DIR}/config.c
-    ${SOURCE_DIR}/renderer.c
-    ${SOURCE_DIR}/image.c
-    ${SOURCE_DIR}/tray.c
+    ${SOURCE_DIR}/base/window_list.c
+
+    ${SOURCE_DIR}/config/defaults.c
+    ${SOURCE_DIR}/config/loader.c
+    ${SOURCE_DIR}/config/runtime_config.c
+
+    ${SOURCE_DIR}/core/action.c
+    ${SOURCE_DIR}/core/binding.c
+    ${SOURCE_DIR}/core/command_buffer.c
+    ${SOURCE_DIR}/core/event.c
+    ${SOURCE_DIR}/core/layer.c
+    ${SOURCE_DIR}/core/layout.c
+    ${SOURCE_DIR}/core/plan.c
+    ${SOURCE_DIR}/core/policy.c
+    ${SOURCE_DIR}/core/rules.c
+    ${SOURCE_DIR}/core/runtime.c
+    ${SOURCE_DIR}/core/state.c
+    ${SOURCE_DIR}/core/window.c
+
+    ${SOURCE_DIR}/layouts/fair.c
+    ${SOURCE_DIR}/layouts/fullscreen.c
+    ${SOURCE_DIR}/layouts/maximize.c
+
+    ${SOURCE_DIR}/main.c
 )
+
+# target_compile_definitions(${APP_NAME}
+#     PRIVATE LOG_FILE="$ENV{HOME}/${APP_NAME}-log.txt"
+# )
 
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(deps REQUIRED
-    glib-2.0
-
-    x11
     xcb
     xcb-aux
-    xcb-cursor
     xcb-icccm
     xcb-keysyms
     xcb-randr
     xcb-xfixes
     xcb-xinerama
-    xcb-xkb
-    xcb-xrm
     xkbcommon
-    xkbcommon-x11
-
-    cairo
-    cairo-xcb
-    pango
-    pangocairo
-    imlib2
-
-    libpulse-mainloop-glib
 )
 
 target_include_directories(${APP_NAME} SYSTEM
@@ -96,52 +90,11 @@ target_link_libraries(${APP_NAME}
     PRIVATE ${deps_LIBRARIES}
 )
 
-## 配置项
-# Check for backtrace_symbols()
-include(CheckSymbolExists)
-check_symbol_exists(backtrace_symbols execinfo.h HAS_EXECINFO)
-if(NOT HAS_EXECINFO)
-    find_library(LIB_EXECINFO execinfo)
-    if(LIB_EXECINFO)
-        set(HAS_EXECINFO TRUE)
-        target_link_libraries(${APP_NAME} ${LIB_EXECINFO})
-    endif()
-endif()
-if(HAS_EXECINFO)
-    message(STATUS "checking for execinfo -- found")
-else()
-    message(STATUS "checking for execinfo -- not found")
-endif()
-
 configure_file("${SOURCE_DIR}/app.h.in"
     "${BUILD_DIR}/app.h"
     ESCAPE_QUOTES
     @ONLY
 )
-
-set(ATOM_LIST_FILE "${SOURCE_DIR}/atoms-list.txt")
-add_custom_command(
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-utils/atoms-extern.sh
-    ARGS ${ATOM_LIST_FILE} > ${BUILD_DIR}/atoms-extern.h
-    OUTPUT ${BUILD_DIR}/atoms-extern.h
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${ATOM_LIST_FILE}
-    COMMENT "Generating atoms-extern.h"
-    VERBATIM
-)
-add_custom_command(
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-utils/atoms-intern.sh
-    ARGS ${ATOM_LIST_FILE} > ${BUILD_DIR}/atoms-intern.h
-    OUTPUT ${BUILD_DIR}/atoms-intern.h
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${ATOM_LIST_FILE}
-    COMMENT "Generating atoms-intern.h"
-    VERBATIM
-)
-add_custom_target(generate_atoms
-    DEPENDS ${BUILD_DIR}/atoms-extern.h ${BUILD_DIR}/atoms-intern.h
-)
-add_dependencies(${APP_NAME} generate_atoms)
 
 if(BUILD_TESTING)
     enable_testing()
