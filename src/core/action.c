@@ -187,7 +187,7 @@ void switch_workspace_by_index_in_current_output(
   auto state     = &runtime->state;
   auto output    = state_output_at(state, state->current_output_index);
   uint32_t count = 0;
-  for (size_t i = 0; i < state_window_count(state); ++i) {
+  for (size_t i = 0; i < state_workspace_count(state); ++i) {
     auto workspace = state_workspace_at(state, i);
     if (workspace->output_id != output->id) continue;
 
