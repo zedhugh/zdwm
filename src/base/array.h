@@ -100,7 +100,9 @@ array_erase_impl(void *items, size_t item_size, size_t *count, size_t index) {
 
 /** @brief 为具体类型数组追加一个槽位。 */
 #define array_push(items, count, capacity) \
-  array_push_impl((void **)&(items), sizeof(*(items)), &(count), &(capacity))
+  (                                        \
+    typeof(items)                          \
+  )array_push_impl((void **)&(items), sizeof(*(items)), &(count), &(capacity))
 
 /** @brief 删除具体类型数组中指定下标的元素。 */
 #define array_erase(items, count, index) \
