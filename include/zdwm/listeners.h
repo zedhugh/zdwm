@@ -4,6 +4,10 @@
 #include <stddef.h>
 #include <zdwm/types.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 typedef void
 zdwm_current_output_id_listener(zdwm_output_id_t output_id, void *user_data);
 
@@ -58,6 +62,8 @@ typedef void zdwm_window_added(const zdwm_window_t *window, void *user_data);
 typedef void zdwm_window_updated(const zdwm_window_t *window, void *user_data);
 typedef void zdwm_window_removed(zdwm_window_id_t window_id, void *user_data);
 
-typedef struct zdwm_listeners_t zdwm_listeners_t;
+#if defined(__cplusplus)
+}
+#endif
 
 #endif /* ZDWM_LISTENERS_H */

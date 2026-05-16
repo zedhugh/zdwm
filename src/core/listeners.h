@@ -30,7 +30,7 @@ LISTENERS(window_removed, zdwm_window_removed);
 #undef ITEM
 #undef LISTENERS
 
-typedef struct zdwm_listeners_t {
+typedef struct listeners_t {
   output_listeners_t output_listeners;
   initial_workspace_list_listeners_t initial_workspace_listeners;
   workspace_active_listeners_t active_workspace_listeners;
