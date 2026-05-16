@@ -45,6 +45,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/core/event.c
     ${SOURCE_DIR}/core/layer.c
     ${SOURCE_DIR}/core/layout.c
+    ${SOURCE_DIR}/core/listeners.c
     ${SOURCE_DIR}/core/plan.c
     ${SOURCE_DIR}/core/policy.c
     ${SOURCE_DIR}/core/rules.c

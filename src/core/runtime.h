@@ -7,6 +7,7 @@
 #include "core/binding.h"
 #include "core/command_buffer.h"
 #include "core/layout.h"
+#include "core/listeners.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
@@ -24,6 +25,7 @@ typedef struct runtime_init_desc_t {
   size_t workspace_count;
   void *config_module_handle;
   binding_table_t *binding_table;
+  listeners_t listeners;
 } runtime_init_desc_t;
 
 typedef struct zdwm_runtime_t {
@@ -40,6 +42,7 @@ typedef struct zdwm_runtime_t {
   backend_t *backend;
   void *config_module_handle;
   binding_table_t *binding_table;
+  listeners_t listeners;
 } runtime_t;
 
 bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc);

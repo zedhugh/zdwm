@@ -62,9 +62,11 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   runtime->border               = desc->border;
   runtime->config_module_handle = desc->config_module_handle;
   runtime->binding_table        = desc->binding_table;
+  runtime->listeners            = desc->listeners;
   desc->backend                 = nullptr;
   desc->config_module_handle    = nullptr;
   desc->binding_table           = nullptr;
+  p_clear(&desc->listeners, 1);
 
   state_init(
     &runtime->state,

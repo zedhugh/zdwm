@@ -10,7 +10,7 @@
 typedef zdwm_layout_id_t        layout_id_t;
 typedef zdwm_window_id_t        window_id_t;
 typedef zdwm_workspace_id_t     workspace_id_t;
-typedef uint32_t                output_id_t;
+typedef zdwm_output_id_t        output_id_t;
 
 typedef zdwm_rect_t             rect_t;
 typedef zdwm_output_info_t      output_info_t;

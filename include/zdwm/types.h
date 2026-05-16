@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+typedef uint32_t zdwm_output_id_t;
 typedef uint32_t zdwm_layout_id_t;
 typedef uint32_t zdwm_window_id_t;
 typedef uint32_t zdwm_workspace_id_t;

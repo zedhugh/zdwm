@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <zdwm/action.h>
 #include <zdwm/layout.h>
+#include <zdwm/listeners.h>
 #include <zdwm/rules.h>
 #include <zdwm/types.h>
 
@@ -155,6 +156,57 @@ typedef struct zdwm_api_t {
     const char *normal,
     const char *focused
   );
+
+  /** @name Listener 注册
+   * @{ */
+
+  void (*subscribe_current_output)(
+    zdwm_config_builder_t *builder,
+    zdwm_current_output_id_listener *fn,
+    void *user_data
+  );
+  void (*subscribe_initial_workspace_list)(
+    zdwm_config_builder_t *builder,
+    zdwm_initial_workspace_list *fn,
+    void *user_data
+  );
+  void (*subscribe_workspace_active)(
+    zdwm_config_builder_t *builder,
+    zdwm_workspace_active_updated *fn,
+    void *user_data
+  );
+  void (*subscribe_layout)(
+    zdwm_config_builder_t *builder,
+    zdwm_layout_notify *fn,
+    void *user_data
+  );
+  void (*subscribe_binding_mode)(
+    zdwm_config_builder_t *builder,
+    zdwm_binding_mode_notify *fn,
+    void *user_data
+  );
+  void (*subscribe_initial_window_list)(
+    zdwm_config_builder_t *builder,
+    zdwm_initial_window_list *fn,
+    void *user_data
+  );
+  void (*subscribe_window_added)(
+    zdwm_config_builder_t *builder,
+    zdwm_window_added *fn,
+    void *user_data
+  );
+  void (*subscribe_window_updated)(
+    zdwm_config_builder_t *builder,
+    zdwm_window_updated *fn,
+    void *user_data
+  );
+  void (*subscribe_window_removed)(
+    zdwm_config_builder_t *builder,
+    zdwm_window_removed *fn,
+    void *user_data
+  );
+
+  /** @} */
 } zdwm_api_t;
 
 /**

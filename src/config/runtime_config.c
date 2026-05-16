@@ -11,6 +11,7 @@
 #include "config/loader.h"
 #include "core/binding.h"
 #include "core/layout.h"
+#include "core/listeners.h"
 #include "core/rules.h"
 #include "core/runtime.h"
 #include "core/types.h"
@@ -28,6 +29,7 @@ struct zdwm_config_builder_t {
   size_t output_count;
   border_config_t border;
   binding_table_t *binding_table;
+  listeners_t listeners;
 };
 
 void runtime_config_cleanup(runtime_init_desc_t *desc) {
@@ -196,6 +198,87 @@ static void runtime_config_set_border_config(
   color_parse(focused, &builder->border.focused_color);
 }
 
+static void runtime_config_subscribe_current_output(
+  zdwm_config_builder_t *builder,
+  zdwm_current_output_id_listener *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_output_listener(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_initial_workspace_list(
+  zdwm_config_builder_t *builder,
+  zdwm_initial_workspace_list *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_initial_workspace_listener(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_workspace_active(
+  zdwm_config_builder_t *builder,
+  zdwm_workspace_active_updated *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_active_workspace_listener(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_layout(
+  zdwm_config_builder_t *builder,
+  zdwm_layout_notify *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_layout_notify(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_binding_mode(
+  zdwm_config_builder_t *builder,
+  zdwm_binding_mode_notify *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_binding_mode_notify(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_initial_window_list(
+  zdwm_config_builder_t *builder,
+  zdwm_initial_window_list *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_initial_window_listener(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_window_added(
+  zdwm_config_builder_t *builder,
+  zdwm_window_added *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_window_added_listener(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_window_updated(
+  zdwm_config_builder_t *builder,
+  zdwm_window_updated *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_window_updated_listener(&builder->listeners, fn, user_data);
+}
+
+static void runtime_config_subscribe_window_removed(
+  zdwm_config_builder_t *builder,
+  zdwm_window_removed *fn,
+  void *user_data
+) {
+  if (!builder || !fn) return;
+  listeners_add_window_removed_listener(&builder->listeners, fn, user_data);
+}
+
 static bool config_builder_finish(
   zdwm_config_builder_t *builder,
   runtime_init_desc_t *out
@@ -210,11 +293,13 @@ static bool config_builder_finish(
   out->binding_table          = builder->binding_table;
   out->workspaces             = builder->workspaces;
   out->workspace_count        = builder->workspace_count;
+  out->listeners              = builder->listeners;
   builder->binding_table      = nullptr;
   builder->workspaces         = nullptr;
   builder->workspace_count    = 0;
   builder->workspace_capacity = 0;
   builder->output_count       = 0;
+  p_clear(&builder->listeners, 1);
   return true;
 }
 
@@ -245,6 +330,18 @@ static bool runtime_config_build(
     .set_default_mode  = runtime_config_set_default_mode,
     .set_initial_mode  = runtime_config_set_initial_mode,
     .set_border_config = runtime_config_set_border_config,
+
+    .subscribe_current_output = runtime_config_subscribe_current_output,
+    .subscribe_initial_workspace_list =
+      runtime_config_subscribe_initial_workspace_list,
+    .subscribe_workspace_active = runtime_config_subscribe_workspace_active,
+    .subscribe_layout           = runtime_config_subscribe_layout,
+    .subscribe_binding_mode     = runtime_config_subscribe_binding_mode,
+    .subscribe_initial_window_list =
+      runtime_config_subscribe_initial_window_list,
+    .subscribe_window_added   = runtime_config_subscribe_window_added,
+    .subscribe_window_updated = runtime_config_subscribe_window_updated,
+    .subscribe_window_removed = runtime_config_subscribe_window_removed,
   };
   bool ok = setup(&api, &builder, outputs, output_count) &&
             config_builder_finish(&builder, out);
