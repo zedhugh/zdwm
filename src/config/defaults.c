@@ -13,80 +13,12 @@
 static constexpr char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";
 
-typedef struct raise_or_run_arg_t {
-  const char *class_name;
-  const char *command;
-} raise_or_run_arg_t;
+typedef struct zdwm_action_data_raise_or_run_t raise_or_run_data_t;
 
-static raise_or_run_arg_t terminal = {"XTerm", "xterm"};
-static raise_or_run_arg_t editor   = {"Emacs", "emacsclient -a '' -r -n"};
-static raise_or_run_arg_t browser  = {"firefox", "firefox-bin"};
-static raise_or_run_arg_t chrome   = {"Google-chrome", "google-chrome-stable"};
-
-static void spawn(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->spawn(arg->str);
-}
-
-static void quit(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->quit(runtime, arg->b);
-}
-
-static void raise_or_run(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  auto args = (raise_or_run_arg_t *)arg->ptr;
-  api->raise_or_run(runtime, args->class_name, args->command);
-}
-
-static void toggle_fullscreen(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->toggle_fullscreen(runtime);
-}
-
-static void toggle_maximize(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->toggle_maximize(runtime);
-}
-
-static void toggle_floating(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->toggle_floating(runtime);
-}
-
-static void switch_workspace(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->switch_workspace_by_index_in_current_output(runtime, arg->ui);
-}
-
-static void focus_window(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *api,
-  const zdwm_action_arg_t *arg
-) {
-  api->focus_window(runtime, arg->i);
-}
+static raise_or_run_data_t terminal = {"XTerm", "xterm"};
+static raise_or_run_data_t editor   = {"Emacs", "emacsclient -a '' -r -n"};
+static raise_or_run_data_t browser  = {"firefox", "firefox-bin"};
+static raise_or_run_data_t chrome   = {"Google-chrome", "google-chrome-stable"};
 
 bool config_defaults_build(
   const zdwm_api_t *api,
@@ -156,32 +88,63 @@ bool config_defaults_build(
 
   auto default_mode = api->add_mode(builder, "default");
 
-#define Alt   "Mod1"
-#define Super "Mod4"
-#define BIND(MODE, KEY, FN, ARG) \
-  api->bind(builder, MODE, KEY, FN, (zdwm_action_arg_t)ARG)
+#define Alt_Key   "Mod1"
+#define Super_key "Mod4"
+#define Alt(K)    Alt_Key "+" K
+#define Super(K)  Super_key "+" K
 
-  BIND(default_mode, Super "+r", spawn, {.str = launcher});
-  BIND(default_mode, Super "+Shift+q", quit, {.b = false});
-  BIND(default_mode, Super "+Control+r", quit, {.b = true});
+#define BIND(MODE, KEY, ...) \
+  api->bind(builder, MODE, KEY, (zdwm_action_t)__VA_ARGS__)
+#define SPAWN(MODE, KEY, COMMAND) \
+  BIND(MODE, KEY, {.type = ZDWM_ACTION_SPAWN, .as.spawn.command = (COMMAND)})
+#define QUIT(MODE, KEY, RESTART) \
+  BIND(MODE, KEY, {.type = ZDWM_ACTION_QUIT, .as.quit.restart = (RESTART)})
+#define RAISE_OR_RUN(MODE, KEY, ...)                                   \
+  BIND(                                                                \
+    MODE,                                                              \
+    KEY,                                                               \
+    {                                                                  \
+      .type            = ZDWM_ACTION_RAISE_OR_RUN,                     \
+      .as.raise_or_run = (zdwm_action_data_raise_or_run_t)__VA_ARGS__, \
+    }                                                                  \
+  )
+#define BIND_DEFAULT(KEY, ...) BIND(default_mode, KEY, __VA_ARGS__)
 
-  BIND(default_mode, Super "+Return", spawn, {.str = terminal.command});
-  BIND(default_mode, Alt "+Control+r", raise_or_run, {.ptr = &terminal});
-  BIND(default_mode, Super "+e", raise_or_run, {.ptr = &editor});
-  BIND(default_mode, Super "+q", raise_or_run, {.ptr = &browser});
-  BIND(default_mode, Super "+a", raise_or_run, {.ptr = &chrome});
-  BIND(default_mode, Super "+f", toggle_fullscreen, {0});
-  BIND(default_mode, Super "+m", toggle_maximize, {0});
-  BIND(default_mode, Super "+Control+space", toggle_floating, {0});
-  BIND(default_mode, Alt "+j", focus_window, {.i = 1});
-  BIND(default_mode, Alt "+k", focus_window, {.i = -1});
+  SPAWN(default_mode, Super("r"), launcher);
+  QUIT(default_mode, Super("Shift+q"), false);
+  QUIT(default_mode, Super("Control+r"), true);
+
+  SPAWN(default_mode, Super("Return"), terminal.command);
+  RAISE_OR_RUN(default_mode, Alt("Control+r"), terminal);
+  RAISE_OR_RUN(default_mode, Super("e"), editor);
+  RAISE_OR_RUN(default_mode, Super("q"), browser);
+  RAISE_OR_RUN(default_mode, Super("a"), chrome);
+  BIND_DEFAULT(Super("f"), {.type = ZDWM_ACTION_WINDOW_TOGGLE_FLOATING});
+  BIND_DEFAULT(Super("m"), {.type = ZDWM_ACTION_WINDOW_TOGGLE_MAXIMIZE});
+  BIND_DEFAULT(
+    Super("Control+space"),
+    {.type = ZDWM_ACTION_WINDOW_TOGGLE_FLOATING}
+  );
+  BIND_DEFAULT(
+    Alt("j"),
+    {.type = ZDWM_ACTION_WINDOW_FOCUS_CYCLE, .as.window_focus_cycle.delta = 1}
+  );
+  BIND_DEFAULT(
+    Alt("k"),
+    {.type = ZDWM_ACTION_WINDOW_FOCUS_CYCLE, .as.window_focus_cycle.delta = -1}
+  );
 
   char buffer[64] = {0};
   for (uint32_t i = 0; i < 9; ++i) {
-    snprintf(buffer, sizeof(buffer), "%s+%d", Super, i + 1);
-    BIND(default_mode, buffer, switch_workspace, {.ui = i});
+    snprintf(buffer, sizeof(buffer), "%s+%d", Super_key, i + 1);
+    zdwm_action_t action = {
+      .type = ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX,
+      .as.workspace_switch_same_output_by_index.index = i,
+    };
+    BIND_DEFAULT(buffer, action);
   }
 
+#undef BIND_DEFAULT
 #undef BIND
 
   api->set_default_mode(builder, default_mode);

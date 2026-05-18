@@ -43,8 +43,7 @@ binding_table_add_mode(binding_table_t *table, const char *mode_name) {
   }
 
   zdwm_binding_mode_id_t id = (zdwm_binding_mode_id_t)table->count;
-  binding_mode_t *new_mode =
-    array_push(table->modes, table->count, table->capacity);
+  auto new_mode  = array_push(table->modes, table->count, table->capacity);
   new_mode->name = mode_name;
   new_mode->id   = id;
 
@@ -166,8 +165,7 @@ bool binding_table_add_bind(
   binding_table_t *table,
   zdwm_binding_mode_id_t mode_id,
   const char *key_sequence,
-  zdwm_action_fn fn,
-  zdwm_action_arg_t arg
+  zdwm_action_t action
 ) {
   binding_mode_t *mode = binding_table_get_mode(table, mode_id);
   if (!mode) return false;
@@ -176,12 +174,11 @@ bool binding_table_add_bind(
   xkb_keysym_t keysym       = XKB_KEY_NoSymbol;
   if (!parse_key_sequence(key_sequence, &modifiers, &keysym)) return false;
 
-  key_binding_t *item = array_push(mode->items, mode->count, mode->capacity);
-  item->key_str       = key_sequence;
-  item->modifiers     = modifiers;
-  item->keysym        = keysym;
-  item->fn            = fn;
-  item->arg           = arg;
+  auto item       = array_push(mode->items, mode->count, mode->capacity);
+  item->key_str   = key_sequence;
+  item->modifiers = modifiers;
+  item->keysym    = keysym;
+  item->action    = action;
 
   return true;
 }

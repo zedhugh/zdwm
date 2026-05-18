@@ -12,8 +12,7 @@ typedef struct key_binding_t {
   const char *key_str;
   modifier_mask_t modifiers;
   keysym_t keysym;
-  zdwm_action_fn *fn;
-  zdwm_action_arg_t arg;
+  zdwm_action_t action;
 } key_binding_t;
 
 /**
@@ -37,8 +36,7 @@ binding_table_add_mode(binding_table_t *table, const char *mode_name);
  * @param table         按键绑定表
  * @param mode_id       模式 ID
  * @param key_sequence  按键序列的字符串表达
- * @param fn            用户行为函数
- * @param arg           用户行为函数所需的参数
+ * @param action        用户行为描述
  *
  * @return 添加成功返回 true 否则返回 false
  */
@@ -46,8 +44,7 @@ bool binding_table_add_bind(
   binding_table_t *table,
   zdwm_binding_mode_id_t mode_id,
   const char *key_sequence,
-  zdwm_action_fn fn,
-  zdwm_action_arg_t arg
+  zdwm_action_t action
 );
 
 /**

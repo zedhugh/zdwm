@@ -167,10 +167,9 @@ static bool runtime_config_bind(
   zdwm_config_builder_t *builder,
   zdwm_binding_mode_id_t mode,
   const char *key,
-  zdwm_action_fn fn,
-  zdwm_action_arg_t arg
+  zdwm_action_t action
 ) {
-  return binding_table_add_bind(builder->binding_table, mode, key, fn, arg);
+  return binding_table_add_bind(builder->binding_table, mode, key, action);
 }
 
 static bool runtime_config_set_default_mode(

@@ -18,8 +18,17 @@
 #include "core/window.h"
 #include "core/wm_desc.h"
 
-static void
-route_key_press(const policy_context_t *ctx, const key_press_event_t *e) {
+static void policy_resolve_action(
+  const state_t *state,
+  const zdwm_action_t *action,
+  command_buffer_t *out
+) {}
+
+static void route_key_press(
+  const policy_context_t *ctx,
+  const key_press_event_t *e,
+  command_buffer_t *out
+) {
   auto binding_table = ctx->bind_table;
 
   size_t count  = 0;
@@ -29,7 +38,8 @@ route_key_press(const policy_context_t *ctx, const key_press_event_t *e) {
   for (size_t i = 0; i < count; ++i) {
     auto binding = &bindings[i];
     if (binding->modifiers == e->modifiers && binding->keysym == e->keysym) {
-      binding->fn(ctx->runtime, &ctx->action_api, &binding->arg);
+      policy_resolve_action(ctx->state, &binding->action, out);
+      /* binding->fn(ctx->runtime, &ctx->action_api, &binding->arg); */
     }
   }
 }
@@ -264,7 +274,7 @@ void policy_route_event(
   auto state = ctx->state;
   switch (event->type) {
   case ZDWM_EVENT_KEY_PRESS:
-    route_key_press(ctx, &event->as.key_press);
+    route_key_press(ctx, &event->as.key_press, out);
     break;
   case ZDWM_EVENT_POINTER_ENTER:
     route_pointer_enter(state, event->as.pointer_enter.window, out);

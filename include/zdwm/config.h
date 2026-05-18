@@ -112,8 +112,7 @@ typedef struct zdwm_api_t {
     zdwm_config_builder_t *builder,
     zdwm_binding_mode_id_t bind_mode,
     const char *key_sequence,
-    zdwm_action_fn action_fn,
-    zdwm_action_arg_t action_arg
+    zdwm_action_t action
   );
 
   /**

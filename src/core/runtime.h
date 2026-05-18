@@ -28,7 +28,7 @@ typedef struct runtime_init_desc_t {
   listeners_t listeners;
 } runtime_init_desc_t;
 
-typedef struct zdwm_runtime_t {
+typedef struct runtime_t {
   bool running;
   bool will_restart;
 

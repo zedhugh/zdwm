@@ -8,50 +8,65 @@
 extern "C" {
 #endif
 
-typedef union zdwm_action_arg_t {
-  bool b;
-  int32_t i;
-  uint32_t ui;
-  const char *str;
-  const void *ptr;
-} zdwm_action_arg_t;
+typedef enum zdwm_action_type_t {
+  ZDWM_ACTION_SPAWN,
+  ZDWM_ACTION_QUIT,
+  ZDWM_ACTION_RAISE_OR_RUN,
 
-typedef struct zdwm_runtime_t zdwm_runtime_t;
+  ZDWM_ACTION_OUTPUT_CYCLE,
+  ZDWM_ACTION_WORKSPACE_SWITCH_SAME_OUTPUT_BY_INDEX,
+  ZDWM_ACTION_LAYOUT_CYCLE,
+  ZDWM_ACTION_BINDING_MODE_CYCLE,
 
-typedef struct zdwm_action_api_t {
-  void (*spawn)(const char *command);
-  void (*quit)(zdwm_runtime_t *runtime, bool restart);
-  void (*raise_or_run)(
-    zdwm_runtime_t *runtime,
-    const char *class_name,
-    const char *command
-  );
-  void (*toggle_fullscreen)(zdwm_runtime_t *runtime);
-  void (*toggle_maximize)(zdwm_runtime_t *runtime);
-  void (*toggle_floating)(zdwm_runtime_t *runtime);
-  void (*toggle_sticky)(zdwm_runtime_t *runtime);
-  void (*switch_workspace)(
-    zdwm_runtime_t *runtime,
-    zdwm_workspace_id_t workspace_id
-  );
-  void (*switch_workspace_in_current_output)(
-    zdwm_runtime_t *runtime,
-    zdwm_workspace_id_t workspace_id
-  );
-  void (*switch_workspace_by_index_in_current_output)(
-    zdwm_runtime_t *runtime,
-    uint32_t index
-  );
-  void (*cycle_layout)(zdwm_runtime_t *runtime, int32_t delta);
-  void (*cycle_current_output)(zdwm_runtime_t *runtime, int32_t delta);
-  void (*focus_window)(zdwm_runtime_t *runtime, int32_t delta);
-} zdwm_action_api_t;
+  ZDWM_ACTION_WINDOW_TOGGLE_FULLSCREEN,
+  ZDWM_ACTION_WINDOW_TOGGLE_MAXIMIZE,
+  ZDWM_ACTION_WINDOW_TOGGLE_MINIMIZE,
+  ZDWM_ACTION_WINDOW_TOGGLE_FLOATING,
+  ZDWM_ACTION_WINDOW_TOGGLE_STICKY,
 
-typedef void zdwm_action_fn(
-  zdwm_runtime_t *runtime,
-  const zdwm_action_api_t *ctx,
-  const zdwm_action_arg_t *arg
-);
+  ZDWM_ACTION_WINDOW_FOCUS_CYCLE,
+  ZDWM_ACTION_WINDOW_KILL,
+
+  ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX,
+  ZDWM_ACTION_WINDOW_CYCLE_OUTPUT,
+} zdwm_action_type_t;
+
+typedef struct zdwm_action_data_spawn_t {
+  const char *command;
+} zdwm_action_data_spawn_t;
+
+typedef struct zdwm_action_data_quit_t {
+  bool restart;
+} zdwm_action_data_quit_t;
+
+typedef struct zdwm_action_data_raise_or_run_t {
+  const char *class_name;
+  const char *command;
+} zdwm_action_data_raise_or_run_t;
+
+typedef struct zdwm_action_data_delta_only_t {
+  int32_t delta;
+} zdwm_action_data_delta_only_t;
+
+typedef struct zdwm_action_data_index_only_t {
+  uint32_t index;
+} zdwm_action_data_index_only_t;
+
+typedef struct zdwm_action_t {
+  zdwm_action_type_t type;
+  union {
+    zdwm_action_data_spawn_t spawn;
+    zdwm_action_data_quit_t quit;
+    zdwm_action_data_raise_or_run_t raise_or_run;
+    zdwm_action_data_delta_only_t output_cycle;
+    zdwm_action_data_index_only_t workspace_switch_same_output_by_index;
+    zdwm_action_data_delta_only_t layout_cycle;
+    zdwm_action_data_delta_only_t binding_mode_cycle;
+    zdwm_action_data_delta_only_t window_focus_cycle;
+    zdwm_action_data_index_only_t window_send_to_workspace_same_output_by_index;
+    zdwm_action_data_delta_only_t window_cycle_output;
+  } as;
+} zdwm_action_t;
 
 #if defined(__cplusplus)
 }
