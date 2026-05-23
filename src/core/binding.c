@@ -269,3 +269,48 @@ binding_table_get_current_bindings(binding_table_t *table, size_t *count) {
   *count = mode->count;
   return mode->items;
 }
+
+size_t binding_table_mode_count(const binding_table_t *table) {
+  if (!table) return 0;
+  return table->count;
+}
+
+zdwm_binding_mode_id_t binding_table_get_default_mode(
+  const binding_table_t *table
+) {
+  if (!table) return ZDWM_BINDING_MODE_ID_INVALID;
+  return table->default_mode;
+}
+
+zdwm_binding_mode_id_t binding_table_get_current_mode(
+  const binding_table_t *table
+) {
+  if (!table) return ZDWM_BINDING_MODE_ID_INVALID;
+  return table->current_mode;
+}
+
+static const binding_mode_t *binding_table_get_mode_const(
+  const binding_table_t *table,
+  zdwm_binding_mode_id_t mode_id
+) {
+  if (!table || mode_id >= table->count) return nullptr;
+
+  const binding_mode_t *mode = &table->modes[mode_id];
+  if (mode->id == mode_id) return mode;
+
+  for (size_t i = 0; i < table->count; ++i) {
+    mode = &table->modes[i];
+    if (mode->id == mode_id) return mode;
+  }
+
+  return nullptr;
+}
+
+const char *binding_table_get_mode_name(
+  const binding_table_t *table,
+  zdwm_binding_mode_id_t mode_id
+) {
+  auto mode = binding_table_get_mode_const(table, mode_id);
+  if (!mode) return nullptr;
+  return mode->name;
+}

@@ -3,6 +3,12 @@
 #include <stddef.h>
 #include <zdwm/listeners.h>
 
+#include "core/types.h"
+
+typedef struct binding_table_t binding_table_t;
+typedef struct layout_registry_t layout_registry_t;
+typedef struct state_t state_t;
+
 #define ITEM(NAME, FN_TYPE)               \
   typedef struct NAME##_listener_item_t { \
     FN_TYPE *fn;                          \
@@ -86,4 +92,47 @@ void listeners_add_window_removed_listener(
   listeners_t *listeners,
   zdwm_window_removed fn,
   void *user_data
+);
+
+void listeners_cleanup(listeners_t *listeners);
+void listeners_notify_current_output(
+  const listeners_t *listeners,
+  output_id_t output_id
+);
+void listeners_notify_initial_workspaces(
+  const listeners_t *listeners,
+  const state_t *state
+);
+void listeners_notify_workspace_active(
+  const listeners_t *listeners,
+  output_id_t output_id,
+  workspace_id_t workspace_id
+);
+void listeners_notify_layout(
+  const listeners_t *listeners,
+  const layout_registry_t *layouts,
+  workspace_id_t workspace_id,
+  layout_id_t layout_id
+);
+void listeners_notify_binding_mode(
+  const listeners_t *listeners,
+  const binding_table_t *binding_table
+);
+void listeners_notify_initial_windows(
+  const listeners_t *listeners,
+  const state_t *state
+);
+void listeners_notify_window_added(
+  const listeners_t *listeners,
+  const state_t *state,
+  window_id_t window_id
+);
+void listeners_notify_window_updated(
+  const listeners_t *listeners,
+  const state_t *state,
+  window_id_t window_id
+);
+void listeners_notify_window_removed(
+  const listeners_t *listeners,
+  window_id_t window_id
 );

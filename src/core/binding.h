@@ -107,3 +107,15 @@ bool binding_table_cycle_mode(binding_table_t *table, int delta);
  */
 const key_binding_t *
 binding_table_get_current_bindings(binding_table_t *table, size_t *count);
+
+size_t binding_table_mode_count(const binding_table_t *table);
+zdwm_binding_mode_id_t binding_table_get_default_mode(
+  const binding_table_t *table
+);
+zdwm_binding_mode_id_t binding_table_get_current_mode(
+  const binding_table_t *table
+);
+const char *binding_table_get_mode_name(
+  const binding_table_t *table,
+  zdwm_binding_mode_id_t mode_id
+);
