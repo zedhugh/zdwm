@@ -6,6 +6,7 @@
 #include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/layout.h"
+#include "core/listeners.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
@@ -15,6 +16,7 @@ typedef struct policy_context_t {
   binding_table_t *bind_table;
   state_t *state;
   const rules_t *rules;
+  const listeners_t *listeners;
   const border_config_t *border;
   const layout_registry_t *layouts;
 } policy_context_t;

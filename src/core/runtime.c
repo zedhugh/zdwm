@@ -13,6 +13,7 @@
 #include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/layout.h"
+#include "core/listeners.h"
 #include "core/plan.h"
 #include "core/policy.h"
 #include "core/rules.h"
@@ -88,6 +89,7 @@ void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
 
   binding_table_destroy(desc->binding_table);
   desc->binding_table = nullptr;
+  listeners_cleanup(&desc->listeners);
 
   if (desc->backend) {
     backend_destroy(desc->backend);
@@ -116,10 +118,46 @@ void runtime_shutdown(runtime_t *runtime) {
   layout_result_cleanup(&runtime->layout_result);
   binding_table_destroy(runtime->binding_table);
   runtime->binding_table = nullptr;
+  listeners_cleanup(&runtime->listeners);
   backend_destroy(runtime->backend);
   runtime->backend = nullptr;
   if (runtime->config_module_handle) dlclose(runtime->config_module_handle);
   runtime->config_module_handle = nullptr;
+}
+
+static void runtime_notify_initial_state(runtime_t *runtime) {
+  auto listeners = &runtime->listeners;
+  auto state     = &runtime->state;
+
+  auto output = state_output_at(state, state->current_output_index);
+  if (output) listeners_notify_current_output(listeners, output->id);
+
+  listeners_notify_initial_workspaces(listeners, state);
+
+  for (size_t i = 0; i < state_output_count(state); ++i) {
+    auto item = state_output_at(state, i);
+    if (!item) continue;
+
+    listeners_notify_workspace_active(
+      listeners,
+      item->id,
+      item->current_workspace_id
+    );
+  }
+
+  for (size_t i = 0; i < state_workspace_count(state); ++i) {
+    auto workspace = state_workspace_at(state, i);
+    if (!workspace) continue;
+
+    listeners_notify_layout(
+      listeners,
+      &runtime->layouts,
+      workspace->id,
+      workspace->layout_id
+    );
+  }
+
+  listeners_notify_binding_mode(listeners, runtime->binding_table);
 }
 
 void runtime_setup(runtime_t *runtime) {
@@ -146,6 +184,7 @@ void runtime_setup(runtime_t *runtime) {
 
   backend_apply_effect(backend, plan->effects, plan->count);
   plan_reset(plan);
+  runtime_notify_initial_state(runtime);
 }
 
 static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
@@ -264,6 +303,7 @@ static policy_context_t policy_context_init(runtime_t *runtime) {
     .bind_table = (runtime)->binding_table,
     .state      = &(runtime)->state,
     .rules      = &(runtime)->rules,
+    .listeners  = &runtime->listeners,
     .border     = &(runtime)->border,
     .layouts    = &(runtime)->layouts,
   };
@@ -275,6 +315,7 @@ void runtime_scan(runtime_t *runtime) {
   if (!result) return;
 
   policy_context_t ctx = policy_context_init(runtime);
+  ctx.listeners        = nullptr;
 
   auto backend        = runtime->backend;
   auto command_buffer = &runtime->command_buffer;
@@ -297,6 +338,8 @@ void runtime_scan(runtime_t *runtime) {
 
   backend_scan_result_destroy(result);
   result = nullptr;
+
+  listeners_notify_initial_windows(&runtime->listeners, &runtime->state);
 }
 
 void runtime_run(runtime_t *runtime) {

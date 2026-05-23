@@ -41,6 +41,7 @@ void runtime_config_cleanup(runtime_init_desc_t *desc) {
   }
   binding_table_destroy(desc->binding_table);
   desc->binding_table = nullptr;
+  listeners_cleanup(&desc->listeners);
   workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
   if (desc->config_module_handle) dlclose(desc->config_module_handle);
   desc->config_module_handle = nullptr;
@@ -59,6 +60,7 @@ static void config_builder_cleanup(zdwm_config_builder_t *builder) {
 
   binding_table_destroy(builder->binding_table);
   builder->binding_table = nullptr;
+  listeners_cleanup(&builder->listeners);
 }
 
 static layout_id_t runtime_config_register_layout(
