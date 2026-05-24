@@ -30,13 +30,14 @@ typedef void zdwm_workspace_active_updated(
 typedef struct zdwm_layout_notify_t {
   zdwm_workspace_id_t workspace;
   zdwm_layout_id_t id;
-  const char *symbol; /* 不持有内存 */
+  const char *name;        /* 不持有内存 */
+  const char *symbol;      /* 不持有内存 */
+  const char *description; /* 不持有内存 */
 } zdwm_layout_notify_t;
 typedef void zdwm_layout_notify(zdwm_layout_notify_t layout, void *user_data);
 
 typedef struct zdwm_binding_mode_notify_t {
   bool is_default_mode;
-  bool is_current_mode;
   zdwm_binding_mode_id_t id;
   const char *name; /* 不持有内存 */
 } zdwm_binding_mode_notify_t;

@@ -173,9 +173,11 @@ void listeners_notify_layout(
   if (!slot) return;
 
   zdwm_layout_notify_t notify = {
-    .workspace = workspace_id,
-    .id        = layout_id,
-    .symbol    = slot->symbol,
+    .workspace   = workspace_id,
+    .id          = layout_id,
+    .name        = slot->name,
+    .symbol      = slot->symbol,
+    .description = slot->description,
   };
 
   FOR_EACH_LISTENER(layout_listeners, item->fn(notify, item->user_data));
