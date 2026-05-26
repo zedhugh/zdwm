@@ -33,13 +33,13 @@ add_executable(${APP_NAME}
 
     ${SOURCE_DIR}/base/color.c
     ${SOURCE_DIR}/base/log.c
+    ${SOURCE_DIR}/base/process.c
     ${SOURCE_DIR}/base/window_list.c
 
     ${SOURCE_DIR}/config/defaults.c
     ${SOURCE_DIR}/config/loader.c
     ${SOURCE_DIR}/config/runtime_config.c
 
-    ${SOURCE_DIR}/core/action.c
     ${SOURCE_DIR}/core/binding.c
     ${SOURCE_DIR}/core/command_buffer.c
     ${SOURCE_DIR}/core/event.c

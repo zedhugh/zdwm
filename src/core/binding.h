@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
@@ -86,12 +87,15 @@ bool binding_table_set_current_mode(
 /**
  * @brief 切换按键绑定模式
  *
+ * @details 纯计算不修改任何内容
+ *
  * @param table 按键绑定表
  * @param delta 切换变化量
  *
- * @return 无法切换返回 false 否则返回 true
+ * @return 切换后的模式 ID
  */
-bool binding_table_cycle_mode(binding_table_t *table, int delta);
+zdwm_binding_mode_id_t
+binding_table_cycle_mode(const binding_table_t *table, int32_t delta);
 
 /**
  * @brief 获取当前按键绑定列表

@@ -7,7 +7,6 @@
 
 #include "base/array.h"
 #include "base/memory.h"
-#include "core/action.h"
 #include "core/backend.h"
 #include "core/binding.h"
 #include "core/command_buffer.h"
@@ -362,6 +361,11 @@ void runtime_run(runtime_t *runtime) {
     policy_apply_command(&ctx, command_buffer, plan);
     if (plan->need_relayout) runtime_arrange(runtime);
     if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
+
+    if (plan->quit) {
+      runtime->running      = false;
+      runtime->will_restart = plan->will_restart;
+    }
 
     event_cleanup(&event);
   }

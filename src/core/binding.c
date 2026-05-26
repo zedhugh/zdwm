@@ -231,8 +231,11 @@ bool binding_table_set_current_mode(
   return true;
 }
 
-bool binding_table_cycle_mode(binding_table_t *table, int delta) {
-  if (!table || !table->modes || table->count < 1) return false;
+zdwm_binding_mode_id_t
+binding_table_cycle_mode(const binding_table_t *table, int32_t delta) {
+  if (!table || !table->modes || table->count <= 1) {
+    return ZDWM_BINDING_MODE_ID_INVALID;
+  }
 
   bool matched = false;
   size_t index = (size_t)table->current_mode;
@@ -248,17 +251,13 @@ bool binding_table_cycle_mode(binding_table_t *table, int delta) {
     }
   }
 
-  if (!matched) return false;
-
-  /* 只有一个模式没必要切换 */
-  if (table->count == 1) return true;
+  if (!matched) return ZDWM_BINDING_MODE_ID_INVALID;
 
   int64_t count      = (int64_t)table->count;
   int64_t next_index = ((int64_t)index + (int64_t)delta) % count;
   if (next_index < 0) next_index += count;
-  table->current_mode = table->modes[next_index].id;
 
-  return true;
+  return table->modes[next_index].id;
 }
 
 const key_binding_t *

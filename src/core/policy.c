@@ -2,9 +2,12 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <zdwm/action.h>
 #include <zdwm/types.h>
 
 #include "base/macros.h"
+#include "base/memory.h"
+#include "base/process.h"
 #include "base/window_list.h"
 #include "core/binding.h"
 #include "core/command.h"
@@ -18,11 +21,402 @@
 #include "core/window.h"
 #include "core/wm_desc.h"
 
-static void policy_resolve_action(
+static void quit(bool restart, command_buffer_t *command_buffer) {
+  command_t quit_command = {
+    .type                 = ZDWM_COMMAND_QUIT,
+    .as.quit.will_restart = restart
+  };
+  command_buffer_push(command_buffer, &quit_command);
+}
+
+static const window_t *
+get_next_window_by_class(const state_t *state, const char *class_name) {
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+
+  size_t start_index = 0;
+  if (!window_id_invalid(workspace->focused_window_id)) {
+    for (size_t i = 0; i < state_window_count(state); ++i) {
+      if (state_window_at(state, i)->id == workspace->focused_window_id) {
+        start_index = i;
+        break;
+      }
+    }
+  }
+
+  for (size_t i = start_index + 1; i < state_window_count(state); ++i) {
+    auto window = state_window_at(state, i);
+    if (strcmp(window->class_name, class_name) == 0) {
+      return window;
+    }
+  }
+
+  for (size_t i = 0; i < MIN(start_index + 1, state_window_count(state)); ++i) {
+    auto window = state_window_at(state, i);
+    if (strcmp(window->class_name, class_name) == 0) {
+      return window;
+    }
+  }
+  return nullptr;
+}
+
+static void raise_or_run(
   const state_t *state,
+  const zdwm_action_data_raise_or_run_t *data,
+  command_buffer_t *command_buffer
+) {
+  auto window = get_next_window_by_class(state, data->class_name);
+  if (!window) {
+    spawn(data->command);
+    return;
+  }
+
+  command_t switch_workspace_cmd = {
+    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+    .as.switch_workspace.workspace = window->workspace_id,
+  };
+  command_buffer_push(command_buffer, &switch_workspace_cmd);
+
+  command_t focus_cmd = {
+    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
+    .as.focus.window = window->id,
+  };
+  command_buffer_push(command_buffer, &focus_cmd);
+}
+
+static output_id_t get_cycled_output(const state_t *state, int32_t delta) {
+  if (state->output_count <= 1) return ZDWM_OUTPUT_ID_INVALID;
+
+  int64_t count   = (int64_t)state->output_count;
+  int64_t current = (int64_t)state->current_output_index;
+  int64_t next    = (current + (int64_t)delta) % count;
+  if (next < 0) next += count;
+
+  auto output = state_output_at(state, (size_t)next);
+  return output->id;
+}
+
+static void cycle_current_output(
+  const state_t *state,
+  int32_t delta,
+  command_buffer_t *command_buffer
+) {
+  auto output_id = get_cycled_output(state, delta);
+  if (output_id == ZDWM_OUTPUT_ID_INVALID) return;
+
+  command_t cmd = {
+    .type                     = ZDWM_COMMAND_SET_CURRENT_OUTPUT,
+    .as.current_output.output = output_id,
+  };
+  command_buffer_push(command_buffer, &cmd);
+}
+
+static void switch_workspace_same_output_by_index(
+  const state_t *state,
+  uint32_t index,
+  command_buffer_t *command_buffer
+) {
+  auto output    = state_output_at(state, state->current_output_index);
+  uint32_t count = 0;
+  for (size_t i = 0; i < state_workspace_count(state); ++i) {
+    auto workspace = state_workspace_at(state, i);
+    if (workspace->output_id != output->id) continue;
+
+    if (count == index) {
+      command_t switch_workspace_cmd = {
+        .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+        .as.switch_workspace.workspace = workspace->id,
+      };
+      command_buffer_push(command_buffer, &switch_workspace_cmd);
+      return;
+    }
+    count++;
+  }
+}
+
+static void cycle_layout(
+  const state_t *state,
+  int32_t delta,
+  command_buffer_t *command_buffer
+) {
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+
+  int32_t index     = 0;
+  bool matched      = false;
+  auto layout_count = (int32_t)workspace->layout_count;
+  if (layout_count <= 1) return;
+
+  for (int32_t i = 0; i < layout_count; ++i) {
+    if (workspace->layout_id == workspace->available_layouts[i]) {
+      index   = i;
+      matched = true;
+      break;
+    }
+  }
+
+  if (!matched) return;
+
+  auto new_index  = index + delta;
+  new_index      %= layout_count;
+  if (new_index < 0) new_index += layout_count;
+
+  if (new_index == index) return;
+
+  auto next_layout_id          = workspace->available_layouts[new_index];
+  command_t set_layout_command = {
+    .type      = ZDWM_COMMAND_SET_LAYOUT,
+    .as.layout = {.workspace = workspace->id, .layout = next_layout_id},
+  };
+  command_buffer_push(command_buffer, &set_layout_command);
+}
+
+static void cycle_binding_mode(
+  const binding_table_t *table,
+  int32_t delta,
+  command_buffer_t *command_buffer
+) {
+  auto next_mode_id = binding_table_cycle_mode(table, delta);
+
+  if (next_mode_id == ZDWM_BINDING_MODE_ID_INVALID) return;
+
+  command_t set_binding_mode_command = {
+    .type                 = ZDWM_COMMAND_SET_BINDING_MODE,
+    .as.binding_mode.mode = next_mode_id,
+  };
+  command_buffer_push(command_buffer, &set_binding_mode_command);
+}
+
+static const window_t *get_current_focused_window(const state_t *state) {
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+  return state_window_get(state, workspace->focused_window_id);
+}
+
+#define DEFUN_WINDOW_TOGGLE_FN(NAME, TYPE, DATA_FIELD, WINDOW_FIELD)           \
+  static void NAME(const state_t *state, command_buffer_t *command_buffer) {   \
+    auto window = get_current_focused_window(state);                           \
+    if (!window) return;                                                       \
+                                                                               \
+    command_t command = {                                                      \
+      .type          = (TYPE),                                                 \
+      .as.DATA_FIELD = {.window = window->id, .state = !window->WINDOW_FIELD}, \
+    };                                                                         \
+    command_buffer_push(command_buffer, &command);                             \
+  }
+
+DEFUN_WINDOW_TOGGLE_FN(
+  toggle_window_fullscreen,
+  ZDWM_COMMAND_WINDOW_SET_FULLSCREEN,
+  fullscreen,
+  fullscreen
+)
+DEFUN_WINDOW_TOGGLE_FN(
+  toggle_window_maximize,
+  ZDWM_COMMAND_WINDOW_SET_MAXIMIZED,
+  maximized,
+  maximized
+)
+DEFUN_WINDOW_TOGGLE_FN(
+  toggle_window_floating,
+  ZDWM_COMMAND_WINDOW_SET_FLOATING,
+  floating,
+  floating
+)
+DEFUN_WINDOW_TOGGLE_FN(
+  toggle_window_sticky,
+  ZDWM_COMMAND_WINDOW_SET_STICKY,
+  sticky,
+  sticky
+)
+
+#undef DEFUN_WINDOW_TOGGLE_FN
+
+static void cycle_focused_window(
+  const state_t *state,
+  int32_t delta,
+  command_buffer_t *command_buffer
+) {
+  auto output    = state_output_at(state, state->current_output_index);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+
+  size_t count = state_window_count(state);
+  if (!count) return;
+
+  size_t indices[count];
+  size_t num = 0;
+  for (size_t i = 0; i < count; ++i) {
+    auto window = state_window_at(state, i);
+    if (window->workspace_id == workspace->id) {
+      indices[num++] = i;
+    }
+  }
+  if (!num) return;
+
+  size_t current = 0;
+  if (!window_id_invalid(workspace->focused_window_id)) {
+    for (size_t i = 0; i < num; ++i) {
+      auto window = state_window_at(state, indices[i]);
+      if (window->id == workspace->focused_window_id) {
+        current = i;
+        break;
+      }
+    }
+  }
+
+  int64_t next = ((int64_t)current + (int64_t)delta) % (int64_t)num;
+  if (next < 0) next += (int64_t)num;
+
+  auto target = state_window_at(state, indices[next]);
+
+  command_t focus_cmd = {
+    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
+    .as.focus.window = target->id,
+  };
+  command_buffer_push(command_buffer, &focus_cmd);
+
+  command_t raise_cmd = {
+    .type            = ZDWM_COMMAND_RAISE_WINDOW,
+    .as.raise.window = target->id,
+  };
+  command_buffer_push(command_buffer, &raise_cmd);
+}
+
+static void
+kill_window_action(const state_t *state, command_buffer_t *command_buffer) {
+  auto window = get_current_focused_window(state);
+  if (!window) return;
+
+  command_t kill_window_command = {
+    .type           = ZDWM_COMMAND_KILL_WINDOW,
+    .as.kill.window = window->id,
+  };
+  command_buffer_push(command_buffer, &kill_window_command);
+}
+
+static void cycle_window_output(
+  const state_t *state,
+  const zdwm_action_data_window_cycle_output_t *data,
+  command_buffer_t *command_buffer
+) {
+  auto window = get_current_focused_window(state);
+  if (!window) return;
+
+  auto output_id = get_cycled_output(state, data->delta);
+  if (output_id == ZDWM_OUTPUT_ID_INVALID) return;
+
+  if (data->keep_focus) {
+    command_t set_current_output_command = {
+      .type                     = ZDWM_COMMAND_SET_CURRENT_OUTPUT,
+      .as.current_output.output = output_id,
+    };
+    command_buffer_push(command_buffer, &set_current_output_command);
+  }
+
+  auto output    = state_output_get(state, output_id);
+  auto workspace = state_workspace_get(state, output->current_workspace_id);
+  command_t send_window_to_workspace_command = {
+    .type                 = ZDWM_COMMAND_WINDOW_SEND_TO_WORKSPACE,
+    .as.send_to_workspace = {
+      .window    = window->id,
+      .workspace = workspace->id,
+    },
+  };
+  command_buffer_push(command_buffer, &send_window_to_workspace_command);
+}
+
+static void send_window_to_workspace_same_output_by_index(
+  const state_t *state,
+  const zdwm_action_data_window_send_to_workspace_t *data,
+  command_buffer_t *command_buffer
+) {
+  auto output = state_output_at(state, state->current_output_index);
+  auto current_workspace =
+    state_workspace_get(state, output->current_workspace_id);
+
+  auto target_workspace = state_workspace_at(state, (size_t)data->index);
+  if (current_workspace->id == target_workspace->id) return;
+
+  if (data->switch_workspace) {
+    command_t switch_workspace_command = {
+      .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+      .as.switch_workspace.workspace = target_workspace->id,
+    };
+    command_buffer_push(command_buffer, &switch_workspace_command);
+  }
+
+  command_t send_window_to_workspace_command = {
+    .type                 = ZDWM_COMMAND_WINDOW_SEND_TO_WORKSPACE,
+    .as.send_to_workspace = {
+      .window    = current_workspace->focused_window_id,
+      .workspace = target_workspace->id,
+    },
+  };
+  command_buffer_push(command_buffer, &send_window_to_workspace_command);
+}
+
+static void policy_resolve_action(
+  const policy_context_t *ctx,
   const zdwm_action_t *action,
   command_buffer_t *out
-) {}
+) {
+  switch (action->type) {
+  case ZDWM_ACTION_SPAWN:
+    spawn(action->as.spawn.command);
+    break;
+  case ZDWM_ACTION_QUIT:
+    quit(action->as.quit.restart, out);
+    break;
+  case ZDWM_ACTION_RAISE_OR_RUN:
+    raise_or_run(ctx->state, &action->as.raise_or_run, out);
+    break;
+  case ZDWM_ACTION_OUTPUT_CYCLE:
+    cycle_current_output(ctx->state, action->as.output_cycle.delta, out);
+    break;
+  case ZDWM_ACTION_WORKSPACE_SWITCH_SAME_OUTPUT_BY_INDEX: {
+    auto index = action->as.workspace_switch_same_output_by_index.index;
+    switch_workspace_same_output_by_index(ctx->state, index, out);
+  } break;
+  case ZDWM_ACTION_LAYOUT_CYCLE:
+    cycle_layout(ctx->state, action->as.layout_cycle.delta, out);
+    break;
+  case ZDWM_ACTION_BINDING_MODE_CYCLE: {
+    auto delta = action->as.binding_mode_cycle.delta;
+    cycle_binding_mode(ctx->bind_table, delta, out);
+  } break;
+  case ZDWM_ACTION_WINDOW_TOGGLE_FULLSCREEN:
+    toggle_window_fullscreen(ctx->state, out);
+    break;
+  case ZDWM_ACTION_WINDOW_TOGGLE_MAXIMIZE:
+    toggle_window_maximize(ctx->state, out);
+    break;
+  case ZDWM_ACTION_WINDOW_TOGGLE_MINIMIZE:
+    /* TODO: 恢复需要单独的逻辑，需要考虑是否将最小化和恢复拆成两个 action */
+    break;
+  case ZDWM_ACTION_WINDOW_TOGGLE_FLOATING:
+    toggle_window_floating(ctx->state, out);
+    break;
+  case ZDWM_ACTION_WINDOW_TOGGLE_STICKY:
+    toggle_window_sticky(ctx->state, out);
+    break;
+  case ZDWM_ACTION_WINDOW_FOCUS_CYCLE:
+    cycle_focused_window(ctx->state, action->as.window_focus_cycle.delta, out);
+    break;
+  case ZDWM_ACTION_WINDOW_KILL:
+    kill_window_action(ctx->state, out);
+    break;
+  case ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX:
+    send_window_to_workspace_same_output_by_index(
+      ctx->state,
+      &action->as.window_send_to_workspace_same_output_by_index,
+      out
+    );
+    break;
+  case ZDWM_ACTION_WINDOW_CYCLE_OUTPUT:
+    cycle_window_output(ctx->state, &action->as.window_cycle_output, out);
+    break;
+  }
+}
 
 static void route_key_press(
   const policy_context_t *ctx,
@@ -38,8 +432,7 @@ static void route_key_press(
   for (size_t i = 0; i < count; ++i) {
     auto binding = &bindings[i];
     if (binding->modifiers == e->modifiers && binding->keysym == e->keysym) {
-      policy_resolve_action(ctx->state, &binding->action, out);
-      /* binding->fn(ctx->runtime, &ctx->action_api, &binding->arg); */
+      policy_resolve_action(ctx, &binding->action, out);
     }
   }
 }
@@ -944,21 +1337,44 @@ static void set_layout(
   const set_layout_command_t *command,
   plan_t *plan
 ) {
-  auto state       = ctx->state;
+  auto state        = ctx->state;
   auto workspace_id = command->workspace;
-  auto layout_id   = command->layout;
+  auto layout_id    = command->layout;
 
   if (!state_workspace_set_layout_by_id(state, workspace_id, layout_id)) return;
 
   plan->need_relayout = true;
-  listeners_notify_layout(ctx->listeners, ctx->layouts, workspace_id, layout_id);
+  listeners_notify_layout(
+    ctx->listeners,
+    ctx->layouts,
+    workspace_id,
+    layout_id
+  );
 }
 
 static void set_binding_mode(
   const policy_context_t *ctx,
-  zdwm_binding_mode_id_t binding_mode
+  zdwm_binding_mode_id_t binding_mode,
+  plan_t *plan
 ) {
   if (!binding_table_set_current_mode(ctx->bind_table, binding_mode)) return;
+
+  size_t count  = 0;
+  auto bindings = binding_table_get_current_bindings(ctx->bind_table, &count);
+  if (bindings && count > 0) {
+    auto keys = p_new(key_bind_t, count);
+    for (size_t i = 0; i < count; ++i) {
+      keys[i].keysym    = bindings[i].keysym;
+      keys[i].modifiers = bindings[i].modifiers;
+    }
+
+    effect_t effect = {
+      .type        = ZDWM_EFFECT_BIND_KEY,
+      .as.bind_key = {.count = count, .keys = keys},
+    };
+    plan_push_effect(plan, &effect);
+  }
+
   listeners_notify_binding_mode(ctx->listeners, ctx->bind_table);
 }
 
@@ -1023,7 +1439,11 @@ void policy_apply_command(
       set_layout(ctx, &cmd->as.layout, plan);
       break;
     case ZDWM_COMMAND_SET_BINDING_MODE:
-      set_binding_mode(ctx, cmd->as.binding_mode.mode);
+      set_binding_mode(ctx, cmd->as.binding_mode.mode, plan);
+      break;
+    case ZDWM_COMMAND_QUIT:
+      plan->quit         = true;
+      plan->will_restart = cmd->as.quit.will_restart;
       break;
     }
   }

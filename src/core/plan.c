@@ -36,8 +36,11 @@ void plan_reset(plan_t *plan) {
 void plan_cleanup(plan_t *plan) {
   free_memory_hold_by_effects(plan->effects, plan->count);
   p_delete(&plan->effects);
-  plan->count    = 0;
-  plan->capacity = 0;
+  plan->count         = 0;
+  plan->capacity      = 0;
+  plan->need_relayout = false;
+  plan->quit          = false;
+  plan->will_restart  = false;
 }
 
 void plan_push_effect(plan_t *plan, const effect_t *effect) {

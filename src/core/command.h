@@ -22,6 +22,7 @@ typedef enum command_type_t {
   ZDWM_COMMAND_SET_CURRENT_OUTPUT,
   ZDWM_COMMAND_SET_LAYOUT,
   ZDWM_COMMAND_SET_BINDING_MODE,
+  ZDWM_COMMAND_QUIT,
 } command_type_t;
 
 typedef struct manage_window_command_t {
@@ -63,6 +64,9 @@ typedef struct set_binding_mode_command_t {
   zdwm_binding_mode_id_t mode;
 } set_binding_mode_command_t;
 
+typedef struct quit_command_t {
+  bool will_restart;
+} quit_command_t;
 
 /**
  * @brief 非 owning 的命令值对象
@@ -94,5 +98,6 @@ typedef struct command_t {
     set_current_output_command_t current_output;
     set_layout_command_t layout;
     set_binding_mode_command_t binding_mode;
+    quit_command_t quit;
   } as;
 } command_t;

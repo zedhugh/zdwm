@@ -52,6 +52,16 @@ typedef struct zdwm_action_data_index_only_t {
   uint32_t index;
 } zdwm_action_data_index_only_t;
 
+typedef struct zdwm_action_data_window_send_to_workspace_t {
+  uint32_t index;
+  bool switch_workspace;
+} zdwm_action_data_window_send_to_workspace_t;
+
+typedef struct zdwm_action_data_window_cycle_output_t {
+  int32_t delta;
+  bool keep_focus;
+} zdwm_action_data_window_cycle_output_t;
+
 typedef struct zdwm_action_t {
   zdwm_action_type_t type;
   union {
@@ -63,8 +73,9 @@ typedef struct zdwm_action_t {
     zdwm_action_data_delta_only_t layout_cycle;
     zdwm_action_data_delta_only_t binding_mode_cycle;
     zdwm_action_data_delta_only_t window_focus_cycle;
-    zdwm_action_data_index_only_t window_send_to_workspace_same_output_by_index;
-    zdwm_action_data_delta_only_t window_cycle_output;
+    zdwm_action_data_window_send_to_workspace_t
+      window_send_to_workspace_same_output_by_index;
+    zdwm_action_data_window_cycle_output_t window_cycle_output;
   } as;
 } zdwm_action_t;
 

@@ -145,39 +145,6 @@ static void state_workspace_adjust_focused_window(
   workspace->focused_window_id = ZDWM_WINDOW_ID_INVALID;
 }
 
-bool state_workspace_cycle_layout(
-  state_t *state,
-  workspace_id_t workspace_id,
-  int32_t delta
-) {
-  workspace_t *workspace =
-    (workspace_t *)state_workspace_get(state, workspace_id);
-  if (!workspace) return false;
-
-  int32_t index     = 0;
-  bool matched      = false;
-  auto layout_count = (int32_t)workspace->layout_count;
-  for (int32_t i = 0; i < layout_count; i++) {
-    if (workspace->layout_id == workspace->available_layouts[i]) {
-      index   = i;
-      matched = true;
-      break;
-    }
-  }
-
-  if (!matched) return false;
-
-  auto new_index  = index + delta;
-  new_index      %= layout_count;
-  if (new_index < 0) new_index += layout_count;
-
-  if (new_index == index) return false;
-
-  auto next_layout_id  = workspace->available_layouts[new_index];
-  workspace->layout_id = next_layout_id;
-  return true;
-}
-
 bool state_workspace_set_layout_by_index(
   state_t *state,
   workspace_id_t workspace_id,
@@ -307,14 +274,6 @@ bool state_output_valid(const state_t *state, output_id_t id) {
 
   return false;
 #endif
-}
-
-void state_cycle_current_output(state_t *state, int delta) {
-  int64_t count   = (int64_t)state->output_count;
-  int64_t current = (int64_t)state->current_output_index;
-  int64_t next    = (current + (int64_t)delta) % count;
-  if (next < 0) next += count;
-  state->current_output_index = (size_t)next;
 }
 
 bool state_set_current_output(state_t *state, output_id_t output_id) {
