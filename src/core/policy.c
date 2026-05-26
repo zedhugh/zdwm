@@ -788,6 +788,82 @@ static void change_window_state(
   }
 }
 
+static void send_window_to_workspace(
+  const policy_context_t *ctx,
+  const window_send_to_workspace_command_t *command,
+  plan_t *plan
+) {
+  auto state  = ctx->state;
+  auto window = state_window_get(state, command->window);
+  if (!window) return;
+  if (!state_workspace_valid(state, command->workspace)) return;
+  if (window->workspace_id == command->workspace) return;
+
+  workspace_id_t src_workspace_id = window->workspace_id;
+  bool src_visible = state_workspace_show(state, src_workspace_id);
+  bool dst_visible = state_workspace_show(state, command->workspace);
+
+  const workspace_t *src_ws = state_workspace_get(state, src_workspace_id);
+  window_id_t src_old_focused =
+    src_ws ? src_ws->focused_window_id : ZDWM_WINDOW_ID_INVALID;
+
+  state_window_set_workspace(state, command->window, command->workspace);
+
+  if (!window->sticky) {
+    if (src_visible) plan_push_unmap_effect(plan, command->window);
+    if (dst_visible) plan_push_map_effect(plan, command->window);
+  }
+
+  if (src_visible) {
+    if (src_ws && src_ws->focused_window_id != src_old_focused) {
+      if (!window_id_invalid(src_old_focused) &&
+          state_window_get(state, src_old_focused)) {
+        plan_push_change_border_color_effect(
+          plan,
+          src_old_focused,
+          &ctx->border->normal_color
+        );
+      }
+      if (!window_id_invalid(src_ws->focused_window_id) &&
+          state_window_get(state, src_ws->focused_window_id)) {
+        plan_push_focus_effect(plan, src_ws->focused_window_id);
+        plan_push_change_border_color_effect(
+          plan,
+          src_ws->focused_window_id,
+          &ctx->border->focused_color
+        );
+      }
+    }
+    adjust_layout_windows_border_width(
+      state,
+      ctx->border->width,
+      src_workspace_id
+    );
+  }
+
+  if (dst_visible) {
+    set_foucs_window(ctx, command->workspace, command->window, plan);
+    adjust_layout_windows_border_width(
+      state,
+      ctx->border->width,
+      command->workspace
+    );
+  }
+
+  plan->need_relayout = true;
+
+  auto listeners = ctx->listeners;
+  listeners_notify_window_updated(listeners, state, command->window);
+  if (src_ws && src_ws->focused_window_id != src_old_focused &&
+      !window_id_invalid(src_ws->focused_window_id)) {
+    listeners_notify_window_updated(
+      listeners,
+      state,
+      src_ws->focused_window_id
+    );
+  }
+}
+
 static void command_window_set_floating(
   const policy_context_t *ctx,
   const window_bool_state_t *data,
@@ -855,6 +931,37 @@ switch_workspace(state_t *state, workspace_id_t workspace_id, plan_t *plan) {
   state_set_current_output(state, output_id);
 }
 
+static void set_current_output(
+  const policy_context_t *ctx,
+  const set_current_output_command_t *command
+) {
+  if (!state_set_current_output(ctx->state, command->output)) return;
+  listeners_notify_current_output(ctx->listeners, command->output);
+}
+
+static void set_layout(
+  const policy_context_t *ctx,
+  const set_layout_command_t *command,
+  plan_t *plan
+) {
+  auto state       = ctx->state;
+  auto workspace_id = command->workspace;
+  auto layout_id   = command->layout;
+
+  if (!state_workspace_set_layout_by_id(state, workspace_id, layout_id)) return;
+
+  plan->need_relayout = true;
+  listeners_notify_layout(ctx->listeners, ctx->layouts, workspace_id, layout_id);
+}
+
+static void set_binding_mode(
+  const policy_context_t *ctx,
+  zdwm_binding_mode_id_t binding_mode
+) {
+  if (!binding_table_set_current_mode(ctx->bind_table, binding_mode)) return;
+  listeners_notify_binding_mode(ctx->listeners, ctx->bind_table);
+}
+
 void policy_apply_command(
   const policy_context_t *ctx,
   const command_buffer_t *command_buffer,
@@ -888,6 +995,9 @@ void policy_apply_command(
     case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
       change_window_state(ctx, &cmd->as.state_change, plan);
       break;
+    case ZDWM_COMMAND_WINDOW_SEND_TO_WORKSPACE:
+      send_window_to_workspace(ctx, &cmd->as.send_to_workspace, plan);
+      break;
     case ZDWM_COMMAND_WINDOW_SET_FLOATING:
       command_window_set_floating(ctx, &cmd->as.floating, plan);
       break;
@@ -905,6 +1015,15 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
       switch_workspace(state, cmd->as.switch_workspace.workspace, plan);
+      break;
+    case ZDWM_COMMAND_SET_CURRENT_OUTPUT:
+      set_current_output(ctx, &cmd->as.current_output);
+      break;
+    case ZDWM_COMMAND_SET_LAYOUT:
+      set_layout(ctx, &cmd->as.layout, plan);
+      break;
+    case ZDWM_COMMAND_SET_BINDING_MODE:
+      set_binding_mode(ctx, cmd->as.binding_mode.mode);
       break;
     }
   }

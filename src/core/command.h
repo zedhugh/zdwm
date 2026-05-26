@@ -12,12 +12,16 @@ typedef enum command_type_t {
   ZDWM_COMMAND_WITHDRAW_WINDOW,
   ZDWM_COMMAND_CONFIGURE_WINDOW,
   ZDWM_COMMAND_CHANGE_WINDOW_STATE,
+  ZDWM_COMMAND_WINDOW_SEND_TO_WORKSPACE,
   ZDWM_COMMAND_WINDOW_SET_FLOATING,
   ZDWM_COMMAND_WINDOW_SET_STICKY,
   ZDWM_COMMAND_WINDOW_SET_MINIMIZED,
   ZDWM_COMMAND_WINDOW_SET_MAXIMIZED,
   ZDWM_COMMAND_WINDOW_SET_FULLSCREEN,
   ZDWM_COMMAND_SWITCH_WORKSPACE,
+  ZDWM_COMMAND_SET_CURRENT_OUTPUT,
+  ZDWM_COMMAND_SET_LAYOUT,
+  ZDWM_COMMAND_SET_BINDING_MODE,
 } command_type_t;
 
 typedef struct manage_window_command_t {
@@ -36,10 +40,29 @@ typedef struct window_state_change_command_t {
   window_state_request_action_t action;
 } window_state_change_command_t;
 
+typedef struct window_send_to_workspace_command_t {
+  window_id_t window;
+  workspace_id_t workspace;
+} window_send_to_workspace_command_t;
+
 typedef struct window_bool_state_t {
   window_id_t window;
   bool state;
 } window_bool_state_t;
+
+typedef struct set_current_output_command_t {
+  output_id_t output;
+} set_current_output_command_t;
+
+typedef struct set_layout_command_t {
+  workspace_id_t workspace;
+  layout_id_t layout;
+} set_layout_command_t;
+
+typedef struct set_binding_mode_command_t {
+  zdwm_binding_mode_id_t mode;
+} set_binding_mode_command_t;
+
 
 /**
  * @brief 非 owning 的命令值对象
@@ -61,11 +84,15 @@ typedef struct command_t {
     only_window_data_t withdraw;
     configure_data_t configure;
     window_state_change_command_t state_change;
+    window_send_to_workspace_command_t send_to_workspace;
     window_bool_state_t floating;
     window_bool_state_t sticky;
     window_bool_state_t minimized;
     window_bool_state_t maximized;
     window_bool_state_t fullscreen;
     switch_workspace_command_t switch_workspace;
+    set_current_output_command_t current_output;
+    set_layout_command_t layout;
+    set_binding_mode_command_t binding_mode;
   } as;
 } command_t;

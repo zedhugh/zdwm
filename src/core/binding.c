@@ -225,7 +225,7 @@ bool binding_table_set_current_mode(
   binding_table_t *table,
   zdwm_binding_mode_id_t mode_id
 ) {
-  if (mode_id >= table->count) return false;
+  if (mode_id >= table->count || mode_id == table->current_mode) return false;
 
   table->current_mode = mode_id;
   return true;

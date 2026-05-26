@@ -77,6 +77,8 @@ typedef struct plan_t {
   size_t count;
   size_t capacity;
   bool need_relayout;
+  bool quit;
+  bool will_restart;
 } plan_t;
 
 void plan_reset(plan_t *plan);
