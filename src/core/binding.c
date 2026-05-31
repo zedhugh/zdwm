@@ -175,7 +175,6 @@ bool binding_table_add_bind(
   if (!parse_key_sequence(key_sequence, &modifiers, &keysym)) return false;
 
   auto item       = array_push(mode->items, mode->count, mode->capacity);
-  item->key_str   = key_sequence;
   item->modifiers = modifiers;
   item->keysym    = keysym;
   item->action    = action;

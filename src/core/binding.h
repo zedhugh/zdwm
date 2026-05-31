@@ -10,7 +10,6 @@
 typedef struct binding_table_t binding_table_t;
 
 typedef struct key_binding_t {
-  const char *key_str;
   modifier_mask_t modifiers;
   keysym_t keysym;
   zdwm_action_t action;
