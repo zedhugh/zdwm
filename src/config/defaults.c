@@ -134,14 +134,30 @@ bool config_defaults_build(
     {.type = ZDWM_ACTION_WINDOW_FOCUS_CYCLE, .as.window_focus_cycle.delta = -1}
   );
 
+  zdwm_action_t window_cycle_output_action = {
+    .type                   = ZDWM_ACTION_WINDOW_CYCLE_OUTPUT,
+    .as.window_cycle_output = {.delta = 1, .keep_focus = true},
+  };
+  BIND_DEFAULT(Super("o"), window_cycle_output_action);
+
   char buffer[64] = {0};
   for (uint32_t i = 0; i < 9; ++i) {
-    snprintf(buffer, sizeof(buffer), "%s+%d", Super_key, i + 1);
-    zdwm_action_t action = {
-      .type = ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX,
+    snprintf(buffer, sizeof(buffer), Super("%d"), i + 1);
+    zdwm_action_t switch_workspace_action = {
+      .type = ZDWM_ACTION_WORKSPACE_SWITCH_SAME_OUTPUT_BY_INDEX,
       .as.workspace_switch_same_output_by_index.index = i,
     };
-    BIND_DEFAULT(buffer, action);
+    BIND_DEFAULT(buffer, switch_workspace_action);
+
+    snprintf(buffer, sizeof(buffer), Super("Shift+%d"), i + 1);
+    zdwm_action_t send_window_to_workspace_action = {
+      .type = ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX,
+      .as.window_send_to_workspace_same_output_by_index = {
+        .index            = i,
+        .switch_workspace = false,
+      },
+    };
+    BIND_DEFAULT(buffer, send_window_to_workspace_action);
   }
 
 #undef BIND_DEFAULT
