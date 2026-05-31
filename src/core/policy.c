@@ -330,11 +330,12 @@ static void send_window_to_workspace_same_output_by_index(
   const zdwm_action_data_window_send_to_workspace_t *data,
   command_buffer_t *command_buffer
 ) {
+  auto target_workspace = state_workspace_at(state, (size_t)data->index);
+  if (!target_workspace) return;
+
   auto output = state_output_at(state, state->current_output_index);
   auto current_workspace =
     state_workspace_get(state, output->current_workspace_id);
-
-  auto target_workspace = state_workspace_at(state, (size_t)data->index);
   if (current_workspace->id == target_workspace->id) return;
 
   if (data->switch_workspace) {
