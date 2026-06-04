@@ -9,11 +9,13 @@ extern "C" {
 #endif
 
 typedef enum zdwm_action_type_t {
+  ZDWM_ACTION_NONE,
   ZDWM_ACTION_SPAWN,
   ZDWM_ACTION_QUIT,
   ZDWM_ACTION_RAISE_OR_RUN,
 
   ZDWM_ACTION_OUTPUT_CYCLE,
+  ZDWM_ACTION_WORKSPACE_SWITCH,
   ZDWM_ACTION_WORKSPACE_SWITCH_SAME_OUTPUT_BY_INDEX,
   ZDWM_ACTION_LAYOUT_CYCLE,
   ZDWM_ACTION_BINDING_MODE_CYCLE,
@@ -52,6 +54,10 @@ typedef struct zdwm_action_data_index_only_t {
   uint32_t index;
 } zdwm_action_data_index_only_t;
 
+typedef struct zdwm_action_data_switch_workspace_t {
+  zdwm_workspace_id_t workspace;
+} zdwm_action_data_switch_workspace_t;
+
 typedef struct zdwm_action_data_window_send_to_workspace_t {
   uint32_t index;
   bool switch_workspace;
@@ -70,6 +76,7 @@ typedef struct zdwm_action_t {
     zdwm_action_data_raise_or_run_t raise_or_run;
     zdwm_action_data_delta_only_t output_cycle;
     zdwm_action_data_index_only_t workspace_switch_same_output_by_index;
+    zdwm_action_data_switch_workspace_t switch_workspace;
     zdwm_action_data_delta_only_t layout_cycle;
     zdwm_action_data_delta_only_t binding_mode_cycle;
     zdwm_action_data_delta_only_t window_focus_cycle;

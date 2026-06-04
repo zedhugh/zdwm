@@ -60,6 +60,26 @@ get_next_window_by_class(const state_t *state, const char *class_name) {
   return nullptr;
 }
 
+static void add_switch_workspace_command(
+  command_buffer_t *command_buffer,
+  workspace_id_t workspace
+) {
+  command_t switch_workspace_cmd = {
+    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
+    .as.switch_workspace.workspace = workspace,
+  };
+  command_buffer_push(command_buffer, &switch_workspace_cmd);
+}
+
+static void
+add_focus_window_command(command_buffer_t *command_buffer, window_id_t window) {
+  command_t focus_command = {
+    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
+    .as.focus.window = window,
+  };
+  command_buffer_push(command_buffer, &focus_command);
+}
+
 static void raise_or_run(
   const state_t *state,
   const zdwm_action_data_raise_or_run_t *data,
@@ -71,17 +91,8 @@ static void raise_or_run(
     return;
   }
 
-  command_t switch_workspace_cmd = {
-    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
-    .as.switch_workspace.workspace = window->workspace_id,
-  };
-  command_buffer_push(command_buffer, &switch_workspace_cmd);
-
-  command_t focus_cmd = {
-    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
-    .as.focus.window = window->id,
-  };
-  command_buffer_push(command_buffer, &focus_cmd);
+  add_switch_workspace_command(command_buffer, window->workspace_id);
+  add_focus_window_command(command_buffer, window->id);
 }
 
 static output_id_t get_cycled_output(const state_t *state, int32_t delta) {
@@ -123,11 +134,7 @@ static void switch_workspace_same_output_by_index(
     if (workspace->output_id != output->id) continue;
 
     if (count == index) {
-      command_t switch_workspace_cmd = {
-        .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
-        .as.switch_workspace.workspace = workspace->id,
-      };
-      command_buffer_push(command_buffer, &switch_workspace_cmd);
+      add_switch_workspace_command(command_buffer, workspace->id);
       return;
     }
     count++;
@@ -269,11 +276,7 @@ static void cycle_focused_window(
 
   auto target = state_window_at(state, indices[next]);
 
-  command_t focus_cmd = {
-    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
-    .as.focus.window = target->id,
-  };
-  command_buffer_push(command_buffer, &focus_cmd);
+  add_focus_window_command(command_buffer, target->id);
 
   command_t raise_cmd = {
     .type            = ZDWM_COMMAND_RAISE_WINDOW,
@@ -339,11 +342,7 @@ static void send_window_to_workspace_same_output_by_index(
   if (current_workspace->id == target_workspace->id) return;
 
   if (data->switch_workspace) {
-    command_t switch_workspace_command = {
-      .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
-      .as.switch_workspace.workspace = target_workspace->id,
-    };
-    command_buffer_push(command_buffer, &switch_workspace_command);
+    add_switch_workspace_command(command_buffer, target_workspace->id);
   }
 
   command_t send_window_to_workspace_command = {
@@ -362,6 +361,8 @@ static void policy_resolve_action(
   command_buffer_t *out
 ) {
   switch (action->type) {
+  case ZDWM_ACTION_NONE:
+    break;
   case ZDWM_ACTION_SPAWN:
     spawn(action->as.spawn.command);
     break;
@@ -373,6 +374,9 @@ static void policy_resolve_action(
     break;
   case ZDWM_ACTION_OUTPUT_CYCLE:
     cycle_current_output(ctx->state, action->as.output_cycle.delta, out);
+    break;
+  case ZDWM_ACTION_WORKSPACE_SWITCH:
+    add_switch_workspace_command(out, action->as.switch_workspace.workspace);
     break;
   case ZDWM_ACTION_WORKSPACE_SWITCH_SAME_OUTPUT_BY_INDEX: {
     auto index = action->as.workspace_switch_same_output_by_index.index;
@@ -440,11 +444,7 @@ static void route_key_press(
 
 static void
 route_pointer_enter(state_t *state, window_id_t window, command_buffer_t *out) {
-  command_t focus_command = {
-    .type            = ZDWM_COMMAND_FOCUS_WINDOW,
-    .as.focus.window = window,
-  };
-  command_buffer_push(out, &focus_command);
+  add_focus_window_command(out, window);
 }
 
 static workspace_id_t derive_window_workspace(const state_t *state) {
@@ -511,12 +511,7 @@ static void route_map_request(
   const workspace_t *workspace = state_workspace_get(state, workspace_id);
   if (!workspace) return;
 
-  command_t switch_workspace_cmd = {
-    .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
-    .as.switch_workspace.workspace = workspace_id,
-  };
-
-  command_buffer_push(out, &switch_workspace_cmd);
+  add_switch_workspace_command(out, workspace_id);
 }
 
 static void route_window_remove(
@@ -594,19 +589,10 @@ static void route_window_activate_request(
     };
     command_buffer_push(out, &change_window_state_cmd);
   } break;
-  case ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER: {
-    command_t switch_workspace_cmd = {
-      .type                          = ZDWM_COMMAND_SWITCH_WORKSPACE,
-      .as.switch_workspace.workspace = window->workspace_id,
-    };
-    command_buffer_push(out, &switch_workspace_cmd);
-
-    command_t focus_cmd = {
-      .type            = ZDWM_COMMAND_FOCUS_WINDOW,
-      .as.focus.window = window->id,
-    };
-    command_buffer_push(out, &focus_cmd);
-  } break;
+  case ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER:
+    add_switch_workspace_command(out, window->workspace_id);
+    add_focus_window_command(out, window->id);
+    break;
   }
 }
 
