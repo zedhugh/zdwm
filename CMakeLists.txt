@@ -31,6 +31,9 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/backend/x11/event.c
     ${SOURCE_DIR}/backend/x11/window.c
 
+    ${SOURCE_DIR}/bar/cell.c
+    ${SOURCE_DIR}/bar/workspaces.c
+
     ${SOURCE_DIR}/base/color.c
     ${SOURCE_DIR}/base/log.c
     ${SOURCE_DIR}/base/process.c

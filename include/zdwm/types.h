@@ -30,6 +30,19 @@ typedef struct zdwm_output_info_t {
   zdwm_rect_t geometry;
 } zdwm_output_info_t;
 
+typedef enum zdwm_icon_type_t {
+  ZDWM_ICON_TEXT,
+  ZDWM_ICON_IMAGE,
+} zdwm_icon_type_t;
+
+typedef struct zdwm_icon_t {
+  zdwm_icon_type_t type;
+  union {
+    const char *text;
+    const char *image_path;
+  } as;
+} zdwm_icon_t;
+
 #if defined(__cplusplus)
 }
 #endif
