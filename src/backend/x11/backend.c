@@ -17,6 +17,7 @@
 
 #include "backend/output_utils.h"
 #include "backend/x11/window.h"
+#include "base/app.h"
 #include "base/array.h"
 #include "base/log.h"
 #include "base/macros.h"
@@ -72,13 +73,12 @@ static void create_wm_check_window(backend_t *backend) {
   xcb_create_window(conn, depth, win, root, -1, -1, 1, 1, 0, _c, v, m, p);
   window_set_class_instance(conn, win);
 
-#define NAME "zdwm"
-  window_set_name_static(conn, win, NAME);
+  window_set_name_static(conn, win, APP_NAME);
   uint8_t mode    = XCB_PROP_MODE_REPLACE;
   xcb_atom_t prop = backend->atoms._NET_WM_NAME;
   xcb_atom_t type = backend->atoms.UTF8_STRING;
-  xcb_change_property(conn, mode, win, prop, type, 8, sizeof(NAME) - 1, NAME);
-#undef NAME
+  auto data_len   = sizeof(APP_NAME) - 1;
+  xcb_change_property(conn, mode, win, prop, type, 8, data_len, APP_NAME);
 
   prop = backend->atoms._NET_SUPPORTING_WM_CHECK;
   type = XCB_ATOM_WINDOW;
@@ -109,7 +109,7 @@ static void create_no_focus_window(backend_t *backend) {
   };
   xcb_create_window_aux(conn, d, win, root, -1, -1, 1, 1, 0, _c, v, m, &p);
   window_set_class_instance(conn, win);
-  window_set_name_static(conn, win, "zdwm no input window");
+  window_set_name_static(conn, win, APP_NAME " no input window");
   xcb_map_window(conn, win);
 
   backend->window_no_focus = win;

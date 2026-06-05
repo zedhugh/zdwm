@@ -91,9 +91,3 @@ target_link_libraries(${APP_NAME}
     PRIVATE m
     PRIVATE ${deps_LIBRARIES}
 )
-
-configure_file("${SOURCE_DIR}/app.h.in"
-    "${BUILD_DIR}/app.h"
-    ESCAPE_QUOTES
-    @ONLY
-)

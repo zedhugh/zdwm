@@ -7,6 +7,7 @@
 #include <xcb/xcb_icccm.h>
 #include <xcb/xproto.h>
 
+#include "base/app.h"
 #include "core/backend.h"
 #include "internal.h"
 
@@ -73,7 +74,7 @@ window_state_t atom_to_window_state(const atoms_t *atoms, xcb_atom_t atom);
   xcb_icccm_set_wm_name(conn, win, XCB_ATOM_STRING, 8, sizeof(name) - 1, name)
 
 #define window_set_class_instance(conn, win) \
-  window_set_class_instance_static(conn, win, "zdwm", "zdwm")
+  window_set_class_instance_static(conn, win, APP_NAME, APP_NAME)
 #define window_set_class_instance_static(conn, win, instance, class) \
   _window_set_class_instance_static(conn, win, instance "\0" class)
 #define _window_set_class_instance_static(conn, win, instance_class) \
