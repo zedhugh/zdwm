@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cairo.h>
 #include <stddef.h>
 
 #include "core/event.h"
@@ -51,3 +52,14 @@ typedef struct backend_scan_result_t {
  */
 backend_scan_result_t *backend_scan_windows(backend_t *backend);
 void backend_scan_result_destroy(backend_scan_result_t *result);
+
+typedef struct backend_bar_window_t {
+  window_id_t window_id;
+  cairo_t *cr;
+} backend_bar_window_t;
+
+backend_bar_window_t backend_create_bar_window(
+  backend_t *backend,
+  rect_t geometry,
+  uint32_t bg_pixel
+);

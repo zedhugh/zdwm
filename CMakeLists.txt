@@ -76,6 +76,9 @@ pkg_check_modules(deps REQUIRED
     xcb-xfixes
     xcb-xinerama
     xkbcommon
+
+    cairo
+    cairo-xcb
 )
 
 target_include_directories(${APP_NAME} SYSTEM

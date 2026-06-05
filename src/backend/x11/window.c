@@ -405,3 +405,49 @@ void window_grab_keys(
     p_delete(&keycodes);
   }
 }
+
+static visual_t *get_alpha_visual(backend_t *backend) {
+  auto depth_iter = xcb_screen_allowed_depths_iterator(backend->screen);
+  for (; depth_iter.rem; xcb_depth_next(&depth_iter)) {
+    if (depth_iter.data->depth != 32) continue;
+
+    auto visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
+    for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
+      if (visual_iter.data->_class == XCB_VISUAL_CLASS_TRUE_COLOR) {
+        auto visual    = p_new(visual_t, 1);
+        visual->visual = visual_iter.data;
+        visual->depth  = depth_iter.data->depth;
+        return visual;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+static visual_t *get_root_visual(backend_t *backend) {
+  auto depth_iter = xcb_screen_allowed_depths_iterator(backend->screen);
+  auto visual_id  = backend->screen->root_visual;
+  for (; depth_iter.rem; xcb_depth_next(&depth_iter)) {
+    auto visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
+    for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
+      if (visual_iter.data->visual_id == visual_id) {
+        auto visual    = p_new(visual_t, 1);
+        visual->visual = visual_iter.data;
+        visual->depth  = depth_iter.data->depth;
+        return visual;
+      }
+    }
+  }
+
+  return nullptr;
+}
+
+visual_t *window_get_visual(backend_t *backend, bool prefer_alpha) {
+  if (!prefer_alpha) return get_root_visual(backend);
+
+  auto visual = get_alpha_visual(backend);
+  if (!visual) visual = get_root_visual(backend);
+
+  return visual;
+}

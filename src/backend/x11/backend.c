@@ -1,5 +1,7 @@
 #include "core/backend.h"
 
+#include <cairo-xcb.h>
+#include <cairo.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -677,4 +679,71 @@ void backend_scan_result_destroy(backend_scan_result_t *result) {
 
   p_delete(&result->windows);
   p_delete(&result);
+}
+
+backend_bar_window_t backend_create_bar_window(
+  backend_t *backend,
+  rect_t geometry,
+  uint32_t bg_pixel
+) {
+  auto conn   = backend->conn;
+  auto root   = backend->screen->root;
+  auto visual = window_get_visual(backend, true);
+
+  xcb_grab_server(conn);
+  window_clean_event_mask(conn, root);
+
+  auto window_id      = xcb_generate_id(conn);
+  uint16_t _class     = XCB_WINDOW_CLASS_INPUT_OUTPUT;
+  uint32_t event_mask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
+                        XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK;
+
+  const xcb_create_window_value_list_t value_list = {
+    .override_redirect = true,
+    .background_pixel  = bg_pixel,
+    .border_pixel      = 0,
+    .event_mask        = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE,
+  };
+  auto cookie = xcb_create_window_aux_checked(
+    conn,
+    visual->depth,
+    window_id,
+    root,
+    geometry.x,
+    geometry.y,
+    geometry.width,
+    geometry.height,
+    0,
+    _class,
+    visual->visual->visual_id,
+    event_mask,
+    &value_list
+  );
+  if (xcb_request_check(conn, cookie)) fatal("cannot create bar window");
+
+  cookie = xcb_map_window_checked(conn, window_id);
+  if (xcb_request_check(conn, cookie)) fatal("cannot map bar window");
+
+  window_set_class_instance(conn, window_id);
+  window_set_name_static(conn, window_id, APP_NAME "_bar");
+
+  root_set_event_mask(backend);
+  xcb_ungrab_server(conn);
+  xcb_aux_sync(conn);
+
+  auto width   = geometry.width;
+  auto height  = geometry.height;
+  auto vid     = visual->visual;
+  auto surface = cairo_xcb_surface_create(conn, window_id, vid, width, height);
+  auto cr      = cairo_create(surface);
+
+  cairo_surface_destroy(surface);
+  p_delete(&visual);
+
+  auto statue = cairo_status(cr);
+  if (statue != CAIRO_STATUS_SUCCESS) {
+    fatal("cannot create cairo context: %s", cairo_status_to_string(statue));
+  }
+
+  return (backend_bar_window_t){.window_id = window_id, .cr = cr};
 }

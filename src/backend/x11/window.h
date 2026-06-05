@@ -104,3 +104,17 @@ void window_grab_keys(
   const key_bind_t *keys,
   size_t count
 );
+
+typedef struct visual_t {
+  uint8_t depth;
+  xcb_visualtype_t *visual;
+} visual_t;
+
+/**
+ * @brief 获取 xcb 的 visual 及其对应的 depth
+ *
+ * @param prefer_alpha 支持 alpha 的 visual 优先
+ *
+ * @returns 返回的信息使用后记得使用 free 释放
+ */
+visual_t *window_get_visual(backend_t *backend, bool prefer_alpha);
