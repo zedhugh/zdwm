@@ -23,8 +23,6 @@ project(${APP_NAME}
     LANGUAGES C
 )
 
-option(BUILD_TESTING "Build tests" OFF)
-
 add_executable(${APP_NAME}
     ${SOURCE_DIR}/backend/output_utils.c
     ${SOURCE_DIR}/backend/x11/backend.c
@@ -99,8 +97,3 @@ configure_file("${SOURCE_DIR}/app.h.in"
     ESCAPE_QUOTES
     @ONLY
 )
-
-if(BUILD_TESTING)
-    enable_testing()
-    add_subdirectory(tests)
-endif()

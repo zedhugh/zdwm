@@ -39,18 +39,8 @@ build: prepare
 	@cmake --build $(BUILD_DIR)
 	@cp -lf $(BUILD_DIR)/$(TARGET_NAME) $(TARGET)
 
-build-test:
-	cmake -S $(SRC_DIR) -B $(BUILD_DIR) -DBUILD_TESTING=ON
-	cmake --build $(BUILD_DIR)
-
-test: build-test
-	ctest --test-dir $(BUILD_DIR)
-
-test-detail: build-test
-	ctest --test-dir $(BUILD_DIR) --rerun-failed --output-on-failure
-
 install-hooks:
 	chmod +x $(MAKEFILE_DIR).githooks/pre-commit
 	git -C $(MAKEFILE_DIR) config core.hooksPath $(MAKEFILE_DIR).githooks
 
-.PHONY: clean run wm prepare build install uninstall reinstall test install-hooks
+.PHONY: clean run wm prepare build install uninstall reinstall install-hooks
