@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <zdwm/action.h>
+#include <zdwm/bar.h>
 #include <zdwm/layout.h>
 #include <zdwm/listeners.h>
 #include <zdwm/rules.h>
@@ -205,6 +206,14 @@ typedef struct zdwm_api_t {
     void *user_data
   );
 
+  /** @} */
+
+  /** @name bar 配置
+   * @{ */
+  void (*set_bar_config)(
+    zdwm_config_builder_t *builder,
+    zdwm_bar_config_t config
+  );
   /** @} */
 } zdwm_api_t;
 

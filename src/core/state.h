@@ -115,6 +115,30 @@ bool state_workspace_show(const state_t *state, workspace_id_t workspace_id);
  */
 const output_t *state_output_get(const state_t *state, output_id_t id);
 const output_t *state_output_at(const state_t *state, size_t index);
+
+typedef struct inset_t {
+  int32_t top;
+  int32_t right;
+  int32_t bottom;
+  int32_t left;
+} inset_t;
+
+/**
+ * @brief 按四边内缩量重新计算 output 的可用区域
+ *
+ * @details 以 output->geometry 为基准，各边向内收缩对应像素数，将结果写入
+ *          output->workarea。未设置的边默认为 0，表示该边不收缩。
+ *
+ * @param state     状态实例指针
+ * @param output_id 目标 output 的 id
+ * @param inset     四边内缩量（像素），值为 0 表示该边不收缩
+ */
+void state_output_inset_workarea(
+  state_t *state,
+  output_id_t output_id,
+  inset_t inset
+);
+
 void state_output_set_workarea(
   state_t *state,
   output_id_t output_id,

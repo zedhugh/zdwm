@@ -232,6 +232,22 @@ const output_t *state_output_at(const state_t *state, size_t index) {
   return nullptr;
 }
 
+void state_output_inset_workarea(
+  state_t *state,
+  output_id_t output_id,
+  inset_t inset
+) {
+  auto output = (output_t *)state_output_get(state, output_id);
+  if (!output) return;
+
+  auto workarea     = output->geometry;
+  workarea.y       += inset.top;
+  workarea.x       += inset.left;
+  workarea.width   -= inset.left + inset.right;
+  workarea.height  -= inset.top + inset.bottom;
+  output->workarea  = workarea;
+}
+
 void state_output_set_workarea(
   state_t *state,
   output_id_t output_id,

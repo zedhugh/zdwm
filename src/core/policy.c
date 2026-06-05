@@ -355,6 +355,19 @@ static void send_window_to_workspace_same_output_by_index(
   command_buffer_push(command_buffer, &send_window_to_workspace_command);
 }
 
+static void toggle_bar_visibility(
+  const policy_bar_t *bar,
+  command_buffer_t *command_buffer
+) {
+  command_t set_bar_visibility_command = {
+    .type              = ZDWM_COMMAND_SET_BAR_VISIBILITY,
+    .as.bar_visibility = {
+      .visible = !*bar->visible,
+    },
+  };
+  command_buffer_push(command_buffer, &set_bar_visibility_command);
+}
+
 static void policy_resolve_action(
   const policy_context_t *ctx,
   const zdwm_action_t *action,
@@ -419,6 +432,9 @@ static void policy_resolve_action(
     break;
   case ZDWM_ACTION_WINDOW_CYCLE_OUTPUT:
     cycle_window_output(ctx->state, &action->as.window_cycle_output, out);
+    break;
+  case ZDWM_ACTION_BAR_TOGGLE_VISIBILITY:
+    toggle_bar_visibility(&ctx->bar, out);
     break;
   }
 }
@@ -1365,6 +1381,34 @@ static void set_binding_mode(
   listeners_notify_binding_mode(ctx->listeners, ctx->bind_table);
 }
 
+static void
+set_bar_visibility(const policy_context_t *ctx, bool visible, plan_t *plan) {
+  auto bar = &ctx->bar;
+  if (*bar->visible == visible) return;
+
+  *bar->visible = visible;
+
+  inset_t inset = {0};
+  if (visible) {
+    if (bar->show_top) inset.top = bar->height;
+    else inset.bottom = bar->height;
+  }
+
+  auto state = ctx->state;
+  for (size_t i = 0; i < state->output_count; ++i) {
+    auto output = state_output_at(state, i);
+    state_output_inset_workarea(state, output->id, inset);
+  }
+
+  auto push_effect = visible ? plan_push_map_effect : plan_push_unmap_effect;
+  for (size_t i = 0; i < bar->windows->count; ++i) {
+    auto window_id = bar->windows->windows[i];
+    push_effect(plan, window_id);
+  }
+
+  plan->need_relayout = true;
+}
+
 void policy_apply_command(
   const policy_context_t *ctx,
   const command_buffer_t *command_buffer,
@@ -1427,6 +1471,9 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_SET_BINDING_MODE:
       set_binding_mode(ctx, cmd->as.binding_mode.mode, plan);
+      break;
+    case ZDWM_COMMAND_SET_BAR_VISIBILITY:
+      set_bar_visibility(ctx, cmd->as.bar_visibility.visible, plan);
       break;
     case ZDWM_COMMAND_QUIT:
       plan->quit         = true;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <zdwm/bar.h>
 #include <zdwm/types.h>
 
 #include "core/backend.h"
@@ -24,6 +25,7 @@ typedef struct runtime_init_desc_t {
   void *config_module_handle;
   binding_table_t *binding_table;
   listeners_t listeners;
+  zdwm_bar_config_t bar;
 } runtime_init_desc_t;
 
 bool runtime_config_load(const char *override_path, runtime_init_desc_t *out);

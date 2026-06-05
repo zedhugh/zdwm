@@ -31,6 +31,8 @@ typedef enum zdwm_action_type_t {
 
   ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX,
   ZDWM_ACTION_WINDOW_CYCLE_OUTPUT,
+
+  ZDWM_ACTION_BAR_TOGGLE_VISIBILITY,
 } zdwm_action_type_t;
 
 typedef struct zdwm_action_data_spawn_t {

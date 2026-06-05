@@ -5,9 +5,11 @@
 #include <stdint.h>
 #include <zdwm/layout.h>
 
+#include "bar/bar.h"
 #include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
+#include "base/window_list.h"
 #include "config/runtime_config.h"
 #include "core/backend.h"
 #include "core/binding.h"
@@ -38,6 +40,9 @@ typedef struct runtime_t {
   void *config_module_handle;
   binding_table_t *binding_table;
   listeners_t listeners;
+
+  bar_t bar;
+  window_list_t bar_windows;
 } runtime_t;
 
 static bool runtime_workspace_desc_has_valid_layouts(
@@ -82,10 +87,12 @@ static bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   runtime->config_module_handle = desc->config_module_handle;
   runtime->binding_table        = desc->binding_table;
   runtime->listeners            = desc->listeners;
+  runtime->bar.config           = desc->bar;
   desc->backend                 = nullptr;
   desc->config_module_handle    = nullptr;
   desc->binding_table           = nullptr;
   p_clear(&desc->listeners, 1);
+  p_clear(&desc->bar, 1);
 
   state_init(
     &runtime->state,
@@ -137,6 +144,7 @@ static void runtime_shutdown(runtime_t *runtime) {
   binding_table_destroy(runtime->binding_table);
   runtime->binding_table = nullptr;
   listeners_cleanup(&runtime->listeners);
+  window_list_cleanup(&runtime->bar_windows);
   backend_destroy(runtime->backend);
   runtime->backend = nullptr;
   if (runtime->config_module_handle) dlclose(runtime->config_module_handle);
@@ -318,13 +326,20 @@ static void runtime_arrange(runtime_t *runtime) {
 
 static policy_context_t policy_context_init(runtime_t *runtime) {
   policy_context_t ctx = {
-    .bind_table = (runtime)->binding_table,
-    .state      = &(runtime)->state,
-    .rules      = &(runtime)->rules,
+    .bind_table = runtime->binding_table,
+    .state      = &runtime->state,
+    .rules      = &runtime->rules,
     .listeners  = &runtime->listeners,
-    .border     = &(runtime)->border,
-    .layouts    = &(runtime)->layouts,
+    .border     = &runtime->border,
+    .layouts    = &runtime->layouts,
+    .bar        = {
+             .visible  = &runtime->bar.visible,
+             .windows  = &runtime->bar_windows,
+             .height   = runtime->bar.config.height,
+             .show_top = runtime->bar.config.show_top,
+    },
   };
+
   return ctx;
 }
 

@@ -1,7 +1,9 @@
 #pragma once
 
+#include <stdint.h>
 #include <zdwm/action.h>
 
+#include "base/window_list.h"
 #include "core/binding.h"
 #include "core/command_buffer.h"
 #include "core/event.h"
@@ -12,6 +14,13 @@
 #include "core/state.h"
 #include "core/types.h"
 
+typedef struct policy_bar_t {
+  bool *visible;
+  window_list_t *windows;
+  int32_t height;
+  bool show_top;
+} policy_bar_t;
+
 typedef struct policy_context_t {
   binding_table_t *bind_table;
   state_t *state;
@@ -19,6 +28,7 @@ typedef struct policy_context_t {
   const listeners_t *listeners;
   const border_config_t *border;
   const layout_registry_t *layouts;
+  const policy_bar_t bar;
 } policy_context_t;
 
 /**

@@ -2,6 +2,7 @@
 
 #include <dlfcn.h>
 #include <stddef.h>
+#include <zdwm/bar.h>
 #include <zdwm/config.h>
 
 #include "base/array.h"
@@ -29,6 +30,7 @@ struct zdwm_config_builder_t {
   border_config_t border;
   binding_table_t *binding_table;
   listeners_t listeners;
+  zdwm_bar_config_t bar;
 };
 
 void runtime_config_cleanup(runtime_init_desc_t *desc) {
@@ -279,6 +281,14 @@ static void runtime_config_subscribe_window_removed(
   listeners_add_window_removed_listener(&builder->listeners, fn, user_data);
 }
 
+static void runtime_config_set_bar_config(
+  zdwm_config_builder_t *builder,
+  zdwm_bar_config_t config
+) {
+  if (!builder) return;
+  builder->bar = config;
+}
+
 static bool config_builder_finish(
   zdwm_config_builder_t *builder,
   runtime_init_desc_t *out
@@ -294,12 +304,14 @@ static bool config_builder_finish(
   out->workspaces             = builder->workspaces;
   out->workspace_count        = builder->workspace_count;
   out->listeners              = builder->listeners;
+  out->bar                    = builder->bar;
   builder->binding_table      = nullptr;
   builder->workspaces         = nullptr;
   builder->workspace_count    = 0;
   builder->workspace_capacity = 0;
   builder->output_count       = 0;
   p_clear(&builder->listeners, 1);
+  p_clear(&builder->bar, 1);
   return true;
 }
 
@@ -342,6 +354,8 @@ static bool runtime_config_build(
     .subscribe_window_added   = runtime_config_subscribe_window_added,
     .subscribe_window_updated = runtime_config_subscribe_window_updated,
     .subscribe_window_removed = runtime_config_subscribe_window_removed,
+
+    .set_bar_config = runtime_config_set_bar_config,
   };
   bool ok = setup(&api, &builder, outputs, output_count) &&
             config_builder_finish(&builder, out);
