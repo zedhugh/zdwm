@@ -1,4 +1,4 @@
-#include "core/runtime.h"
+#include "runtime/runtime.h"
 
 #include <dlfcn.h>
 #include <stddef.h>
@@ -6,7 +6,9 @@
 #include <zdwm/layout.h>
 
 #include "base/array.h"
+#include "base/log.h"
 #include "base/memory.h"
+#include "config/runtime_config.h"
 #include "core/backend.h"
 #include "core/binding.h"
 #include "core/command_buffer.h"
@@ -20,6 +22,23 @@
 #include "core/types.h"
 #include "core/window.h"
 #include "core/wm_desc.h"
+
+typedef struct runtime_t {
+  bool running;
+  bool will_restart;
+
+  plan_t plan;
+  command_buffer_t command_buffer;
+  state_t state;
+  layout_result_t layout_result;
+  layout_registry_t layouts;
+  rules_t rules;
+  border_config_t border;
+  backend_t *backend;
+  void *config_module_handle;
+  binding_table_t *binding_table;
+  listeners_t listeners;
+} runtime_t;
 
 static bool runtime_workspace_desc_has_valid_layouts(
   const layout_registry_t *layouts,
@@ -52,7 +71,7 @@ static bool runtime_init_desc_valid(const runtime_init_desc_t *desc) {
   return true;
 }
 
-bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
+static bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   if (!runtime || !runtime_init_desc_valid(desc)) return false;
 
   p_clear(runtime, 1);
@@ -83,7 +102,7 @@ bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   return true;
 }
 
-void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
+static void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
   if (!desc) return;
 
   binding_table_destroy(desc->binding_table);
@@ -107,7 +126,7 @@ void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
   desc->config_module_handle = nullptr;
 }
 
-void runtime_shutdown(runtime_t *runtime) {
+static void runtime_shutdown(runtime_t *runtime) {
   runtime->running = false;
   plan_cleanup(&runtime->plan);
   command_buffer_cleanup(&runtime->command_buffer);
@@ -159,7 +178,7 @@ static void runtime_notify_initial_state(runtime_t *runtime) {
   listeners_notify_binding_mode(listeners, runtime->binding_table);
 }
 
-void runtime_setup(runtime_t *runtime) {
+static void runtime_setup(runtime_t *runtime) {
   size_t bind_count = 0;
   auto bindings =
     binding_table_get_current_bindings(runtime->binding_table, &bind_count);
@@ -309,7 +328,7 @@ static policy_context_t policy_context_init(runtime_t *runtime) {
   return ctx;
 }
 
-void runtime_scan(runtime_t *runtime) {
+static void runtime_scan(runtime_t *runtime) {
   auto result = backend_scan_windows(runtime->backend);
   if (!result) return;
 
@@ -341,7 +360,7 @@ void runtime_scan(runtime_t *runtime) {
   listeners_notify_initial_windows(&runtime->listeners, &runtime->state);
 }
 
-void runtime_run(runtime_t *runtime) {
+static void runtime_run_event_loop(runtime_t *runtime) {
   runtime->running = true;
 
   backend_t *backend               = runtime->backend;
@@ -369,4 +388,43 @@ void runtime_run(runtime_t *runtime) {
 
     event_cleanup(&event);
   }
+}
+
+bool runtime_run(const char *config_so_path, const char *display_name) {
+  auto backend = backend_create(nullptr);
+  auto detect  = backend_detect(backend);
+  if (!backend || !detect || detect->output_count == 0) {
+    fatal("backend detect failed");
+  }
+
+  runtime_init_desc_t desc = {
+    .backend      = backend,
+    .outputs      = detect->outputs,
+    .output_count = detect->output_count,
+  };
+  if (!runtime_config_load(nullptr, &desc)) {
+    fatal("failed to build runtime inputs");
+  }
+
+  backend = nullptr;
+
+  auto runtime = p_new(runtime_t, 1);
+  bool inited  = runtime_init(runtime, &desc);
+
+  runtime_init_desc_cleanup(&desc);
+  backend_detect_destroy(detect);
+
+  if (!inited) {
+    fatal("runtime init failed");
+  }
+
+  runtime_setup(runtime);
+  runtime_scan(runtime);
+  runtime_run_event_loop(runtime);
+
+  auto restart = runtime->will_restart;
+  runtime_shutdown(runtime);
+  p_delete(&runtime);
+
+  return restart;
 }

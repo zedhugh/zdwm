@@ -50,13 +50,14 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/core/plan.c
     ${SOURCE_DIR}/core/policy.c
     ${SOURCE_DIR}/core/rules.c
-    ${SOURCE_DIR}/core/runtime.c
     ${SOURCE_DIR}/core/state.c
     ${SOURCE_DIR}/core/window.c
 
     ${SOURCE_DIR}/layouts/fair.c
     ${SOURCE_DIR}/layouts/fullscreen.c
     ${SOURCE_DIR}/layouts/maximize.c
+
+    ${SOURCE_DIR}/runtime/runtime.c
 
     ${SOURCE_DIR}/main.c
 )

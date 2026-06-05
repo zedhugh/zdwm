@@ -13,7 +13,6 @@
 #include "core/layout.h"
 #include "core/listeners.h"
 #include "core/rules.h"
-#include "core/runtime.h"
 #include "core/types.h"
 #include "core/wm_desc.h"
 #include "layouts/fair.h"
