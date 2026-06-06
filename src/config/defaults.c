@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <zdwm/action.h>
+#include <zdwm/bar.h>
 #include <zdwm/types.h>
 
 #include "base/log.h"
@@ -166,6 +167,19 @@ bool config_defaults_build(
   api->set_default_mode(builder, default_mode);
   api->set_initial_mode(builder, default_mode);
   api->set_border_config(builder, 2, "#1c2022", "#606060");
+
+  zdwm_bar_config_t bar_config = {
+    .height      = 28,
+    .show_top    = true,
+    .padding_x   = 10,
+    .fps         = 30,
+    .font_family = "Terminus, Sarasa Term SC",
+    .font_size   = 10,
+    .dpi         = 144,
+
+    .bg = "#222222",
+  };
+  api->set_bar_config(builder, bar_config);
 
   return true;
 }

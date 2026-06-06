@@ -6,6 +6,7 @@
 #include <zdwm/types.h>
 
 #include "bar/types.h"
+#include "base/color.h"
 
 typedef struct bar_output_t {
   cairo_t *cr;
@@ -14,6 +15,10 @@ typedef struct bar_output_t {
   bar_side_t sides[ZDWM_BAR_SIDE_COUNT];
 } bar_output_t;
 
+typedef struct bar_palette_t {
+  color_t bg;
+} bar_palette_t;
+
 typedef struct bar_t {
   bar_output_t *bars;
   size_t count;
@@ -21,4 +26,5 @@ typedef struct bar_t {
   bool visible;
 
   zdwm_bar_config_t config;
+  bar_palette_t palette;
 } bar_t;

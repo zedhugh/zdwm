@@ -7,6 +7,7 @@
 
 #include "bar/bar.h"
 #include "base/array.h"
+#include "base/color.h"
 #include "base/log.h"
 #include "base/memory.h"
 #include "base/window_list.h"
@@ -186,6 +187,46 @@ static void runtime_notify_initial_state(runtime_t *runtime) {
   listeners_notify_binding_mode(listeners, runtime->binding_table);
 }
 
+static void runtime_init_bar(runtime_t *runtime) {
+  auto bar_height = runtime->bar.config.height;
+  if (bar_height <= 0) return;
+
+  auto show_top = runtime->bar.config.show_top;
+  inset_t inset = {
+    .top    = show_top ? bar_height : 0,
+    .bottom = show_top ? 0 : bar_height,
+  };
+
+  auto state = &runtime->state;
+  auto count = state_output_count(state);
+
+  auto bar     = &runtime->bar;
+  bar->bars    = p_new(bar_output_t, count);
+  bar->count   = count;
+  bar->visible = true;
+
+  color_parse(bar->config.bg, &bar->palette.bg);
+
+  auto backend = runtime->backend;
+  for (size_t i = 0; i < count; ++i) {
+    auto output = state_output_at(state, i);
+    state_output_inset_workarea(state, output->id, inset);
+    auto geometry   = output->geometry;
+    rect_t bar_rect = {
+      .x      = geometry.x,
+      .y      = show_top ? 0 : geometry.y + geometry.height - bar_height,
+      .width  = geometry.width,
+      .height = bar_height,
+    };
+    auto color            = bar->palette.bg.argb;
+    auto bar_window       = backend_create_bar_window(backend, bar_rect, color);
+    auto bar_output       = &bar->bars[i];
+    bar_output->cr        = bar_window.cr;
+    bar_output->window_id = bar_window.window_id;
+    bar_output->output_id = output->id;
+  }
+}
+
 static void runtime_setup(runtime_t *runtime) {
   size_t bind_count = 0;
   auto bindings =
@@ -211,6 +252,8 @@ static void runtime_setup(runtime_t *runtime) {
   backend_apply_effect(backend, plan->effects, plan->count);
   plan_reset(plan);
   runtime_notify_initial_state(runtime);
+
+  runtime_init_bar(runtime);
 }
 
 static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
