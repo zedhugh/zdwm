@@ -648,8 +648,7 @@ backend_scan_result_t *backend_scan_windows(backend_t *backend) {
   backend_scan_result_t *result = p_new(backend_scan_result_t, 1);
 
   for (int i = 0; i < length; i++) {
-    auto slot = (window_map_request_event_t *)
-      array_push(result->windows, result->count, result->capacity);
+    auto slot = array_push(result->windows, result->count, result->capacity);
     if (!populate_window_event(backend, list[i], slot)) {
       window_layer_props_cleanup(&slot->props);
       window_metadata_cleanup(&slot->metadata);
@@ -690,19 +689,28 @@ backend_bar_window_t backend_create_bar_window(
   auto root   = backend->screen->root;
   auto visual = window_get_visual(backend, true);
 
-  xcb_grab_server(conn);
+  static xcb_colormap_t colormap = XCB_NONE;
+  if (colormap == XCB_NONE) {
+    colormap      = xcb_generate_id(conn);
+    uint8_t alloc = XCB_COLORMAP_ALLOC_NONE;
+    xcb_create_colormap(conn, alloc, colormap, root, visual->visual->visual_id);
+  }
+
   window_clean_event_mask(conn, root);
+  xcb_grab_server(conn);
 
   auto window_id      = xcb_generate_id(conn);
   uint16_t _class     = XCB_WINDOW_CLASS_INPUT_OUTPUT;
-  uint32_t event_mask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
-                        XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK;
+  uint32_t value_mask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
+                        XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK |
+                        XCB_CW_COLORMAP;
 
   const xcb_create_window_value_list_t value_list = {
     .override_redirect = true,
     .background_pixel  = bg_pixel,
     .border_pixel      = 0,
     .event_mask        = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE,
+    .colormap          = colormap,
   };
   auto cookie = xcb_create_window_aux_checked(
     conn,
@@ -716,7 +724,7 @@ backend_bar_window_t backend_create_bar_window(
     0,
     _class,
     visual->visual->visual_id,
-    event_mask,
+    value_mask,
     &value_list
   );
   if (xcb_request_check(conn, cookie)) fatal("cannot create bar window");
@@ -727,8 +735,8 @@ backend_bar_window_t backend_create_bar_window(
   window_set_class_instance(conn, window_id);
   window_set_name_static(conn, window_id, APP_NAME "_bar");
 
-  root_set_event_mask(backend);
   xcb_ungrab_server(conn);
+  root_set_event_mask(backend);
   xcb_aux_sync(conn);
 
   auto width   = geometry.width;
