@@ -21,6 +21,16 @@ typedef struct zdwm_bar_config_t {
 
   const char *bg;
   const char *fg;
+
+  uint32_t tag_cell_padding_x;
+  uint32_t tag_indicator_width;
+  const char *tag_bg;
+  const char *tag_fg;
+  const char *tag_active_bg;
+  const char *tag_active_fg;
+  const char *tag_urgent_bg;
+  const char *tag_urgent_fg;
+
   const char *layout_bg;
   const char *layout_fg;
   const char *binding_mode_bg;

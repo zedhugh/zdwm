@@ -26,9 +26,11 @@ struct zdwm_bar_item_t {
   bar_cell_t *cells;
   size_t count;
   bar_x_region_t region;
+  uint32_t cell_padding;
+  uint32_t indicator_width;
+
   void *state;
-  uint8_t cell_padding;
-  uint8_t indicator_width;
+  zdwm_bar_item_type_t api;
   bool dirty;
 };
 
@@ -39,12 +41,3 @@ typedef struct bar_side_t {
   size_t capacity;
   bar_x_region_t region;
 } bar_side_t;
-
-typedef struct bars_t {
-  size_t count;
-  int32_t height;
-  bool show_top; /* 如果为 false 则 bar 显示屏幕底部 */
-  bool visible;
-
-  zdwm_bar_config_t config;
-} bars_t;
