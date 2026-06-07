@@ -156,9 +156,11 @@ static zdwm_action_t bar_workspace_on_click(
 }
 
 static void bar_workspace_destroy_state(void *state) {
+  if (!state) return;
+
   auto data = (bar_workspace_state_t *)state;
   p_delete(&data->workspaces);
-  p_clear(data, 1);
+  p_delete(&data);
 }
 
 zdwm_bar_item_type_t bar_workspace = {
