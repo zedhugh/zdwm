@@ -150,6 +150,8 @@ static void runtime_shutdown(runtime_t *runtime) {
   runtime->backend = nullptr;
   if (runtime->config_module_handle) dlclose(runtime->config_module_handle);
   runtime->config_module_handle = nullptr;
+
+  bar_cleanup(&runtime->bar);
 }
 
 static void runtime_notify_initial_state(runtime_t *runtime) {
@@ -225,6 +227,8 @@ static void runtime_init_bar(runtime_t *runtime) {
     bar_output->window_id = bar_window.window_id;
     bar_output->output_id = output->id;
   }
+
+  bar_init(&runtime->bar);
 }
 
 static void runtime_setup(runtime_t *runtime) {

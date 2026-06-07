@@ -28,3 +28,6 @@ typedef struct bar_t {
   zdwm_bar_config_t config;
   bar_palette_t palette;
 } bar_t;
+
+void bar_init(bar_t *bar);
+void bar_cleanup(bar_t *bar);
