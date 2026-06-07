@@ -5,6 +5,7 @@
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
+#include "bar/text.h"
 #include "bar/types.h"
 #include "bar/workspaces.h"
 #include "base/array.h"
@@ -59,6 +60,9 @@ void bar_output_add_workspace(
 }
 
 void bar_init(bar_t *bar) {
+  auto c   = &bar->config;
+  bar->ctx = text_context_create(c->font_family, c->font_size, c->dpi);
+
   for (size_t i = 0; i < bar->count; ++i) {
     auto bar_output = &bar->bars[i];
     bar_output_add_workspace(bar_output, &bar->config);
@@ -73,6 +77,9 @@ static void bar_side_cleanup(bar_side_t *side) {
 }
 
 void bar_cleanup(bar_t *bar) {
+  text_context_destory(bar->ctx);
+  bar->ctx = nullptr;
+
   for (size_t i = 0; i < bar->count; ++i) {
     auto bar_output = &bar->bars[i];
     for (size_t j = 0; j < ZDWM_BAR_SIDE_COUNT; ++j) {

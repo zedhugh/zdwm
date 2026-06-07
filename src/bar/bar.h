@@ -5,6 +5,7 @@
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
+#include "bar/text.h"
 #include "bar/types.h"
 #include "base/color.h"
 
@@ -27,6 +28,7 @@ typedef struct bar_t {
 
   zdwm_bar_config_t config;
   bar_palette_t palette;
+  text_context_t *ctx;
 } bar_t;
 
 void bar_init(bar_t *bar);

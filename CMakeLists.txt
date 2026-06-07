@@ -31,6 +31,7 @@ add_executable(${APP_NAME}
 
     ${SOURCE_DIR}/bar/bar.c
     ${SOURCE_DIR}/bar/cell.c
+    ${SOURCE_DIR}/bar/text.c
     ${SOURCE_DIR}/bar/workspaces.c
 
     ${SOURCE_DIR}/base/color.c
@@ -81,6 +82,8 @@ pkg_check_modules(deps REQUIRED
 
     cairo
     cairo-xcb
+    pango
+    pangocairo
 )
 
 target_include_directories(${APP_NAME} SYSTEM
