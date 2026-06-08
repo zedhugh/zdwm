@@ -226,6 +226,8 @@ static void runtime_init_bar(runtime_t *runtime) {
     bar_output->cr        = bar_window.cr;
     bar_output->window_id = bar_window.window_id;
     bar_output->output_id = output->id;
+    bar_output->width     = bar_rect.width;
+    bar_output->height    = bar_rect.height;
   }
 
   bar_init(&runtime->bar);

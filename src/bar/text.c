@@ -1,5 +1,7 @@
 #include "bar/text.h"
 
+#include <assert.h>
+#include <cairo.h>
 #include <glib-object.h>
 #include <pango/pango-attributes.h>
 #include <pango/pango-context.h>
@@ -7,6 +9,7 @@
 #include <pango/pango-layout.h>
 #include <pango/pango-types.h>
 #include <pango/pangocairo.h>
+#include <stdint.h>
 
 #include "base/memory.h"
 
@@ -66,4 +69,73 @@ void text_context_destory(text_context_t *context) {
   }
 
   p_delete(&context);
+}
+
+static inline void
+get_layout_size(PangoLayout *layout, int32_t *width, int32_t *height) {
+  pango_layout_get_pixel_size(layout, width, height);
+}
+
+void text_context_get_text_size(
+  text_context_t *context,
+  const char *text,
+  int32_t *width,
+  int32_t *height
+) {
+  assert(context && text);
+  if (!width && !height) return;
+
+  auto layout = context->layout;
+
+  pango_layout_set_width(layout, -1);
+  pango_layout_set_height(layout, 0);
+  pango_layout_set_text(layout, text, -1);
+
+  get_layout_size(layout, width, height);
+}
+
+void draw_text(
+  cairo_t *cr,
+  text_context_t *context,
+  const char *text,
+  color_t *color,
+  zdwm_rect_t area
+) {
+  assert(cr);
+  assert(context);
+  assert(text);
+  assert(color);
+
+  auto layout = context->layout;
+  pango_layout_set_width(layout, area.width * PANGO_SCALE);
+  pango_layout_set_text(layout, text, -1);
+
+  cairo_set_source_rgba(
+    cr,
+    color->red,
+    color->green,
+    color->blue,
+    color->alpha
+  );
+
+  int32_t height = 0;
+  get_layout_size(layout, nullptr, &height);
+
+  double offset_y = (area.height - height) / 2.0;
+  pango_cairo_update_layout(cr, layout);
+  cairo_move_to(cr, area.x, offset_y + area.y);
+  pango_cairo_show_layout(cr, layout);
+}
+
+void draw_background(cairo_t *cr, color_t *color, zdwm_rect_t area) {
+  cairo_move_to(cr, area.x, area.y);
+  cairo_set_source_rgba(
+    cr,
+    color->red,
+    color->green,
+    color->blue,
+    color->alpha
+  );
+  cairo_rectangle(cr, area.x, area.y, area.width, area.height);
+  cairo_fill(cr);
 }

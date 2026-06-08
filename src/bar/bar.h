@@ -2,6 +2,7 @@
 
 #include <cairo.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
@@ -13,6 +14,8 @@ typedef struct bar_output_t {
   cairo_t *cr;
   zdwm_window_id_t window_id;
   zdwm_output_id_t output_id;
+  int32_t width;
+  int32_t height;
   bar_side_t sides[ZDWM_BAR_SIDE_COUNT];
 } bar_output_t;
 
@@ -33,3 +36,4 @@ typedef struct bar_t {
 
 void bar_init(bar_t *bar);
 void bar_cleanup(bar_t *bar);
+void bar_draw(bar_t *bar);

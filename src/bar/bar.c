@@ -2,6 +2,7 @@
 
 #include <cairo.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
@@ -91,4 +92,33 @@ void bar_cleanup(bar_t *bar) {
   }
   p_delete(&bar->bars);
   bar->count = 0;
+}
+
+static void bar_draw_item(
+  zdwm_bar_item_t *item,
+  text_context_t *context,
+  cairo_t *cr,
+  int32_t width,
+  int32_t height
+) {
+  /* TODO: */
+}
+
+void bar_draw(bar_t *bar) {
+  auto ctx = bar->ctx;
+
+  for (size_t i = 0; i < bar->count; ++i) {
+    auto bar_output = &bar->bars[i];
+    auto cr         = bar_output->cr;
+    auto width      = bar_output->width;
+    auto height     = bar_output->height;
+
+    for (size_t j = 0; j < ZDWM_BAR_SIDE_COUNT; ++j) {
+      auto side = &bar_output->sides[j];
+      for (size_t k = 0; k < side->count; ++k) {
+        auto item = &side->items[k];
+        bar_draw_item(item, ctx, cr, width, height);
+      }
+    }
+  }
 }
