@@ -1,9 +1,13 @@
 #include "bar/bar.h"
 
 #include <assert.h>
+#include <bits/time.h>
+#include <bits/types/struct_itimerspec.h>
 #include <cairo.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/timerfd.h>
+#include <unistd.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
@@ -84,6 +88,22 @@ void bar_init(bar_t *bar, listeners_t *listeners) {
     bar_output->height = bar->config.height;
     bar_output_add_workspace(bar_output, &bar->config, listeners);
   }
+
+  bar->timerfd     = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+  auto interval_ns = 1'000'000'000ULL / bar->config.fps;
+
+  struct itimerspec timer_spec = {
+    .it_interval =
+      {
+        .tv_sec  = interval_ns / 1'000'000'000,
+        .tv_nsec = interval_ns % 1'000'000'000,
+      },
+    .it_value = {
+      .tv_sec  = 0,
+      .tv_nsec = interval_ns % 1'000'000'000,
+    },
+  };
+  timerfd_settime(bar->timerfd, 0, &timer_spec, nullptr);
 }
 
 static void bar_side_cleanup(bar_side_t *side) {
@@ -94,6 +114,9 @@ static void bar_side_cleanup(bar_side_t *side) {
 }
 
 void bar_cleanup(bar_t *bar) {
+  close(bar->timerfd);
+  bar->timerfd = -1;
+
   text_context_destory(bar->ctx);
   bar->ctx = nullptr;
 
@@ -250,7 +273,35 @@ static void bar_item_draw(
   item->dirty = false;
 }
 
+static bool bar_item_is_dirty(zdwm_bar_item_t *item) {
+  if (item->dirty) return true;
+
+  for (size_t i = 0; i < item->count; ++i) {
+    auto cell = &item->cells[i];
+    if (cell->dirty) return true;
+  }
+
+  return false;
+}
+
+static bool bar_side_is_dirty(bar_side_t *side) {
+  for (size_t j = 0; j < side->count; ++j) {
+    auto item = &side->items[j];
+    if (bar_item_is_dirty(item)) return true;
+  }
+  return false;
+}
+
+static inline bool bar_output_is_dirty(bar_output_t *bar_output) {
+  if (bar_side_is_dirty(&bar_output->left)) return true;
+  if (bar_side_is_dirty(&bar_output->right)) return true;
+  if (bar_item_is_dirty(&bar_output->center)) return true;
+  return false;
+}
+
 static void bar_output_draw(bar_output_t *bar_output, text_context_t *ctx) {
+  if (!bar_output_is_dirty(bar_output)) return;
+
   auto cr = bar_output->cr;
 
   auto left = &bar_output->left;

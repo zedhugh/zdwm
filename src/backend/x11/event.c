@@ -446,6 +446,55 @@ static bool handle_client_message(
   return false;
 }
 
+static bool handle_event(
+  backend_t *backend,
+  xcb_generic_event_t *raw_event,
+  event_t *event
+) {
+  uint8_t response_type = XCB_EVENT_RESPONSE_TYPE(raw_event);
+  bool handled          = false;
+
+  auto label = xcb_event_get_label(response_type);
+  printf("xcb event type: %s[%u]\n", label, response_type);
+
+  switch (response_type) {
+#define EVENT(type, handler)                              \
+  case type:                                              \
+    event_reset(event);                                   \
+    handled = handler(backend, event, (void *)raw_event); \
+    break
+
+    EVENT(XCB_MAP_REQUEST, handle_map_request);
+    EVENT(XCB_UNMAP_NOTIFY, handle_unmap_notify);
+    EVENT(XCB_DESTROY_NOTIFY, handle_destroy_notify);
+    EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
+    EVENT(XCB_KEY_PRESS, handle_key_press);
+    EVENT(XCB_ENTER_NOTIFY, handle_enter_notify);
+    EVENT(XCB_PROPERTY_NOTIFY, handle_property_notify);
+    EVENT(XCB_CLIENT_MESSAGE, handle_client_message);
+
+#undef EVENT
+
+  default:
+    break;
+  }
+
+  p_delete(&raw_event);
+  if (handled) return true;
+  event_reset(event);
+
+  return false;
+}
+
+bool backend_poll_event(backend_t *backend, event_t *event) {
+  if (!backend || !backend->conn || !event) return false;
+
+  auto raw_event = xcb_poll_for_event(backend->conn);
+  if (!raw_event) return false;
+
+  return handle_event(backend, raw_event, event);
+}
+
 bool backend_next_event(backend_t *backend, event_t *event) {
   if (!backend || !backend->conn || !event) return false;
 
@@ -453,36 +502,6 @@ bool backend_next_event(backend_t *backend, event_t *event) {
     xcb_generic_event_t *raw_event = xcb_wait_for_event(backend->conn);
     if (!raw_event) return false;
 
-    uint8_t response_type = XCB_EVENT_RESPONSE_TYPE(raw_event);
-    bool handled          = false;
-
-    auto label = xcb_event_get_label(response_type);
-    printf("xcb event type: %s[%u]\n", label, response_type);
-
-    switch (response_type) {
-#define EVENT(type, handler)                              \
-  case type:                                              \
-    event_reset(event);                                   \
-    handled = handler(backend, event, (void *)raw_event); \
-    break
-
-      EVENT(XCB_MAP_REQUEST, handle_map_request);
-      EVENT(XCB_UNMAP_NOTIFY, handle_unmap_notify);
-      EVENT(XCB_DESTROY_NOTIFY, handle_destroy_notify);
-      EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
-      EVENT(XCB_KEY_PRESS, handle_key_press);
-      EVENT(XCB_ENTER_NOTIFY, handle_enter_notify);
-      EVENT(XCB_PROPERTY_NOTIFY, handle_property_notify);
-      EVENT(XCB_CLIENT_MESSAGE, handle_client_message);
-
-#undef EVENT
-
-    default:
-      break;
-    }
-
-    p_delete(&raw_event);
-    if (handled) return true;
-    event_reset(event);
+    if (handle_event(backend, raw_event, event)) return true;
   }
 }

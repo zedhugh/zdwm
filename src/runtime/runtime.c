@@ -3,12 +3,15 @@
 #include <dlfcn.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/poll.h>
+#include <unistd.h>
 #include <zdwm/layout.h>
 
 #include "bar/bar.h"
 #include "base/array.h"
 #include "base/color.h"
 #include "base/log.h"
+#include "base/macros.h"
 #include "base/memory.h"
 #include "base/window_list.h"
 #include "config/runtime_config.h"
@@ -428,19 +431,20 @@ static void runtime_scan(runtime_t *runtime) {
   listeners_notify_initial_windows(&runtime->listeners, &runtime->state);
 }
 
-static void runtime_run_event_loop(runtime_t *runtime) {
-  runtime->running = true;
+static void runtime_handle_event(runtime_t *runtime, short int revents) {
+  auto backend        = runtime->backend;
+  auto command_buffer = &runtime->command_buffer;
+  auto plan           = &runtime->plan;
+  auto ctx            = policy_context_init(runtime);
 
-  backend_t *backend               = runtime->backend;
-  command_buffer_t *command_buffer = &runtime->command_buffer;
-  plan_t *plan                     = &runtime->plan;
+  if (revents & POLLHUP) {
+    runtime->running = false;
+  }
 
-  policy_context_t ctx = policy_context_init(runtime);
+  if (!(revents & POLLIN)) return;
 
-  while (runtime->running) {
-    event_t event = {0};
-    if (!backend_next_event(backend, &event)) break;
-
+  event_t event = {0};
+  while (backend_poll_event(backend, &event)) {
     command_buffer_reset(command_buffer);
     plan_reset(plan);
 
@@ -452,13 +456,48 @@ static void runtime_run_event_loop(runtime_t *runtime) {
     if (plan->quit) {
       runtime->running      = false;
       runtime->will_restart = plan->will_restart;
-    } else {
-      bar_update(&runtime->bar);
-      bar_draw(&runtime->bar);
-      backend_flush(backend);
     }
 
     event_cleanup(&event);
+  }
+}
+
+static inline void runtime_update_bar(runtime_t *runtime) {
+  auto bar = &runtime->bar;
+  bar_update(bar);
+  bar_draw(bar);
+  backend_flush(runtime->backend);
+}
+
+static void runtime_run_event_loop(runtime_t *runtime) {
+  runtime->running = true;
+
+  auto backend = runtime->backend;
+
+  auto backend_fd = backend_get_fd(backend);
+  if (backend_fd < 0) {
+    runtime->running = false;
+    return;
+  }
+
+  struct pollfd fds[] = {
+    [0] = {.fd = backend_fd, .events = POLLIN | POLLHUP},
+    [1] = {.fd = runtime->bar.timerfd, .events = POLLIN},
+  };
+
+  while (runtime->running) {
+    auto ready = poll(fds, countof(fds), -1);
+    if (ready < 0) continue;
+
+    runtime_handle_event(runtime, fds[0].revents);
+
+    if (fds[1].revents & POLLIN) {
+      uint64_t expirations = 0;
+      read(fds[1].fd, &expirations, sizeof(expirations));
+      if (expirations > 0) {
+        runtime_update_bar(runtime);
+      }
+    }
   }
 }
 

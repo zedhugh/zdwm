@@ -194,6 +194,12 @@ void backend_destroy(backend_t *backend) {
   free(backend);
 }
 
+int backend_get_fd(backend_t *backend) {
+  if (!backend || !backend->conn) return -1;
+
+  return xcb_get_file_descriptor(backend->conn);
+}
+
 static bool detect_monitor_by_randr(
   const backend_t *backend,
   output_info_t **outputs,

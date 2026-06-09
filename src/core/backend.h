@@ -20,6 +20,9 @@ void backend_destroy(backend_t *backend);
 backend_detect_t *backend_detect(backend_t *backend);
 void backend_detect_destroy(backend_detect_t *detect);
 
+int backend_get_fd(backend_t *backend);
+bool backend_poll_event(backend_t *backend, event_t *event);
+
 /**
  * @brief 阻塞等待 backend 产出下一个可交给 runtime 的归一化事件
  * @details

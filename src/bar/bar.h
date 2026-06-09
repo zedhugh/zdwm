@@ -31,6 +31,7 @@ typedef struct bar_t {
   size_t count;
 
   bool visible;
+  int timerfd;
 
   zdwm_bar_config_t config;
   bar_palette_t palette;
