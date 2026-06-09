@@ -1,9 +1,12 @@
 #include "runtime/runtime.h"
 
+#include <bits/types/sigset_t.h>
 #include <dlfcn.h>
+#include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/poll.h>
+#include <sys/signalfd.h>
 #include <unistd.h>
 #include <zdwm/layout.h>
 
@@ -32,6 +35,7 @@
 typedef struct runtime_t {
   bool running;
   bool will_restart;
+  int signal_fd;
 
   plan_t plan;
   command_buffer_t command_buffer;
@@ -131,6 +135,7 @@ static bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   runtime->backend = desc->backend;
   layout_registry_move(&desc->layouts, &runtime->layouts);
   rules_move(&desc->rules, &runtime->rules);
+  runtime->signal_fd            = -1;
   runtime->border               = desc->border;
   runtime->config_module_handle = desc->config_module_handle;
   runtime->binding_table        = desc->binding_table;
@@ -199,6 +204,9 @@ static void runtime_shutdown(runtime_t *runtime) {
   runtime->config_module_handle = nullptr;
 
   bar_cleanup(&runtime->bar);
+
+  close(runtime->signal_fd);
+  runtime->signal_fd = -1;
 }
 
 static void runtime_notify_initial_state(runtime_t *runtime) {
@@ -262,7 +270,19 @@ static void runtime_setup_bindings(runtime_t *runtime) {
   plan_reset(plan);
 }
 
+static inline void runtime_setup_signal(runtime_t *runtime) {
+  sigset_t mask;
+  sigemptyset(&mask);
+  sigaddset(&mask, SIGINT);
+  sigaddset(&mask, SIGTERM);
+  sigaddset(&mask, SIGQUIT);
+  sigprocmask(SIG_BLOCK, &mask, nullptr);
+
+  runtime->signal_fd = signalfd(-1, &mask, SFD_CLOEXEC);
+}
+
 static void runtime_setup(runtime_t *runtime) {
+  runtime_setup_signal(runtime);
   runtime_setup_bindings(runtime);
   runtime_init_bar(runtime);
 
@@ -483,6 +503,7 @@ static void runtime_run_event_loop(runtime_t *runtime) {
   struct pollfd fds[] = {
     [0] = {.fd = backend_fd, .events = POLLIN | POLLHUP},
     [1] = {.fd = runtime->bar.timerfd, .events = POLLIN},
+    [2] = {.fd = runtime->signal_fd, .events = POLLIN},
   };
 
   while (runtime->running) {
@@ -497,6 +518,12 @@ static void runtime_run_event_loop(runtime_t *runtime) {
       if (expirations > 0) {
         runtime_update_bar(runtime);
       }
+    }
+
+    if (fds[2].revents & POLLIN) {
+      struct signalfd_siginfo info = {0};
+      read(fds[2].fd, &info, sizeof(info));
+      runtime->running = false;
     }
   }
 }
