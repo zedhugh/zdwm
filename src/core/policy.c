@@ -14,6 +14,7 @@
 #include "core/command_buffer.h"
 #include "core/event.h"
 #include "core/layout.h"
+#include "core/listeners.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
@@ -1306,11 +1307,25 @@ static void command_window_set_fullscreen(
   fullscreen_window(ctx, data->window, data->state, plan);
 }
 
-static void
-switch_workspace(state_t *state, workspace_id_t workspace_id, plan_t *plan) {
+static inline void change_current_output(
+  state_t *state,
+  output_id_t output_id,
+  const listeners_t *listeners
+) {
+  if (!state_set_current_output(state, output_id)) return;
+  listeners_notify_current_output(listeners, output_id);
+}
+
+static void switch_workspace(
+  const policy_context_t *ctx,
+  workspace_id_t workspace_id,
+  plan_t *plan
+) {
+  auto state     = ctx->state;
   auto workspace = state_workspace_get(state, workspace_id);
   if (!workspace) return;
 
+  auto listeners               = ctx->listeners;
   auto output_id               = workspace->output_id;
   workspace_id_t old_workspace = ZDWM_WORKSPACE_ID_INVALID;
 
@@ -1322,17 +1337,17 @@ switch_workspace(state_t *state, workspace_id_t workspace_id, plan_t *plan) {
       )) {
     plan->need_relayout = true;
     add_switch_workspace_effects(state, old_workspace, workspace_id, plan);
+    listeners_notify_workspace_active(listeners, output_id, workspace_id);
   }
 
-  state_set_current_output(state, output_id);
+  change_current_output(state, output_id, listeners);
 }
 
 static void set_current_output(
   const policy_context_t *ctx,
   const set_current_output_command_t *command
 ) {
-  if (!state_set_current_output(ctx->state, command->output)) return;
-  listeners_notify_current_output(ctx->listeners, command->output);
+  change_current_output(ctx->state, command->output, ctx->listeners);
 }
 
 static void set_layout(
@@ -1461,7 +1476,7 @@ void policy_apply_command(
       command_window_set_fullscreen(ctx, &cmd->as.fullscreen, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
-      switch_workspace(state, cmd->as.switch_workspace.workspace, plan);
+      switch_workspace(ctx, cmd->as.switch_workspace.workspace, plan);
       break;
     case ZDWM_COMMAND_SET_CURRENT_OUTPUT:
       set_current_output(ctx, &cmd->as.current_output);
