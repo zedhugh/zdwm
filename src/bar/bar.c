@@ -33,6 +33,11 @@ static void bar_item_cleanup(zdwm_bar_item_t *item) {
   if (destroy_state) destroy_state(item->state);
   item->state = nullptr;
 
+  for (size_t i = 0; i < item->count; ++i) {
+    auto cell = &item->cells[i];
+    p_delete(&cell->text);
+  }
+
   p_delete(&item->cells);
   p_clear(item, 1);
 }

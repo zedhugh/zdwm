@@ -68,9 +68,11 @@ void bar_cell_set_text(zdwm_bar_item_t *item, size_t index, const char *text) {
   if (index >= item->count) return;
 
   auto cell = &item->cells[index];
-  if (cell->text == text || strcmp(cell->text, text) == 0) return;
+  if (cell->text && text && strcmp(cell->text, text) == 0) return;
 
-  cell->text = text;
+  p_delete(&cell->text);
+
+  cell->text = p_strdup_nullable(text);
 
   cell->dirty = true;
   item->dirty = true;
