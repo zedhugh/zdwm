@@ -98,7 +98,7 @@ void draw_text(
   cairo_t *cr,
   text_context_t *context,
   const char *text,
-  color_t *color,
+  const color_t *color,
   zdwm_rect_t area
 ) {
   assert(cr);
@@ -127,7 +127,7 @@ void draw_text(
   pango_cairo_show_layout(cr, layout);
 }
 
-void draw_background(cairo_t *cr, color_t *color, zdwm_rect_t area) {
+void draw_background(cairo_t *cr, const color_t *color, zdwm_rect_t area) {
   cairo_move_to(cr, area.x, area.y);
   cairo_set_source_rgba(
     cr,

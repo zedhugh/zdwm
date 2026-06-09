@@ -755,3 +755,5 @@ backend_bar_window_t backend_create_bar_window(
 
   return (backend_bar_window_t){.window_id = window_id, .cr = cr};
 }
+
+void backend_flush(backend_t *backend) { xcb_flush(backend->conn); }

@@ -53,10 +53,12 @@ void bar_cell_clean_color_cache(void) {
   cache.capacity = 0;
 }
 
-size_t bar_cell_get_count(zdwm_bar_item_t *item) { return item->count; }
+static size_t bar_cell_get_count(zdwm_bar_item_t *item) { return item->count; }
 
-void bar_cell_set_count(zdwm_bar_item_t *item, size_t count) {
+static void bar_cell_set_count(zdwm_bar_item_t *item, size_t count) {
   if (item->count == count) return;
+
+  for (size_t i = 0; i < item->count; ++i) p_delete(&item->cells[i].text);
 
   item->count = count;
   p_realloc(&item->cells, count);
@@ -64,7 +66,8 @@ void bar_cell_set_count(zdwm_bar_item_t *item, size_t count) {
   item->dirty = true;
 }
 
-void bar_cell_set_text(zdwm_bar_item_t *item, size_t index, const char *text) {
+static void
+bar_cell_set_text(zdwm_bar_item_t *item, size_t index, const char *text) {
   if (index >= item->count) return;
 
   auto cell = &item->cells[index];
@@ -78,7 +81,8 @@ void bar_cell_set_text(zdwm_bar_item_t *item, size_t index, const char *text) {
   item->dirty = true;
 }
 
-void bar_cell_set_bg(zdwm_bar_item_t *item, size_t index, const char *color) {
+static void
+bar_cell_set_bg(zdwm_bar_item_t *item, size_t index, const char *color) {
   if (index >= item->count) return;
 
   auto cell         = &item->cells[index];
@@ -91,7 +95,8 @@ void bar_cell_set_bg(zdwm_bar_item_t *item, size_t index, const char *color) {
   item->dirty = true;
 }
 
-void bar_cell_set_fg(zdwm_bar_item_t *item, size_t index, const char *color) {
+static void
+bar_cell_set_fg(zdwm_bar_item_t *item, size_t index, const char *color) {
   if (index >= item->count) return;
 
   auto cell         = &item->cells[index];
@@ -104,7 +109,8 @@ void bar_cell_set_fg(zdwm_bar_item_t *item, size_t index, const char *color) {
   item->dirty = true;
 }
 
-void bar_cell_set_icon(zdwm_bar_item_t *item, size_t index, zdwm_icon_t icon) {
+static void
+bar_cell_set_icon(zdwm_bar_item_t *item, size_t index, zdwm_icon_t icon) {
   if (index >= item->count) return;
 
   auto cell     = &item->cells[index];
@@ -131,13 +137,42 @@ void bar_cell_set_icon(zdwm_bar_item_t *item, size_t index, zdwm_icon_t icon) {
   item->dirty = true;
 }
 
-void bar_cell_set_indicator(zdwm_bar_item_t *item, size_t index, bool show) {
+static void
+bar_cell_set_indicator(zdwm_bar_item_t *item, size_t index, bool show) {
   if (index >= item->count) return;
 
   auto cell = &item->cells[index];
   if (cell->show_indicator == show) return;
 
   cell->show_indicator = show;
+
+  cell->dirty = true;
+  item->dirty = true;
+}
+
+zdwm_bar_cell_api_t bar_cell_api = {
+  .get_cell_count     = bar_cell_get_count,
+  .set_cell_count     = bar_cell_set_count,
+  .cell_set_text      = bar_cell_set_text,
+  .cell_set_bg        = bar_cell_set_bg,
+  .cell_set_fg        = bar_cell_set_fg,
+  .cell_set_icon      = bar_cell_set_icon,
+  .cell_set_indicator = bar_cell_set_indicator,
+};
+
+void bar_cell_set_region(
+  zdwm_bar_item_t *item,
+  size_t index,
+  bar_x_region_t region
+) {
+  if (index >= item->count) return;
+
+  auto cell = &item->cells[index];
+  auto r    = &cell->region;
+
+  if (r->start == region.start && r->end == region.end) return;
+
+  *r = region;
 
   cell->dirty = true;
   item->dirty = true;

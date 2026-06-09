@@ -9,6 +9,7 @@
 #include "bar/text.h"
 #include "bar/types.h"
 #include "base/color.h"
+#include "core/listeners.h"
 
 typedef struct bar_output_t {
   cairo_t *cr;
@@ -16,7 +17,9 @@ typedef struct bar_output_t {
   zdwm_output_id_t output_id;
   int32_t width;
   int32_t height;
-  bar_side_t sides[ZDWM_BAR_SIDE_COUNT];
+  bar_side_t left;
+  bar_side_t right;
+  zdwm_bar_item_t center;
 } bar_output_t;
 
 typedef struct bar_palette_t {
@@ -34,6 +37,7 @@ typedef struct bar_t {
   text_context_t *ctx;
 } bar_t;
 
-void bar_init(bar_t *bar);
+void bar_init(bar_t *bar, listeners_t *listeners);
 void bar_cleanup(bar_t *bar);
+void bar_update(bar_t *bar);
 void bar_draw(bar_t *bar);

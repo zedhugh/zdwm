@@ -4,11 +4,15 @@
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
-size_t bar_cell_get_count(zdwm_bar_item_t *item);
-void bar_cell_set_count(zdwm_bar_item_t *item, size_t count);
+#include "bar/types.h"
 
-void bar_cell_set_text(zdwm_bar_item_t *item, size_t index, const char *text);
-void bar_cell_set_bg(zdwm_bar_item_t *item, size_t index, const char *color);
-void bar_cell_set_fg(zdwm_bar_item_t *item, size_t index, const char *color);
-void bar_cell_set_icon(zdwm_bar_item_t *item, size_t index, zdwm_icon_t icon);
-void bar_cell_set_indicator(zdwm_bar_item_t *item, size_t index, bool show);
+void bar_cell_reset_color_cache(void);
+void bar_cell_clean_color_cache(void);
+
+void bar_cell_set_region(
+  zdwm_bar_item_t *item,
+  size_t index,
+  bar_x_region_t region
+);
+
+extern zdwm_bar_cell_api_t bar_cell_api;

@@ -63,3 +63,4 @@ backend_bar_window_t backend_create_bar_window(
   rect_t geometry,
   uint32_t bg_pixel
 );
+void backend_flush(backend_t *backend);

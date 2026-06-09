@@ -26,8 +26,8 @@ struct zdwm_bar_item_t {
   bar_cell_t *cells;
   size_t count;
   bar_x_region_t region;
-  uint32_t cell_padding;
-  uint32_t indicator_width;
+  int32_t cell_padding;
+  int32_t indicator_width;
 
   void *state;
   zdwm_bar_item_type_t api;
@@ -35,7 +35,6 @@ struct zdwm_bar_item_t {
 };
 
 typedef struct bar_side_t {
-  zdwm_bar_side_type_t type;
   zdwm_bar_item_t *items;
   size_t count;
   size_t capacity;

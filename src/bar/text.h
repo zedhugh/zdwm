@@ -21,7 +21,7 @@ void draw_text(
   cairo_t *cr,
   text_context_t *context,
   const char *text,
-  color_t *color,
+  const color_t *color,
   zdwm_rect_t area
 );
-void draw_background(cairo_t *cr, color_t *color, zdwm_rect_t area);
+void draw_background(cairo_t *cr, const color_t *color, zdwm_rect_t area);

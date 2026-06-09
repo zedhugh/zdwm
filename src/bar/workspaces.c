@@ -85,9 +85,10 @@ bar_workspaces_create_state(zdwm_output_id_t output_id, void *config) {
   const bar_workspace_config_t *workspace_config = config;
   assert(workspace_config);
 
-  auto state       = p_new(bar_workspace_state_t, 1);
-  state->output_id = output_id;
-  state->config    = *workspace_config;
+  auto state          = p_new(bar_workspace_state_t, 1);
+  state->output_id    = output_id;
+  state->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
+  state->config       = *workspace_config;
 
   return state;
 }
@@ -170,6 +171,11 @@ zdwm_bar_item_type_t bar_workspace = {
   .destroy_state      = bar_workspace_destroy_state,
   .update_interval_ms = 0,
 };
+
+typedef struct bar_workspace_listener_user_data_t {
+  zdwm_bar_item_t *bar;
+  bar_workspace_state_t *state;
+} bar_workspace_listener_user_data_t;
 
 static void bar_workspace_list_filter(
   const zdwm_workspace_t *list,

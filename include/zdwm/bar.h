@@ -68,15 +68,9 @@ typedef struct zdwm_bar_item_type_t {
     void *state
   );
   void (*destroy_state)(void *state);
+  zdwm_bar_item_t *instance;
   uint32_t update_interval_ms;
 } zdwm_bar_item_type_t;
-
-typedef enum zdwm_bar_side_type_t {
-  ZDWM_BAR_SIDE_LEFT,
-  ZDWM_BAR_SIDE_RIGHT,
-  ZDWM_BAR_SIDE_CENTER_REST, /* 中央剩余部分，用于显示窗口列表 */
-  ZDWM_BAR_SIDE_COUNT,
-} zdwm_bar_side_type_t;
 
 #if defined(__cplusplus)
 }

@@ -178,6 +178,15 @@ bool config_defaults_build(
     .dpi         = 144,
 
     .bg = "#222222",
+
+    .tag_cell_padding_x  = 10,
+    .tag_indicator_width = 4,
+    .tag_bg              = "#222222",
+    .tag_fg              = "#bbbbbb",
+    .tag_active_bg       = "#005577",
+    .tag_active_fg       = "#eeeeee",
+    .tag_urgent_bg       = "#222222",
+    .tag_urgent_fg       = "#ff0000",
   };
   api->set_bar_config(builder, bar_config);
 
