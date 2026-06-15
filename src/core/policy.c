@@ -772,6 +772,7 @@ static void manage_window(
   state_window_set_floating(state, window_id, command->floating);
   set_foucs_window(ctx, workspace_id, window_id, plan);
   push_window_list_effect(state, plan);
+  listeners_notify_window_added(ctx->listeners, state, window_id);
 
   auto need_layout = window_need_layout(window);
   if (need_layout) {
@@ -847,6 +848,7 @@ unmanage_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
   state_window_remove(state, window);
 
   push_window_list_effect(state, plan);
+  listeners_notify_window_removed(ctx->listeners, window);
 
   if (need_layout) {
     adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
@@ -874,6 +876,7 @@ focus_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
   if (old_focused_window == workspace->focused_window_id) return;
 
   plan_push_focus_effect(plan, workspace->focused_window_id);
+  listeners_notify_window_updated(ctx->listeners, state, window);
 }
 
 static void kill_window(state_t *state, window_id_t window, plan_t *plan) {
@@ -903,11 +906,15 @@ static void raise_window(state_t *state, window_id_t window, plan_t *plan) {
   plan_push_effect(plan, &restack_windows_effect);
 }
 
-static void withdraw_window(state_t *state, window_id_t window, plan_t *plan) {
+static void
+withdraw_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
+  auto state = ctx->state;
+
   auto win = state_window_get(state, window);
   if (!win) return;
 
   plan_push_withdraw_effect(plan, window);
+  listeners_notify_window_removed(ctx->listeners, window);
 }
 
 static void
@@ -1183,6 +1190,8 @@ static void change_window_state(
     state_window_set_fixed_size(state, window->id, value);
     break;
   }
+
+  listeners_notify_window_updated(ctx->listeners, state, command->window);
 }
 
 static void send_window_to_workspace(
@@ -1449,7 +1458,7 @@ void policy_apply_command(
       raise_window(state, cmd->as.raise.window, plan);
       break;
     case ZDWM_COMMAND_WITHDRAW_WINDOW:
-      withdraw_window(state, cmd->as.withdraw.window, plan);
+      withdraw_window(ctx, cmd->as.withdraw.window, plan);
       break;
     case ZDWM_COMMAND_CONFIGURE_WINDOW:
       configure_window(state, &cmd->as.configure, plan);
