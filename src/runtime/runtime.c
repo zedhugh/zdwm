@@ -484,6 +484,8 @@ static void runtime_handle_event(runtime_t *runtime, short int revents) {
 
 static inline void runtime_update_bar(runtime_t *runtime) {
   auto bar = &runtime->bar;
+  if (!bar->visible) return;
+
   bar_update(bar);
   bar_draw(bar);
   backend_flush(runtime->backend);
