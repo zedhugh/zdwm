@@ -1,12 +1,9 @@
 #include "bar/bar.h"
 
 #include <assert.h>
-#include <bits/time.h>
-#include <bits/types/struct_itimerspec.h>
 #include <cairo.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/timerfd.h>
 #include <unistd.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
@@ -18,6 +15,7 @@
 #include "base/array.h"
 #include "base/macros.h"
 #include "base/memory.h"
+#include "base/time.h"
 #include "core/listeners.h"
 
 static zdwm_bar_item_t *bar_add_item(
@@ -91,21 +89,7 @@ void bar_init(bar_t *bar, listeners_t *listeners) {
     bar_output_add_workspace(bar_output, &bar->config, listeners);
   }
 
-  bar->timerfd     = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
-  auto interval_ns = 1'000'000'000ULL / bar->config.fps;
-
-  struct itimerspec timer_spec = {
-    .it_interval =
-      {
-        .tv_sec  = interval_ns / 1'000'000'000,
-        .tv_nsec = interval_ns % 1'000'000'000,
-      },
-    .it_value = {
-      .tv_sec  = 0,
-      .tv_nsec = interval_ns % 1'000'000'000,
-    },
-  };
-  timerfd_settime(bar->timerfd, 0, &timer_spec, nullptr);
+  bar->timerfd = time_create_monotonic_timerfd_by_fps(bar->config.fps);
 }
 
 static void bar_side_cleanup(bar_side_t *side) {
@@ -139,7 +123,15 @@ void bar_cleanup(bar_t *bar) {
 
 static inline void bar_item_update(zdwm_bar_item_t *item) {
   auto update = item->api.update;
-  if (update) update(item, &bar_cell_api, item->state);
+  if (!update) return;
+
+  auto update_interval_ms = item->api.update_interval_ms;
+  auto last_updated_time  = item->last_updated_time;
+  auto now                = time_monotonic_ms();
+  if (now < last_updated_time + update_interval_ms) return;
+
+  item->last_updated_time = now;
+  update(item, &bar_cell_api, item->state);
 }
 
 static inline void bar_side_update(bar_side_t *side) {

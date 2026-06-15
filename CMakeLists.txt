@@ -37,6 +37,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/base/color.c
     ${SOURCE_DIR}/base/log.c
     ${SOURCE_DIR}/base/process.c
+    ${SOURCE_DIR}/base/time.c
     ${SOURCE_DIR}/base/window_list.c
 
     ${SOURCE_DIR}/config/defaults.c

@@ -32,6 +32,7 @@ struct zdwm_bar_item_t {
   void *state;
   zdwm_bar_item_type_t api;
   bool dirty;
+  uint64_t last_updated_time;
 };
 
 typedef struct bar_side_t {
