@@ -41,4 +41,4 @@ typedef struct bar_t {
 void bar_init(bar_t *bar, listeners_t *listeners);
 void bar_cleanup(bar_t *bar);
 void bar_update(bar_t *bar);
-void bar_draw(bar_t *bar);
+bool bar_draw(bar_t *bar);

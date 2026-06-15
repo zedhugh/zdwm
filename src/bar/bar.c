@@ -302,8 +302,6 @@ static inline bool bar_output_is_dirty(bar_output_t *bar_output) {
 }
 
 static void bar_output_draw(bar_output_t *bar_output, text_context_t *ctx) {
-  if (!bar_output_is_dirty(bar_output)) return;
-
   auto cr = bar_output->cr;
 
   auto left = &bar_output->left;
@@ -318,12 +316,19 @@ static void bar_output_draw(bar_output_t *bar_output, text_context_t *ctx) {
   bar_item_draw(cr, &bar_output->center, ctx, bar_output->height);
 }
 
-void bar_draw(bar_t *bar) {
+bool bar_draw(bar_t *bar) {
   auto ctx = bar->ctx;
+
+  bool changed = false;
 
   for (size_t i = 0; i < bar->count; ++i) {
     auto bar_output = &bar->bars[i];
+    if (!bar_output_is_dirty(bar_output)) continue;
+
     bar_output_layout(bar_output, ctx);
     bar_output_draw(bar_output, ctx);
+    changed = true;
   }
+
+  return changed;
 }

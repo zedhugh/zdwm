@@ -487,8 +487,7 @@ static inline void runtime_update_bar(runtime_t *runtime) {
   if (!bar->visible) return;
 
   bar_update(bar);
-  bar_draw(bar);
-  backend_flush(runtime->backend);
+  if (bar_draw(bar)) backend_flush(runtime->backend);
 }
 
 static void runtime_run_event_loop(runtime_t *runtime) {
