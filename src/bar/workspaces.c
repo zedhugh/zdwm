@@ -14,6 +14,7 @@
 
 typedef struct bar_workspace_t {
   zdwm_workspace_t info;
+  zdwm_layout_notify_t layout;
   size_t window_count;
   size_t urgent_window_count;
 } bar_workspace_t;
@@ -101,9 +102,9 @@ static void bar_workspaces_update(
   auto data = (bar_workspace_state_t *)state;
   if (!data->list_inited || !data->active_inited || !data->dirty) return;
 
-  if (data->count != cell_api->get_cell_count(item)) {
-    cell_api->set_cell_count(item, data->count);
-  }
+  /* 当前 workspace 的 layout 指示器放在最后 */
+  cell_api->set_cell_count(item, data->count + 1);
+  auto layout_index = data->count;
 
   auto config = &data->config;
   for (size_t i = 0; i < data->count; ++i) {
@@ -121,6 +122,11 @@ static void bar_workspaces_update(
     if (info->id == data->workspace_id) {
       cell_api->cell_set_bg(item, i, config->active_bg);
       cell_api->cell_set_fg(item, i, config->active_fg);
+
+      cell_api->cell_set_bg(item, layout_index, config->layout_bg);
+      cell_api->cell_set_fg(item, layout_index, config->layout_fg);
+      cell_api->cell_set_text(item, layout_index, workspace->layout.symbol);
+
       continue;
     }
 
@@ -213,6 +219,20 @@ static void bar_workspace_active_updated(
   state->dirty         = true;
 }
 
+static void
+bar_workspace_layout_notify(zdwm_layout_notify_t layout, void *user_data) {
+  auto state = (bar_workspace_state_t *)user_data;
+
+  for (size_t i = 0; i < state->count; ++i) {
+    auto workspace = &state->workspaces[i];
+    if (workspace->info.id == layout.workspace) {
+      workspace->layout = layout;
+      state->dirty      = true;
+      return;
+    }
+  }
+}
+
 void bar_workspace_window_added(const zdwm_window_t *window, void *user_data) {
   auto state = (bar_workspace_state_t *)user_data;
 
@@ -271,6 +291,7 @@ void bar_workspace_add_listeners(listeners_t *listeners, void *state) {
 
   ADD(listeners_add_initial_workspace_listener, bar_workspace_list_filter);
   ADD(listeners_add_active_workspace_listener, bar_workspace_active_updated);
+  ADD(listeners_add_layout_notify, bar_workspace_layout_notify);
   ADD(listeners_add_initial_window_listener, bar_workspace_initial_windows);
   ADD(listeners_add_window_added_listener, bar_workspace_window_added);
   ADD(listeners_add_window_updated_listener, bar_workspace_window_updated);

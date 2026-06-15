@@ -187,6 +187,8 @@ bool config_defaults_build(
     .tag_active_fg       = "#eeeeee",
     .tag_urgent_bg       = "#222222",
     .tag_urgent_fg       = "#ff0000",
+    .layout_bg           = "#222222",
+    .layout_fg           = "#bbbbbb",
   };
   api->set_bar_config(builder, bar_config);
 

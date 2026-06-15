@@ -14,6 +14,8 @@ typedef struct bar_workspace_config_t {
   const char *active_fg;
   const char *urgent_bg;
   const char *urgent_fg;
+  const char *layout_bg;
+  const char *layout_fg;
 } bar_workspace_config_t;
 
 extern zdwm_bar_item_type_t bar_workspace;
