@@ -161,6 +161,7 @@ static void bar_workspace_destroy_state(void *state) {
 
   auto data = (bar_workspace_state_t *)state;
   p_delete(&data->workspaces);
+  p_delete(&data->windows);
   p_delete(&data);
 }
 
