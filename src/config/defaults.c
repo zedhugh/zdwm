@@ -189,6 +189,11 @@ bool config_defaults_build(
     .tag_urgent_fg       = "#ff0000",
     .layout_bg           = "#222222",
     .layout_fg           = "#bbbbbb",
+
+    .binding_show_default = true,
+    .binding_padding_x    = 2,
+    .binding_mode_bg      = "#900000",
+    .binding_mode_fg      = "#ffffff",
   };
   api->set_bar_config(builder, bar_config);
 

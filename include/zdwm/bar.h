@@ -33,8 +33,12 @@ typedef struct zdwm_bar_config_t {
 
   const char *layout_bg;
   const char *layout_fg;
+
+  bool binding_show_default;
+  uint32_t binding_padding_x;
   const char *binding_mode_bg;
   const char *binding_mode_fg;
+
   const char *window_bg;
   const char *window_fg;
   const char *window_focused_bg;

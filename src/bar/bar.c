@@ -8,6 +8,7 @@
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
+#include "bar/binding.h"
 #include "bar/cell.h"
 #include "bar/text.h"
 #include "bar/types.h"
@@ -78,6 +79,28 @@ void bar_output_add_workspace(
   bar_workspace_add_listeners(listeners, item->state);
 }
 
+static void bar_output_add_binding(
+  bar_output_t *bar_output,
+  zdwm_bar_config_t *config,
+  listeners_t *listeners
+) {
+  bar_binding_config_t binding_config = {
+    .show_default = config->binding_show_default,
+    .cell_padding = VALUE(config->binding_padding_x, config->padding_x),
+    .bg           = VALUE(config->binding_mode_bg, config->bg),
+    .fg           = VALUE(config->binding_mode_fg, config->fg),
+  };
+  auto item = bar_add_item(
+    bar_output->output_id,
+    &bar_output->left,
+    bar_binding,
+    &binding_config
+  );
+  item->cell_padding = binding_config.cell_padding;
+
+  bar_binding_add_listeners(listeners, item->state);
+}
+
 void bar_init(bar_t *bar, listeners_t *listeners) {
   auto c   = &bar->config;
   bar->ctx = text_context_create(c->font_family, c->font_size, c->dpi);
@@ -87,6 +110,7 @@ void bar_init(bar_t *bar, listeners_t *listeners) {
 
     bar_output->height = bar->config.height;
     bar_output_add_workspace(bar_output, &bar->config, listeners);
+    bar_output_add_binding(bar_output, &bar->config, listeners);
   }
 
   bar->timerfd = time_create_monotonic_timerfd_by_fps(bar->config.fps);
