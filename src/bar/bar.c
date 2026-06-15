@@ -63,8 +63,8 @@ void bar_output_add_workspace(
     .active_fg       = config->tag_active_fg,
     .urgent_bg       = config->tag_urgent_bg,
     .urgent_fg       = config->tag_urgent_fg,
-    .layout_bg       = config->layout_bg,
-    .layout_fg       = config->layout_fg,
+    .layout_bg       = VALUE(config->layout_bg, config->bg),
+    .layout_fg       = VALUE(config->layout_fg, config->fg),
   };
   auto item = bar_add_item(
     bar_output->output_id,
