@@ -21,6 +21,16 @@ backend_detect_t *backend_detect(backend_t *backend);
 void backend_detect_destroy(backend_detect_t *detect);
 
 int backend_get_fd(backend_t *backend);
+
+/**
+ * @brief 非阻塞地从 backend 中读取下一个归一化的事件
+ *
+ * @details
+ * 1. 函数立即返回
+ * 2. 只要取到了事件，函数就返回 true ，事件填充到 event 参数中
+ *
+ * @returns 如果还有下一个事件待读取，返回 true ，否则返回 false
+ */
 bool backend_poll_event(backend_t *backend, event_t *event);
 
 /**

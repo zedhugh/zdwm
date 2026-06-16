@@ -492,7 +492,8 @@ bool backend_poll_event(backend_t *backend, event_t *event) {
   auto raw_event = xcb_poll_for_event(backend->conn);
   if (!raw_event) return false;
 
-  return handle_event(backend, raw_event, event);
+  handle_event(backend, raw_event, event);
+  return true;
 }
 
 bool backend_next_event(backend_t *backend, event_t *event) {

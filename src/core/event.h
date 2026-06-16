@@ -6,6 +6,7 @@
 #include "core/window.h"
 
 typedef enum event_type_t {
+  ZDWM_EVENT_NONE,
   ZDWM_EVENT_KEY_PRESS,
   ZDWM_EVENT_POINTER_BUTTON_PRESS,
   ZDWM_EVENT_POINTER_BUTTON_RELEASE,

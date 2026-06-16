@@ -4,7 +4,7 @@
 #include "core/window.h"
 
 void event_cleanup(event_t *event) {
-  if (!event) return;
+  if (!event || event->type == ZDWM_EVENT_NONE) return;
 
   switch (event->type) {
   case ZDWM_EVENT_WINDOW_MAP_REQUEST:
