@@ -309,7 +309,7 @@ static void bar_item_draw(
       .width  = cell_area.width - item->cell_padding * 2,
       .height = height,
     };
-    if (text_area.width > 0) {
+    if (text_area.width > 0 && cell->text && cell->text[0] != '\0') {
       draw_text(cr, ctx, cell->text, &cell->fg, text_area);
     }
 
