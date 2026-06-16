@@ -276,6 +276,7 @@ void bar_workspace_window_removed(zdwm_window_id_t window_id, void *user_data) {
     if (window->id == window_id) {
       found = true;
       index = i;
+      break;
     }
   }
 
