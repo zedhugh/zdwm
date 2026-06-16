@@ -260,6 +260,7 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
       .start = start,
       .end   = start + width + center->cell_padding * 2,
     };
+    start = region.end;
     bar_cell_set_region(center, i, region);
   }
 }
