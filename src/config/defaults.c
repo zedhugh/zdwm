@@ -178,6 +178,7 @@ bool config_defaults_build(
     .dpi         = 144,
 
     .bg = "#222222",
+    .fg = "#bbbbbb",
 
     .tag_cell_padding_x  = 10,
     .tag_indicator_width = 4,
