@@ -15,6 +15,7 @@
 #include "bar/windows.h"
 #include "bar/workspaces.h"
 #include "base/array.h"
+#include "base/color.h"
 #include "base/macros.h"
 #include "base/memory.h"
 #include "base/time.h"
@@ -345,8 +346,25 @@ static inline bool bar_output_is_dirty(bar_output_t *bar_output) {
   return false;
 }
 
-static void bar_output_draw(bar_output_t *bar_output, text_context_t *ctx) {
+static inline void clean_cairo_context(cairo_t *cr) {
+  cairo_save(cr);
+  cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
+  cairo_paint(cr);
+  cairo_restore(cr);
+}
+
+static void
+bar_output_draw(bar_output_t *bar_output, text_context_t *ctx, color_t *bg) {
   auto cr = bar_output->cr;
+  clean_cairo_context(cr);
+
+  zdwm_rect_t output_area = {
+    .x      = 0,
+    .y      = 0,
+    .width  = bar_output->width,
+    .height = bar_output->height,
+  };
+  draw_background(cr, bg, output_area);
 
   auto left = &bar_output->left;
   for (size_t i = 0; i < left->count; ++i) {
@@ -370,7 +388,7 @@ bool bar_draw(bar_t *bar) {
     if (!bar_output_is_dirty(bar_output)) continue;
 
     bar_output_layout(bar_output, ctx);
-    bar_output_draw(bar_output, ctx);
+    bar_output_draw(bar_output, ctx, &bar->palette.bg);
     changed = true;
   }
 
