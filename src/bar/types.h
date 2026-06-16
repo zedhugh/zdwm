@@ -15,8 +15,10 @@ typedef struct bar_x_region_t {
 typedef struct bar_cell_t {
   zdwm_icon_t icon;
   char *text; /* 持有内存，避免野指针问题 */
-  const color_t *fg;
-  const color_t *bg;
+  char *fg_text;
+  char *bg_text;
+  color_t fg;
+  color_t bg;
   bar_x_region_t region;
   bool show_indicator;
   bool dirty;

@@ -2,63 +2,25 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <string.h>
 #include <strings.h>
 #include <zdwm/types.h>
 
 #include "bar/types.h"
-#include "base/array.h"
 #include "base/color.h"
 #include "base/memory.h"
-
-typedef struct color_cache_item_t {
-  const char *text;
-  color_t color;
-} color_cache_item_t;
-
-typedef struct color_cache_t {
-  color_cache_item_t *items;
-  size_t count;
-  size_t capacity;
-} color_cache_t;
-
-static color_cache_t cache = {};
-
-static color_t *find_or_insert_color(const char *text) {
-  assert(text);
-  for (size_t i = 0; i < cache.count; ++i) {
-    auto item = &cache.items[i];
-    if (text == item->text || strcasecmp(text, item->text) == 0) {
-      return &item->color;
-    }
-  }
-
-  auto slot  = array_push(cache.items, cache.count, cache.capacity);
-  slot->text = p_strdup(text);
-  color_parse(text, &slot->color);
-  return &slot->color;
-}
-
-void bar_cell_reset_color_cache(void) {
-  for (size_t i = 0; i < cache.count; ++i) {
-    auto item = &cache.items[i];
-    p_delete(&item->text);
-  }
-  p_clear(cache.items, cache.count);
-  cache.count = 0;
-}
-
-void bar_cell_clean_color_cache(void) {
-  bar_cell_reset_color_cache();
-  p_delete(&cache.items);
-  cache.capacity = 0;
-}
 
 static size_t bar_cell_get_count(zdwm_bar_item_t *item) { return item->count; }
 
 static void bar_cell_set_count(zdwm_bar_item_t *item, size_t count) {
   if (item->count == count) return;
 
-  for (size_t i = 0; i < item->count; ++i) p_delete(&item->cells[i].text);
+  for (size_t i = 0; i < item->count; ++i) {
+    auto cell = &item->cells[i];
+    p_delete(cell->text);
+    p_delete(&cell->fg_text);
+    p_delete(&cell->bg_text);
+  }
 
   item->count = count;
   p_realloc(&item->cells, count);
@@ -85,11 +47,12 @@ static void
 bar_cell_set_bg(zdwm_bar_item_t *item, size_t index, const char *color) {
   if (index >= item->count) return;
 
-  auto cell         = &item->cells[index];
-  auto cached_color = find_or_insert_color(color);
-  if (cell->bg == cached_color) return;
+  auto cell = &item->cells[index];
 
-  cell->bg = cached_color;
+  if (cell->bg_text && strcmp(color, cell->bg_text) == 0) return;
+
+  cell->bg_text = p_strdup(color);
+  color_parse(color, &cell->bg);
 
   cell->dirty = true;
   item->dirty = true;
@@ -99,11 +62,11 @@ static void
 bar_cell_set_fg(zdwm_bar_item_t *item, size_t index, const char *color) {
   if (index >= item->count) return;
 
-  auto cell         = &item->cells[index];
-  auto cached_color = find_or_insert_color(color);
-  if (cell->fg == cached_color) return;
+  auto cell = &item->cells[index];
+  if (cell->fg_text && strcmp(color, cell->fg_text) == 0) return;
 
-  cell->fg = cached_color;
+  cell->fg_text = p_strdup(color);
+  color_parse(color, &cell->fg);
 
   cell->dirty = true;
   item->dirty = true;

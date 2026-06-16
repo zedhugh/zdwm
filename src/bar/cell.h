@@ -6,9 +6,6 @@
 
 #include "bar/types.h"
 
-void bar_cell_reset_color_cache(void);
-void bar_cell_clean_color_cache(void);
-
 void bar_cell_set_region(
   zdwm_bar_item_t *item,
   size_t index,

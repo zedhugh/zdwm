@@ -42,6 +42,8 @@ static void bar_item_cleanup(zdwm_bar_item_t *item) {
   for (size_t i = 0; i < item->count; ++i) {
     auto cell = &item->cells[i];
     p_delete(&cell->text);
+    p_delete(&cell->fg_text);
+    p_delete(&cell->bg_text);
   }
 
   p_delete(&item->cells);
@@ -141,8 +143,6 @@ void bar_cleanup(bar_t *bar) {
   }
   p_delete(&bar->bars);
   bar->count = 0;
-
-  bar_cell_clean_color_cache();
 }
 
 static inline void bar_item_update(zdwm_bar_item_t *item) {
@@ -258,7 +258,7 @@ static void bar_item_draw(
       continue;
     }
 
-    draw_background(cr, cell->bg, cell_area);
+    draw_background(cr, &cell->bg, cell_area);
 
     if (cell->show_indicator) {
       auto size = MIN(item->indicator_width, cell_area.width);
@@ -271,7 +271,7 @@ static void bar_item_draw(
           .width  = size,
           .height = size,
         };
-        draw_background(cr, cell->fg, indicator_area);
+        draw_background(cr, &cell->fg, indicator_area);
       }
     }
 
@@ -282,7 +282,7 @@ static void bar_item_draw(
       .height = height,
     };
     if (text_area.width > 0) {
-      draw_text(cr, ctx, cell->text, cell->fg, text_area);
+      draw_text(cr, ctx, cell->text, &cell->fg, text_area);
     }
 
     cell->dirty = false;
