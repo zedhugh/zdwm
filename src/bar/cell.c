@@ -17,7 +17,7 @@ static void bar_cell_set_count(zdwm_bar_item_t *item, size_t count) {
 
   for (size_t i = 0; i < item->count; ++i) {
     auto cell = &item->cells[i];
-    p_delete(cell->text);
+    p_delete(&cell->text);
     p_delete(&cell->fg_text);
     p_delete(&cell->bg_text);
   }
@@ -51,6 +51,7 @@ bar_cell_set_bg(zdwm_bar_item_t *item, size_t index, const char *color) {
 
   if (cell->bg_text && strcmp(color, cell->bg_text) == 0) return;
 
+  p_delete(&cell->bg_text);
   cell->bg_text = p_strdup(color);
   color_parse(color, &cell->bg);
 
@@ -65,6 +66,7 @@ bar_cell_set_fg(zdwm_bar_item_t *item, size_t index, const char *color) {
   auto cell = &item->cells[index];
   if (cell->fg_text && strcmp(color, cell->fg_text) == 0) return;
 
+  p_delete(&cell->fg_text);
   cell->fg_text = p_strdup(color);
   color_parse(color, &cell->fg);
 
