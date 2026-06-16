@@ -33,6 +33,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/bar/binding.c
     ${SOURCE_DIR}/bar/cell.c
     ${SOURCE_DIR}/bar/text.c
+    ${SOURCE_DIR}/bar/windows.c
     ${SOURCE_DIR}/bar/workspaces.c
 
     ${SOURCE_DIR}/base/color.c

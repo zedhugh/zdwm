@@ -194,6 +194,9 @@ bool config_defaults_build(
     .binding_padding_x    = 2,
     .binding_mode_bg      = "#900000",
     .binding_mode_fg      = "#ffffff",
+
+    .window_focused_bg = "#005577",
+    .window_focused_fg = "#eeeeee",
   };
   api->set_bar_config(builder, bar_config);
 

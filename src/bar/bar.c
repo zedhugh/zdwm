@@ -12,6 +12,7 @@
 #include "bar/cell.h"
 #include "bar/text.h"
 #include "bar/types.h"
+#include "bar/windows.h"
 #include "bar/workspaces.h"
 #include "base/array.h"
 #include "base/macros.h"
@@ -103,6 +104,31 @@ static void bar_output_add_binding(
   bar_binding_add_listeners(listeners, item->state);
 }
 
+static void bar_output_add_windows(
+  bar_output_t *bar_output,
+  zdwm_bar_config_t *config,
+  listeners_t *listeners
+) {
+  auto item = &bar_output->center;
+
+  bar_windows_config_t window_config = {
+    .cell_padding = VALUE(config->window_padding_x, config->padding_x),
+    .bg           = VALUE(config->window_bg, config->bg),
+    .fg           = VALUE(config->window_fg, config->fg),
+    .focused_bg   = VALUE(config->window_focused_bg, config->bg),
+    .focused_fg   = VALUE(config->window_focused_fg, config->fg),
+  };
+  item->cell_padding = window_config.cell_padding;
+
+  item->api = bar_windows;
+
+  auto create_state = item->api.create_state;
+  auto output_id    = bar_output->output_id;
+  if (create_state) item->state = create_state(output_id, &window_config);
+
+  bar_windows_add_listeners(listeners, item->state);
+}
+
 void bar_init(bar_t *bar, listeners_t *listeners) {
   auto c   = &bar->config;
   bar->ctx = text_context_create(c->font_family, c->font_size, c->dpi);
@@ -113,6 +139,7 @@ void bar_init(bar_t *bar, listeners_t *listeners) {
     bar_output->height = bar->config.height;
     bar_output_add_workspace(bar_output, &bar->config, listeners);
     bar_output_add_binding(bar_output, &bar->config, listeners);
+    bar_output_add_windows(bar_output, &bar->config, listeners);
   }
 
   bar->timerfd = time_create_monotonic_timerfd_by_fps(bar->config.fps);
