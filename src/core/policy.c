@@ -558,9 +558,11 @@ static void route_window_remove(
 }
 
 static void route_window_metadata_changed(
-  state_t *state,
+  const policy_context_t *ctx,
   const window_metadata_change_event_t *e
 ) {
+  auto state = ctx->state;
+
   auto window = state_window_get(state, e->window);
   if (!window) return;
 
@@ -582,6 +584,7 @@ static void route_window_metadata_changed(
   if (e->changed_fields & ZDWM_WINDOW_METADATA_CHANGE_INSTANCE) {
     state_window_set_instance(state, window_id, metadata->instance_name);
   }
+  listeners_notify_window_updated(ctx->listeners, state, window_id);
 }
 
 static void route_window_activate_request(
@@ -683,7 +686,7 @@ void policy_route_event(
     route_window_remove(state, &event->as.window_remove, out);
     break;
   case ZDWM_EVENT_WINDOW_METADATA_CHANGED:
-    route_window_metadata_changed(state, &event->as.window_metadata_change);
+    route_window_metadata_changed(ctx, &event->as.window_metadata_change);
     break;
   case ZDWM_EVENT_WINDOW_ACTIVATE_REQUEST: {
     auto data = &event->as.window_activate_request;
@@ -857,8 +860,10 @@ unmanage_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
 
   if (output->current_workspace_id != workspace_id) return;
 
-  if (old_focused_window != workspace->focused_window_id) {
-    plan_push_focus_effect(plan, workspace->focused_window_id);
+  auto focused_window_id = workspace->focused_window_id;
+  if (old_focused_window != focused_window_id) {
+    plan_push_focus_effect(plan, focused_window_id);
+    listeners_notify_window_updated(ctx->listeners, state, focused_window_id);
   }
 }
 
@@ -877,6 +882,7 @@ focus_window(const policy_context_t *ctx, window_id_t window, plan_t *plan) {
 
   plan_push_focus_effect(plan, workspace->focused_window_id);
   listeners_notify_window_updated(ctx->listeners, state, window);
+  listeners_notify_window_updated(ctx->listeners, state, old_focused_window);
 }
 
 static void kill_window(state_t *state, window_id_t window, plan_t *plan) {
