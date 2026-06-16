@@ -60,6 +60,21 @@ static void atoms_init(backend_t *backend) {
     *atom->atom       = reply->atom;
     p_delete(&reply);
   }
+
+#define EWMH_ITEM(name) atoms->name,
+  xcb_atom_t ewmh_supported_atoms[] = {EWMH_ATOMS(EWMH_ITEM)};
+#undef EWMH_ITEM
+  auto root = backend->screen->root;
+  xcb_change_property(
+    conn,
+    XCB_PROP_MODE_REPLACE,
+    root,
+    atoms->_NET_SUPPORTED,
+    XCB_ATOM_ATOM,
+    32,
+    countof(ewmh_supported_atoms),
+    ewmh_supported_atoms
+  );
 }
 
 static void create_wm_check_window(backend_t *backend) {

@@ -9,21 +9,9 @@
 #include "base/window_list.h"
 #include "core/event.h"
 
-#define ATOM_LIST(X)                   \
-  X(COMPOUND_TEXT)                     \
-  X(UTF8_STRING)                       \
-                                       \
-  X(WM_WINDOW_ROLE)                    \
-  X(WM_NAME)                           \
-  X(WM_CHANGE_STATE)                   \
+#define EWMH_ATOMS(X)                  \
   X(_NET_WM_NAME)                      \
-                                       \
-  X(WM_PROTOCOLS)                      \
-  X(WM_TAKE_FOCUS)                     \
-  X(WM_DELETE_WINDOW)                  \
   X(_NET_ACTIVE_WINDOW)                \
-                                       \
-  X(_NET_SUPPORTING_WM_CHECK)          \
   X(_NET_WM_PID)                       \
                                        \
   X(_NET_CLIENT_LIST)                  \
@@ -55,6 +43,22 @@
   X(_NET_WM_WINDOW_TYPE_COMBO)         \
   X(_NET_WM_WINDOW_TYPE_DND)           \
   X(_NET_WM_WINDOW_TYPE_NOTIFICATION)
+
+#define ATOM_LIST(X)          \
+  X(COMPOUND_TEXT)            \
+  X(UTF8_STRING)              \
+                              \
+  X(WM_WINDOW_ROLE)           \
+  X(WM_NAME)                  \
+  X(WM_CHANGE_STATE)          \
+                              \
+  X(WM_PROTOCOLS)             \
+  X(WM_TAKE_FOCUS)            \
+  X(WM_DELETE_WINDOW)         \
+                              \
+  X(_NET_SUPPORTING_WM_CHECK) \
+  X(_NET_SUPPORTED)           \
+  EWMH_ATOMS(X)
 
 typedef struct atoms_t {
 #define DECLARATION_ATOM(name) xcb_atom_t name;
