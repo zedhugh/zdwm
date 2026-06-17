@@ -1,5 +1,6 @@
 #include "core/event.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <xcb/xcb.h>
@@ -273,6 +274,79 @@ static bool handle_key_press(
   return true;
 }
 
+static bool get_button(xcb_button_t button_detail, uint32_t *button) {
+  assert(button != nullptr);
+  switch (button_detail) {
+  case XCB_BUTTON_INDEX_1:
+    *button = ZDWM_BUTTON_LEFT;
+    return true;
+  case XCB_BUTTON_INDEX_2:
+    *button = ZDWM_BUTTON_RIGHT;
+    return true;
+  case XCB_BUTTON_INDEX_3:
+    *button = ZDWM_BUTTON_MIDDLE;
+    return true;
+  case XCB_BUTTON_INDEX_4:
+  case XCB_BUTTON_INDEX_5:
+    /* TODO: 后续可以考虑加上鼠标滚轮事件 */
+  default:
+    return false;
+  }
+}
+
+static bool fill_button_event(
+  const xcb_button_press_event_t *xcb_event,
+  pointer_button_event_t *data
+) {
+  uint32_t button = 0;
+  if (!get_button(xcb_event->detail, &button)) return false;
+
+  data->modifiers = get_modifiers(xcb_event->state);
+  data->button    = button;
+  data->window    = xcb_event->event;
+  data->root      = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
+  data->local     = (point_t){.x = xcb_event->event_x, .y = xcb_event->event_y};
+
+  return true;
+}
+
+static bool handle_button_press(
+  backend_t *backend,
+  event_t *event,
+  const xcb_button_press_event_t *xcb_event
+) {
+  auto handled = fill_button_event(xcb_event, &event->as.pointer_button_press);
+  if (handled) event->type = ZDWM_EVENT_POINTER_BUTTON_PRESS;
+
+  return handled;
+}
+
+static bool handle_button_release(
+  backend_t *backend,
+  event_t *event,
+  const xcb_button_release_event_t *xcb_event
+) {
+  auto release = &event->as.pointer_button_release;
+  auto handled = fill_button_event(xcb_event, release);
+  if (handled) event->type = ZDWM_EVENT_POINTER_BUTTON_RELEASE;
+
+  return handled;
+}
+
+static bool handle_motion_notify(
+  backend_t *backend,
+  event_t *event,
+  const xcb_motion_notify_event_t *xcb_event
+) {
+  event->type = ZDWM_EVENT_POINTER_MOTION;
+
+  auto data    = &event->as.pointer_motion;
+  data->window = xcb_event->event;
+  data->root   = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
+  data->local  = (point_t){.x = xcb_event->event_x, .y = xcb_event->event_y};
+  return true;
+}
+
 static bool handle_enter_notify(
   backend_t *backend,
   event_t *event,
@@ -469,6 +543,9 @@ static bool handle_event(
     EVENT(XCB_DESTROY_NOTIFY, handle_destroy_notify);
     EVENT(XCB_CONFIGURE_REQUEST, handle_configure_request);
     EVENT(XCB_KEY_PRESS, handle_key_press);
+    EVENT(XCB_BUTTON_PRESS, handle_button_press);
+    EVENT(XCB_BUTTON_RELEASE, handle_button_release);
+    EVENT(XCB_MOTION_NOTIFY, handle_motion_notify);
     EVENT(XCB_ENTER_NOTIFY, handle_enter_notify);
     EVENT(XCB_PROPERTY_NOTIFY, handle_property_notify);
     EVENT(XCB_CLIENT_MESSAGE, handle_client_message);
