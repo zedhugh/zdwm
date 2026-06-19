@@ -18,6 +18,7 @@
 #include <xcb/xproto.h>
 
 #include "backend/output_utils.h"
+#include "backend/x11/cursor.h"
 #include "backend/x11/window.h"
 #include "base/app.h"
 #include "base/array.h"
@@ -184,9 +185,12 @@ backend_t *backend_create(const char *display_name) {
 
   backend->key_symbols = xcb_key_symbols_alloc(conn);
 
+  cursor_init(backend);
   atoms_init(backend);
   create_wm_check_window(backend);
   create_no_focus_window(backend);
+
+  window_change_cursor(backend, root, ZDWM_CURSOR_NORMAL);
 
   return backend;
 }
@@ -203,6 +207,8 @@ void backend_destroy(backend_t *backend) {
 
   xcb_key_symbols_free(backend->key_symbols);
   backend->key_symbols = nullptr;
+
+  cursor_cleanup(backend);
 
   xcb_disconnect(backend->conn);
   backend->conn = nullptr;

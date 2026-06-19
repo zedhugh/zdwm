@@ -3,10 +3,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#include "backend/x11/cursor.h"
 #include "base/macros.h"
 #include "base/memory.h"
 #include "core/backend.h"
@@ -450,4 +452,14 @@ visual_t *window_get_visual(backend_t *backend, bool prefer_alpha) {
   if (!visual) visual = get_root_visual(backend);
 
   return visual;
+}
+
+void window_change_cursor(
+  backend_t *backend,
+  xcb_window_t window,
+  cursor_t cursor
+) {
+  auto conn              = backend->conn;
+  xcb_params_cw_t params = {.cursor = cursor_get_xcb_cursor(backend, cursor)};
+  xcb_aux_change_window_attributes(conn, window, XCB_CW_CURSOR, &params);
 }

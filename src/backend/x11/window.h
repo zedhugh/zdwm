@@ -118,3 +118,9 @@ typedef struct visual_t {
  * @returns 返回的信息使用后记得使用 free 释放
  */
 visual_t *window_get_visual(backend_t *backend, bool prefer_alpha);
+
+void window_change_cursor(
+  backend_t *backend,
+  xcb_window_t window,
+  cursor_t cursor
+);

@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_cursor.h>
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
@@ -78,7 +79,14 @@ typedef struct window_configure_list_t {
   size_t capacity;
 } window_configure_list_t;
 
-struct backend_t {
+typedef enum cursor_t {
+  ZDWM_CURSOR_NORMAL,
+  ZDWM_CURSOR_MOVE,
+  ZDWM_CURSOR_RESIZE,
+  ZDWM_CURSOR_COUNT,
+} cursor_t;
+
+typedef struct backend_t {
   xcb_key_symbols_t *key_symbols;
   xcb_connection_t *conn;
   xcb_screen_t *screen;
@@ -94,11 +102,14 @@ struct backend_t {
   xcb_window_t focus_window;
   bool update_focus;
 
+  xcb_cursor_t cursors[ZDWM_CURSOR_COUNT];
+  xcb_cursor_context_t *cursor_context;
+
   window_configure_list_t config_list;
   window_list_t unmap;
   window_list_t map;
   window_list_t kill;
-};
+} backend_t;
 
 bool populate_window_event(
   struct backend_t *backend,
