@@ -124,3 +124,10 @@ void window_change_cursor(
   xcb_window_t window,
   cursor_t cursor
 );
+
+void window_grab_button(
+  backend_t *backend,
+  xcb_window_t window,
+  button_t button,
+  modifier_mask_t modifiers
+);

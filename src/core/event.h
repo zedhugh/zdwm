@@ -27,12 +27,6 @@ typedef struct key_press_event_t {
   uint32_t keycode;
 } key_press_event_t;
 
-typedef enum button_t {
-  ZDWM_BUTTON_LEFT,
-  ZDWM_BUTTON_RIGHT,
-  ZDWM_BUTTON_MIDDLE,
-} button_t;
-
 typedef struct pointer_button_event_t {
   modifier_mask_t modifiers;
   button_t button;

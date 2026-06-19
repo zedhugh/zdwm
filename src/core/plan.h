@@ -20,6 +20,7 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_CHANGE_WINDOW_LIST,
   ZDWM_EFFECT_RESTACK_WINDOWS,
   ZDWM_EFFECT_BIND_KEY,
+  ZDWM_EFFECT_GRAB_BUTTON,
 } effect_type_t;
 
 typedef struct effect_move_window_t {
@@ -48,6 +49,12 @@ typedef struct effect_bind_key_t {
   size_t count;
 } effect_bind_key_t;
 
+typedef struct effect_grab_button_t {
+  window_id_t window;
+  const grab_button_t *buttons;
+  size_t count;
+} effect_grab_button_t;
+
 typedef struct effect_bool_window_t {
   window_id_t window;
   bool value;
@@ -69,6 +76,7 @@ typedef struct effect_t {
     effect_window_list_t change_window_list;
     effect_window_list_t restack_windows;
     effect_bind_key_t bind_key;
+    effect_grab_button_t grab_button;
   } as;
 } effect_t;
 

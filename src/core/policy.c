@@ -762,6 +762,24 @@ static void push_window_list_effect(const state_t *state, plan_t *plan) {
   plan_push_effect(plan, &effect);
 }
 
+static void plan_push_grab_button_effect(plan_t *plan, window_id_t window) {
+  /* TODO: 后续会改成配置 */
+  static const grab_button_t buttons[] = {
+    [0] = {.modifiers = ZDWM_MOD_4, .button = ZDWM_BUTTON_LEFT},
+    [1] = {.modifiers = ZDWM_MOD_4, .button = ZDWM_BUTTON_RIGHT},
+  };
+
+  constexpr const size_t count = countof(buttons);
+  auto btns                    = p_new(grab_button_t, count);
+  memcpy(btns, buttons, sizeof(buttons));
+
+  effect_t grab_button_effect = {
+    .type           = ZDWM_EFFECT_GRAB_BUTTON,
+    .as.grab_button = {.window = window, .buttons = btns, .count = count},
+  };
+  plan_push_effect(plan, &grab_button_effect);
+}
+
 static void manage_window(
   const policy_context_t *ctx,
   const manage_window_command_t *command,
@@ -774,6 +792,7 @@ static void manage_window(
   state_window_set_workspace(state, window_id, workspace_id);
   state_window_set_floating(state, window_id, command->floating);
   set_foucs_window(ctx, workspace_id, window_id, plan);
+  plan_push_grab_button_effect(plan, window_id);
   push_window_list_effect(state, plan);
   listeners_notify_window_added(ctx->listeners, state, window_id);
 

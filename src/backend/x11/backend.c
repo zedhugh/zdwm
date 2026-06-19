@@ -522,6 +522,22 @@ backend_bind_key(backend_t *backend, const effect_bind_key_t *bind_key) {
   window_grab_keys(backend, root, bind_key->keys, bind_key->count);
 }
 
+static void backend_grab_button(
+  backend_t *backend,
+  const effect_grab_button_t *grab_button
+) {
+  auto conn   = backend->conn;
+  auto window = grab_button->window;
+  xcb_ungrab_button(conn, XCB_BUTTON_INDEX_ANY, window, XCB_MOD_MASK_ANY);
+
+  auto buttons = grab_button->buttons;
+  for (size_t i = 0; i < grab_button->count; ++i) {
+    auto button    = buttons[i].button;
+    auto modifiers = buttons[i].modifiers;
+    window_grab_button(backend, window, button, modifiers);
+  }
+}
+
 static void backend_merge_effects(
   backend_t *backend,
   const effect_t *effects,
@@ -601,6 +617,8 @@ static void backend_merge_effects(
     case ZDWM_EFFECT_BIND_KEY:
       backend_bind_key(backend, &e->as.bind_key);
       break;
+    case ZDWM_EFFECT_GRAB_BUTTON:
+      backend_grab_button(backend, &e->as.grab_button);
     }
   }
 }

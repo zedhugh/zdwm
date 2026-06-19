@@ -20,6 +20,8 @@ static void free_memory_hold_by_effects(effect_t *effects, size_t count) {
     case ZDWM_EFFECT_BIND_KEY:
       p_delete(&effect->as.bind_key.keys);
       break;
+    case ZDWM_EFFECT_GRAB_BUTTON:
+      p_delete(&effect->as.grab_button.buttons);
     default:
     }
   }

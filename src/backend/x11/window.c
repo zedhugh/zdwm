@@ -8,6 +8,7 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#include "backend/x11/common.h"
 #include "backend/x11/cursor.h"
 #include "base/macros.h"
 #include "base/memory.h"
@@ -462,4 +463,27 @@ void window_change_cursor(
   auto conn              = backend->conn;
   xcb_params_cw_t params = {.cursor = cursor_get_xcb_cursor(backend, cursor)};
   xcb_aux_change_window_attributes(conn, window, XCB_CW_CURSOR, &params);
+}
+
+void window_grab_button(
+  backend_t *backend,
+  xcb_window_t window,
+  button_t button,
+  modifier_mask_t modifiers
+) {
+  auto xcb_button = button_zdwm_to_xcb(button);
+  if (xcb_button == XCB_BUTTON_INDEX_ANY) return;
+
+  xcb_grab_button(
+    backend->conn,
+    false, /* 事件仅发送给抓取者，不发送给其他窗口 */
+    window,
+    XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE,
+    XCB_GRAB_MODE_ASYNC,
+    XCB_GRAB_MODE_SYNC,
+    XCB_WINDOW_NONE,
+    XCB_CURSOR_NONE,
+    xcb_button,
+    modifiers_zdwm_to_xcb(modifiers)
+  );
 }

@@ -55,6 +55,18 @@ typedef struct key_bind_t {
   keysym_t keysym;
 } key_bind_t;
 
+typedef enum button_t {
+  ZDWM_BUTTON_NONE,
+  ZDWM_BUTTON_LEFT,
+  ZDWM_BUTTON_RIGHT,
+  ZDWM_BUTTON_MIDDLE,
+} button_t;
+
+typedef struct grab_button_t {
+  modifier_mask_t modifiers;
+  button_t button;
+} grab_button_t;
+
 typedef enum window_state_request_type_t {
   ZDWM_WINDOW_STATE_REQUEST_FULLSCREEN,
   ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED,

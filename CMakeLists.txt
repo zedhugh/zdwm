@@ -26,6 +26,7 @@ project(${APP_NAME}
 add_executable(${APP_NAME}
     ${SOURCE_DIR}/backend/output_utils.c
     ${SOURCE_DIR}/backend/x11/backend.c
+    ${SOURCE_DIR}/backend/x11/common.c
     ${SOURCE_DIR}/backend/x11/cursor.c
     ${SOURCE_DIR}/backend/x11/event.c
     ${SOURCE_DIR}/backend/x11/window.c

@@ -9,8 +9,8 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
+#include "backend/x11/common.h"
 #include "backend/x11/window.h"
-#include "base/macros.h"
 #include "base/memory.h"
 #include "core/backend.h"
 #include "core/types.h"
@@ -233,29 +233,6 @@ static bool handle_configure_request(
   return true;
 }
 
-static modifier_mask_t get_modifiers(uint16_t mask) {
-  typedef struct modifier_map_t {
-    modifier_bit_t modifier;
-    xcb_mod_mask_t mask;
-  } modifier_map_t;
-  static constexpr modifier_map_t modifier_map[] = {
-    {ZDWM_MOD_SHIFT, XCB_MOD_MASK_SHIFT},
-    {ZDWM_MOD_CONTROL, XCB_MOD_MASK_CONTROL},
-    {ZDWM_MOD_1, XCB_MOD_MASK_1},
-    {ZDWM_MOD_2, XCB_MOD_MASK_2},
-    {ZDWM_MOD_3, XCB_MOD_MASK_3},
-    {ZDWM_MOD_4, XCB_MOD_MASK_4},
-    {ZDWM_MOD_5, XCB_MOD_MASK_5},
-  };
-
-  auto mods = ZDWM_MOD_NONE;
-  for (size_t i = 0; i < countof(modifier_map); ++i) {
-    auto item = &modifier_map[i];
-    if (mask & item->mask) mods |= item->modifier;
-  }
-  return mods;
-}
-
 static bool handle_key_press(
   backend_t *backend,
   event_t *event,
@@ -269,39 +246,18 @@ static bool handle_key_press(
   event->type                   = ZDWM_EVENT_KEY_PRESS;
   event->as.key_press.keycode   = keycode;
   event->as.key_press.keysym    = keysym;
-  event->as.key_press.modifiers = get_modifiers(xcb_event->state);
+  event->as.key_press.modifiers = modifiers_xcb_to_zdwm(xcb_event->state);
 
   return true;
-}
-
-static bool get_button(xcb_button_t button_detail, uint32_t *button) {
-  assert(button != nullptr);
-  switch (button_detail) {
-  case XCB_BUTTON_INDEX_1:
-    *button = ZDWM_BUTTON_LEFT;
-    return true;
-  case XCB_BUTTON_INDEX_2:
-    *button = ZDWM_BUTTON_RIGHT;
-    return true;
-  case XCB_BUTTON_INDEX_3:
-    *button = ZDWM_BUTTON_MIDDLE;
-    return true;
-  case XCB_BUTTON_INDEX_4:
-  case XCB_BUTTON_INDEX_5:
-    /* TODO: 后续可以考虑加上鼠标滚轮事件 */
-  default:
-    return false;
-  }
 }
 
 static bool fill_button_event(
   const xcb_button_press_event_t *xcb_event,
   pointer_button_event_t *data
 ) {
-  uint32_t button = 0;
-  if (!get_button(xcb_event->detail, &button)) return false;
+  auto button = button_xcb_to_zdwm(xcb_event->detail);
 
-  data->modifiers = get_modifiers(xcb_event->state);
+  data->modifiers = modifiers_xcb_to_zdwm(xcb_event->state);
   data->button    = button;
   data->window    = xcb_event->event;
   data->root      = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
