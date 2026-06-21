@@ -12,6 +12,7 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_FOCUS_WINDOW,
   ZDWM_EFFECT_KILL_WINDOW,
   ZDWM_EFFECT_WITHDRAW_WINDOW,
+  ZDWM_EFFECT_START_MOVE_WINDOW,
   ZDWM_EFFECT_MINIMIZE_WINDOW,
   ZDWM_EFFECT_MAXIMIZE_WINDOW,
   ZDWM_EFFECT_FULLSCREEN_WINDOW,
@@ -21,6 +22,7 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_RESTACK_WINDOWS,
   ZDWM_EFFECT_BIND_KEY,
   ZDWM_EFFECT_GRAB_BUTTON,
+  ZDWM_EFFECT_UNGRAB_POINTER,
 } effect_type_t;
 
 typedef struct effect_move_window_t {
@@ -68,6 +70,7 @@ typedef struct effect_t {
     only_window_data_t focus;
     only_window_data_t kill;
     only_window_data_t withdraw;
+    only_window_data_t move;
     effect_bool_window_t minimize;
     effect_bool_window_t maximize;
     effect_bool_window_t fullscreen;
@@ -98,6 +101,7 @@ void plan_push_unmap_effect(plan_t *plan, window_id_t window_id);
 void plan_push_focus_effect(plan_t *plan, window_id_t window_id);
 void plan_push_kill_effect(plan_t *plan, window_id_t window_id);
 void plan_push_withdraw_effect(plan_t *plan, window_id_t window_id);
+void plan_push_move_effect(plan_t *plan, window_id_t window_id);
 void plan_push_fullscreen_effect(
   plan_t *plan,
   window_id_t window_id,
@@ -110,3 +114,4 @@ void plan_push_change_border_color_effect(
   window_id_t window_id,
   const color_t *color
 );
+void plan_push_ungrab_pointer(plan_t *plan);

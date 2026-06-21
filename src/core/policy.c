@@ -2,6 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
@@ -459,6 +460,72 @@ static void route_key_press(
   }
 }
 
+static void route_pointer_press(
+  const policy_context_t *ctx,
+  const pointer_button_event_t *data,
+  command_buffer_t *out
+) {
+  auto window_id = data->window;
+  auto window    = state_window_get(ctx->state, window_id);
+  if (!window) return;
+
+  /* TODO: 后续改为配置 */
+  if (data->button == ZDWM_BUTTON_LEFT && data->modifiers == ZDWM_MOD_4) {
+    command_t start_move_cmd = {
+      .type    = ZDWM_COMMAND_START_MOVE_WINDOW,
+      .as.move = {
+        .window             = window_id,
+        .pointer_coordinate = data->root,
+      },
+    };
+    command_buffer_push(out, &start_move_cmd);
+  }
+}
+
+static void route_pointer_release(
+  const policy_context_t *ctx,
+  const pointer_button_event_t *data,
+  command_buffer_t *out
+) {
+  switch (ctx->interaction->mode) {
+  case ZDWM_WINDOW_INTERACTION_NONE:
+    break;
+  case ZDWM_WINDOW_INTERACTION_MOVE: {
+    command_t stop_move_cmd = {.type = ZDWM_COMMAND_STOP_MOVE_WINDOW};
+    command_buffer_push(out, &stop_move_cmd);
+  } break;
+  }
+}
+
+static void route_pointer_motion(
+  const policy_context_t *ctx,
+  const pointer_motion_event_t *data,
+  command_buffer_t *out
+) {
+  auto interaction = ctx->interaction;
+
+  switch (interaction->mode) {
+  case ZDWM_WINDOW_INTERACTION_NONE:
+    break;
+  case ZDWM_WINDOW_INTERACTION_MOVE: {
+    auto rect  = interaction->origin_rect;
+    auto start = interaction->start_coordinate;
+    auto end   = data->root;
+
+    command_t configure = {
+      .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
+      .as.configure = {
+        .window         = interaction->window,
+        .changed_fields = ZDWM_CONFIGURE_FIELD_X | ZDWM_CONFIGURE_FIELD_Y,
+        .x              = rect.x + (end.x - start.x),
+        .y              = rect.y + (end.y - start.y),
+      },
+    };
+    command_buffer_push(out, &configure);
+  } break;
+  }
+}
+
 static void
 route_pointer_enter(state_t *state, window_id_t window, command_buffer_t *out) {
   add_focus_window_command(out, window);
@@ -675,6 +742,15 @@ void policy_route_event(
   switch (event->type) {
   case ZDWM_EVENT_KEY_PRESS:
     route_key_press(ctx, &event->as.key_press, out);
+    break;
+  case ZDWM_EVENT_POINTER_BUTTON_PRESS:
+    route_pointer_press(ctx, &event->as.pointer_button_press, out);
+    break;
+  case ZDWM_EVENT_POINTER_BUTTON_RELEASE:
+    route_pointer_release(ctx, &event->as.pointer_button_release, out);
+    break;
+  case ZDWM_EVENT_POINTER_MOTION:
+    route_pointer_motion(ctx, &event->as.pointer_motion, out);
     break;
   case ZDWM_EVENT_POINTER_ENTER:
     route_pointer_enter(state, event->as.pointer_enter.window, out);
@@ -1219,6 +1295,25 @@ static void change_window_state(
   listeners_notify_window_updated(ctx->listeners, state, command->window);
 }
 
+static void start_window_move(
+  const policy_context_t *ctx,
+  const window_start_move_command_t *command,
+  plan_t *plan
+) {
+  auto window_id = command->window;
+  auto window    = state_window_get(ctx->state, window_id);
+  if (!window) return;
+
+  plan_push_move_effect(plan, window_id);
+
+  *ctx->interaction = (window_interaction_state_t){
+    .mode             = ZDWM_WINDOW_INTERACTION_MOVE,
+    .window           = window_id,
+    .start_coordinate = command->pointer_coordinate,
+    .origin_rect      = window->frame_rect,
+  };
+}
+
 static void send_window_to_workspace(
   const policy_context_t *ctx,
   const window_send_to_workspace_command_t *command,
@@ -1490,6 +1585,13 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
       change_window_state(ctx, &cmd->as.state_change, plan);
+      break;
+    case ZDWM_COMMAND_START_MOVE_WINDOW:
+      start_window_move(ctx, &cmd->as.move, plan);
+      break;
+    case ZDWM_COMMAND_STOP_MOVE_WINDOW:
+      plan_push_ungrab_pointer(plan);
+      p_clear(ctx->interaction, 1);
       break;
     case ZDWM_COMMAND_WINDOW_SEND_TO_WORKSPACE:
       send_window_to_workspace(ctx, &cmd->as.send_to_workspace, plan);

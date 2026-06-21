@@ -114,6 +114,18 @@ typedef struct only_window_data_t {
   window_id_t window;
 } only_window_data_t;
 
+typedef enum window_interaction_mode_t {
+  ZDWM_WINDOW_INTERACTION_NONE,
+  ZDWM_WINDOW_INTERACTION_MOVE,
+} window_interaction_mode_t;
+
+typedef struct window_interaction_state_t {
+  window_interaction_mode_t mode;
+  window_id_t window;
+  point_t start_coordinate;
+  rect_t origin_rect;
+} window_interaction_state_t;
+
 static inline bool window_id_invalid(window_id_t window_id) {
   return window_id == ZDWM_WINDOW_ID_INVALID;
 }

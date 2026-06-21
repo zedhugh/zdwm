@@ -271,7 +271,8 @@ static bool handle_button_press(
   event_t *event,
   const xcb_button_press_event_t *xcb_event
 ) {
-  auto handled = fill_button_event(xcb_event, &event->as.pointer_button_press);
+  auto press   = &event->as.pointer_button_press;
+  auto handled = fill_button_event(xcb_event, press);
   if (handled) event->type = ZDWM_EVENT_POINTER_BUTTON_PRESS;
 
   return handled;

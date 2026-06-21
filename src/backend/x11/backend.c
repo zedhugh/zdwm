@@ -538,6 +538,17 @@ static void backend_grab_button(
   }
 }
 
+static void backend_start_move_window(backend_t *backend, xcb_window_t window) {
+  auto conn = backend->conn;
+  auto root = backend->screen->root;
+  auto mask = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
+              XCB_EVENT_MASK_POINTER_MOTION;
+  auto mode   = XCB_GRAB_MODE_ASYNC;
+  auto cursor = cursor_get_xcb_cursor(backend, ZDWM_CURSOR_MOVE);
+  auto time   = XCB_TIME_CURRENT_TIME;
+  xcb_grab_pointer(conn, false, root, mask, mode, mode, root, cursor, time);
+}
+
 static void backend_merge_effects(
   backend_t *backend,
   const effect_t *effects,
@@ -565,6 +576,9 @@ static void backend_merge_effects(
         e->as.withdraw.window,
         XCB_ICCCM_WM_STATE_WITHDRAWN
       );
+      break;
+    case ZDWM_EFFECT_START_MOVE_WINDOW:
+      backend_start_move_window(backend, e->as.move.window);
       break;
     case ZDWM_EFFECT_MINIMIZE_WINDOW: {
       auto window                = e->as.minimize.window;
@@ -619,6 +633,10 @@ static void backend_merge_effects(
       break;
     case ZDWM_EFFECT_GRAB_BUTTON:
       backend_grab_button(backend, &e->as.grab_button);
+      break;
+    case ZDWM_EFFECT_UNGRAB_POINTER:
+      xcb_ungrab_pointer(backend->conn, XCB_CURRENT_TIME);
+      break;
     }
   }
 }

@@ -100,6 +100,16 @@ void plan_push_withdraw_effect(plan_t *plan, window_id_t window_id) {
   plan_push_effect(plan, &effect);
 }
 
+void plan_push_move_effect(plan_t *plan, window_id_t window_id) {
+  if (window_id_invalid(window_id)) return;
+
+  effect_t effect = {
+    .type           = ZDWM_EFFECT_START_MOVE_WINDOW,
+    .as.move.window = window_id,
+  };
+  plan_push_effect(plan, &effect);
+}
+
 void plan_push_fullscreen_effect(
   plan_t *plan,
   window_id_t window_id,
@@ -165,5 +175,10 @@ void plan_push_change_border_color_effect(
       .color  = color,
     },
   };
+  plan_push_effect(plan, &effect);
+}
+
+void plan_push_ungrab_pointer(plan_t *plan) {
+  effect_t effect = {.type = ZDWM_EFFECT_UNGRAB_POINTER};
   plan_push_effect(plan, &effect);
 }

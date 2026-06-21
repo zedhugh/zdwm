@@ -48,6 +48,7 @@ typedef struct runtime_t {
   void *config_module_handle;
   binding_table_t *binding_table;
   listeners_t listeners;
+  window_interaction_state_t interaction;
 
   bar_t bar;
   window_list_t bar_windows;
@@ -197,6 +198,7 @@ static void runtime_shutdown(runtime_t *runtime) {
   binding_table_destroy(runtime->binding_table);
   runtime->binding_table = nullptr;
   listeners_cleanup(&runtime->listeners);
+  p_clear(&runtime->interaction, 1);
   window_list_cleanup(&runtime->bar_windows);
   backend_destroy(runtime->backend);
   runtime->backend = nullptr;
@@ -402,6 +404,8 @@ static void runtime_arrange(runtime_t *runtime) {
 
 static policy_context_t policy_context_init(runtime_t *runtime) {
   policy_context_t ctx = {
+    .interaction = &runtime->interaction,
+
     .bind_table = runtime->binding_table,
     .state      = &runtime->state,
     .rules      = &runtime->rules,

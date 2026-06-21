@@ -12,6 +12,8 @@ typedef enum command_type_t {
   ZDWM_COMMAND_WITHDRAW_WINDOW,
   ZDWM_COMMAND_CONFIGURE_WINDOW,
   ZDWM_COMMAND_CHANGE_WINDOW_STATE,
+  ZDWM_COMMAND_START_MOVE_WINDOW,
+  ZDWM_COMMAND_STOP_MOVE_WINDOW,
   ZDWM_COMMAND_WINDOW_SEND_TO_WORKSPACE,
   ZDWM_COMMAND_WINDOW_SET_FLOATING,
   ZDWM_COMMAND_WINDOW_SET_STICKY,
@@ -41,6 +43,11 @@ typedef struct window_state_change_command_t {
   window_state_request_type_t type;
   window_state_request_action_t action;
 } window_state_change_command_t;
+
+typedef struct window_start_move_command_t {
+  window_id_t window;
+  point_t pointer_coordinate;
+} window_start_move_command_t;
 
 typedef struct window_send_to_workspace_command_t {
   window_id_t window;
@@ -93,6 +100,7 @@ typedef struct command_t {
     only_window_data_t withdraw;
     configure_data_t configure;
     window_state_change_command_t state_change;
+    window_start_move_command_t move;
     window_send_to_workspace_command_t send_to_workspace;
     window_bool_state_t floating;
     window_bool_state_t sticky;
