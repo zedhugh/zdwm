@@ -538,15 +538,15 @@ static void backend_grab_button(
   }
 }
 
-static void backend_start_move_window(backend_t *backend, xcb_window_t window) {
+static void backend_grab_pointer(backend_t *backend, cursor_t cursor) {
   auto conn = backend->conn;
   auto root = backend->screen->root;
   auto mask = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
               XCB_EVENT_MASK_POINTER_MOTION;
-  auto mode   = XCB_GRAB_MODE_ASYNC;
-  auto cursor = cursor_get_xcb_cursor(backend, ZDWM_CURSOR_MOVE);
-  auto time   = XCB_TIME_CURRENT_TIME;
-  xcb_grab_pointer(conn, false, root, mask, mode, mode, root, cursor, time);
+  auto mode    = XCB_GRAB_MODE_ASYNC;
+  auto xcursor = cursor_get_xcb_cursor(backend, cursor);
+  auto time    = XCB_TIME_CURRENT_TIME;
+  xcb_grab_pointer(conn, false, root, mask, mode, mode, root, xcursor, time);
 }
 
 static void backend_merge_effects(
@@ -578,7 +578,10 @@ static void backend_merge_effects(
       );
       break;
     case ZDWM_EFFECT_START_MOVE_WINDOW:
-      backend_start_move_window(backend, e->as.move.window);
+      backend_grab_pointer(backend, ZDWM_CURSOR_MOVE);
+      break;
+    case ZDWM_EFFECT_START_RESIZE_WINDOW:
+      backend_grab_pointer(backend, ZDWM_CURSOR_RESIZE);
       break;
     case ZDWM_EFFECT_MINIMIZE_WINDOW: {
       auto window                = e->as.minimize.window;

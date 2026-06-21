@@ -117,6 +117,7 @@ typedef struct only_window_data_t {
 typedef enum window_interaction_mode_t {
   ZDWM_WINDOW_INTERACTION_NONE,
   ZDWM_WINDOW_INTERACTION_MOVE,
+  ZDWM_WINDOW_INTERACTION_RESIZE,
 } window_interaction_mode_t;
 
 typedef struct window_interaction_state_t {

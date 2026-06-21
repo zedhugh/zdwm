@@ -110,6 +110,16 @@ void plan_push_move_effect(plan_t *plan, window_id_t window_id) {
   plan_push_effect(plan, &effect);
 }
 
+void plan_push_resize_effect(plan_t *plan, window_id_t window_id) {
+  if (window_id_invalid(window_id)) return;
+
+  effect_t effect = {
+    .type             = ZDWM_EFFECT_START_RESIZE_WINDOW,
+    .as.resize.window = window_id,
+  };
+  plan_push_effect(plan, &effect);
+}
+
 void plan_push_fullscreen_effect(
   plan_t *plan,
   window_id_t window_id,

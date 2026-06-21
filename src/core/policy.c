@@ -480,6 +480,16 @@ static void route_pointer_press(
     };
     command_buffer_push(out, &start_move_cmd);
   }
+  if (data->button == ZDWM_BUTTON_RIGHT && data->modifiers == ZDWM_MOD_4) {
+    command_t start_resize_cmd = {
+      .type      = ZDWM_COMMAND_START_RESIZE_WINDOW,
+      .as.resize = {
+        .window             = window_id,
+        .pointer_coordinate = data->root,
+      }
+    };
+    command_buffer_push(out, &start_resize_cmd);
+  }
 }
 
 static void route_pointer_release(
@@ -493,6 +503,10 @@ static void route_pointer_release(
   case ZDWM_WINDOW_INTERACTION_MOVE: {
     command_t stop_move_cmd = {.type = ZDWM_COMMAND_STOP_MOVE_WINDOW};
     command_buffer_push(out, &stop_move_cmd);
+  } break;
+  case ZDWM_WINDOW_INTERACTION_RESIZE: {
+    command_t stop_resize_cmd = {.type = ZDWM_COMMAND_STOP_RESIZE_WINDOW};
+    command_buffer_push(out, &stop_resize_cmd);
   } break;
   }
 }
@@ -522,6 +536,28 @@ static void route_pointer_motion(
       },
     };
     command_buffer_push(out, &configure);
+  } break;
+  case ZDWM_WINDOW_INTERACTION_RESIZE: {
+    auto rect  = interaction->origin_rect;
+    auto start = interaction->start_coordinate;
+    auto end   = data->root;
+
+    auto width  = rect.width + (end.x - start.x);
+    auto height = rect.height + (end.y - start.y);
+    width       = MAX(width, 10);
+    height      = MAX(height, 10);
+
+    command_t configure_cmd = {
+      .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
+      .as.configure = {
+        .window = interaction->window,
+        .changed_fields =
+          ZDWM_CONFIGURE_FIELD_WIDTH | ZDWM_CONFIGURE_FIELD_HEIGHT,
+        .width  = width,
+        .height = height,
+      }
+    };
+    command_buffer_push(out, &configure_cmd);
   } break;
   }
 }
@@ -1297,7 +1333,7 @@ static void change_window_state(
 
 static void start_window_move(
   const policy_context_t *ctx,
-  const window_start_move_command_t *command,
+  const start_interaction_command_t *command,
   plan_t *plan
 ) {
   auto window_id = command->window;
@@ -1311,6 +1347,32 @@ static void start_window_move(
     .window           = window_id,
     .start_coordinate = command->pointer_coordinate,
     .origin_rect      = window->frame_rect,
+  };
+}
+
+static void start_window_resize(
+  const policy_context_t *ctx,
+  const start_interaction_command_t *command,
+  plan_t *plan
+) {
+  auto window_id = command->window;
+  auto window    = state_window_get(ctx->state, window_id);
+  if (!window) return;
+
+  auto frame_rect = window->frame_rect;
+
+  point_t pointer_position = {
+    .x = frame_rect.x + frame_rect.width,
+    .y = frame_rect.y + frame_rect.height,
+  };
+
+  plan_push_resize_effect(plan, window_id);
+
+  *ctx->interaction = (window_interaction_state_t){
+    .mode             = ZDWM_WINDOW_INTERACTION_RESIZE,
+    .window           = window_id,
+    .start_coordinate = pointer_position,
+    .origin_rect      = frame_rect,
   };
 }
 
@@ -1589,7 +1651,11 @@ void policy_apply_command(
     case ZDWM_COMMAND_START_MOVE_WINDOW:
       start_window_move(ctx, &cmd->as.move, plan);
       break;
+    case ZDWM_COMMAND_START_RESIZE_WINDOW:
+      start_window_resize(ctx, &cmd->as.resize, plan);
+      break;
     case ZDWM_COMMAND_STOP_MOVE_WINDOW:
+    case ZDWM_COMMAND_STOP_RESIZE_WINDOW:
       plan_push_ungrab_pointer(plan);
       p_clear(ctx->interaction, 1);
       break;
