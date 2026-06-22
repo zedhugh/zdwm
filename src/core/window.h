@@ -130,3 +130,4 @@ bool window_need_move(const window_t *window, int32_t x, int32_t y);
 bool window_need_resize(const window_t *window, int32_t width, int32_t height);
 bool window_should_has_border(const window_t *window);
 bool window_should_fix_size(const window_t *window);
+bool window_can_resize(const window_t *window);

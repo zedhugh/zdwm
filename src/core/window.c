@@ -171,3 +171,10 @@ bool window_should_fix_size(const window_t *window) {
   auto min = window->min_size;
   return max.width == min.width && max.height == min.height;
 }
+
+bool window_can_resize(const window_t *window) {
+  if (window->fullscreen || window->maximized) return false;
+  if (window_should_fix_size(window)) return false;
+
+  return true;
+}

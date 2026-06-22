@@ -540,6 +540,7 @@ static void route_pointer_motion(
   } break;
   case ZDWM_WINDOW_INTERACTION_RESIZE: {
     auto window = state_window_get(ctx->state, window_id);
+    if (!window_can_resize(window)) break;
 
     auto rect  = interaction->origin_rect;
     auto start = interaction->start_coordinate;
