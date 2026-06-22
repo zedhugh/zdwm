@@ -303,9 +303,6 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
     auto workspace = state_workspace_get(state, output->current_workspace_id);
     if (!workspace) continue;
 
-    auto layout_slot = layout_slot_get(&runtime->layouts, workspace->layout_id);
-    if (!layout_slot || !layout_slot->fn) continue;
-
     size_t window_count         = 0;
     size_t window_list_capacity = 0;
     window_id_t *window_ids     = nullptr;
@@ -333,7 +330,8 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
       }
     }
 
-    if (window_count) {
+    auto layout_func = layout_get(&runtime->layouts, workspace->layout_id);
+    if (window_count && layout_func) {
       zdwm_layout_ctx_t ctx = {
         .workspace_id      = workspace->id,
         .focused_window_id = workspace->focused_window_id,
@@ -342,7 +340,7 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
         .window_ids        = window_ids,
         .window_count      = window_count,
       };
-      layout_slot->fn(&ctx, result);
+      layout_func(&ctx, result);
     }
 
     if (window_ids) p_delete(&window_ids);
