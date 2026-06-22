@@ -18,6 +18,25 @@ typedef uint32_t zdwm_binding_mode_id_t;
 #define ZDWM_WORKSPACE_ID_INVALID    ((zdwm_workspace_id_t)UINT32_MAX)
 #define ZDWM_BINDING_MODE_ID_INVALID ((zdwm_binding_mode_id_t)UINT32_MAX)
 
+typedef enum zdwm_button_t {
+  ZDWM_BUTTON_NONE,
+  ZDWM_BUTTON_LEFT,
+  ZDWM_BUTTON_RIGHT,
+  ZDWM_BUTTON_MIDDLE,
+} zdwm_button_t;
+
+typedef enum zdwm_modifier_bit_t {
+  ZDWM_MOD_NONE    = 0u,
+  ZDWM_MOD_SHIFT   = 1u << 0,
+  ZDWM_MOD_CONTROL = 1u << 1,
+  ZDWM_MOD_1       = 1u << 2,
+  ZDWM_MOD_2       = 1u << 3,
+  ZDWM_MOD_3       = 1u << 4,
+  ZDWM_MOD_4       = 1u << 5,
+  ZDWM_MOD_5       = 1u << 6,
+} zdwm_modifier_bit_t;
+typedef uint32_t zdwm_modifier_mask_t;
+
 typedef struct zdwm_rect_t {
   int32_t x;
   int32_t y;

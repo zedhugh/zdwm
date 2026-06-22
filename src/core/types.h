@@ -17,9 +17,12 @@ typedef zdwm_output_info_t      output_info_t;
 
 typedef zdwm_rule_match_t       rule_match_t;
 typedef zdwm_rule_action_t      rule_action_t;
+
+typedef enum zdwm_button_t          button_t;
+typedef enum zdwm_modifier_bit_t    modifier_bit_t;
+typedef zdwm_modifier_mask_t        modifier_mask_t;
 /* clang-format on */
 
-typedef uint32_t modifier_mask_t;
 typedef uint32_t keysym_t;
 
 #define ZDWM_OUTPUT_ID_INVALID ((output_id_t)UINT32_MAX)
@@ -39,28 +42,10 @@ typedef enum cross_output_policy_t {
   ZDWM_CROSS_OUTPUT_MOVE_TO_TARGET_WORKSPACE,
 } cross_output_policy_t;
 
-typedef enum modifier_bit_t {
-  ZDWM_MOD_NONE    = 0u,
-  ZDWM_MOD_SHIFT   = 1u << 0,
-  ZDWM_MOD_CONTROL = 1u << 1,
-  ZDWM_MOD_1       = 1u << 2,
-  ZDWM_MOD_2       = 1u << 3,
-  ZDWM_MOD_3       = 1u << 4,
-  ZDWM_MOD_4       = 1u << 5,
-  ZDWM_MOD_5       = 1u << 6,
-} modifier_bit_t;
-
 typedef struct key_bind_t {
   modifier_mask_t modifiers;
   keysym_t keysym;
 } key_bind_t;
-
-typedef enum button_t {
-  ZDWM_BUTTON_NONE,
-  ZDWM_BUTTON_LEFT,
-  ZDWM_BUTTON_RIGHT,
-  ZDWM_BUTTON_MIDDLE,
-} button_t;
 
 typedef struct grab_button_t {
   modifier_mask_t modifiers;

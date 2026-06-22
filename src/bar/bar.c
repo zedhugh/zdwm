@@ -404,8 +404,12 @@ bool bar_draw(bar_t *bar) {
   return changed;
 }
 
-static inline bool
-bar_item_click(zdwm_bar_item_t *item, int32_t x, zdwm_action_t *action) {
+static inline bool bar_item_click(
+  zdwm_bar_item_t *item,
+  bar_click_info_t info,
+  zdwm_action_t *action
+) {
+  auto x = info.x;
   if (!(item->region.start <= x && item->region.end >= x)) return false;
 
   if (!item->api.on_click) return true;
@@ -413,7 +417,15 @@ bar_item_click(zdwm_bar_item_t *item, int32_t x, zdwm_action_t *action) {
   for (size_t i = 0; i < item->count; ++i) {
     auto cell = &item->cells[i];
     if (cell->region.start <= x && cell->region.end >= x) {
-      *action = item->api.on_click(item, i, x, item->state);
+      zdwm_bar_click_params_t params = {
+        .item       = item,
+        .cell_index = i,
+        .x          = x,
+        .modifiers  = info.modifiers,
+        .button     = info.button,
+        .state      = item->state,
+      };
+      *action = item->api.on_click(&params);
       return true;
     }
   }
@@ -422,29 +434,24 @@ bar_item_click(zdwm_bar_item_t *item, int32_t x, zdwm_action_t *action) {
 }
 
 static inline bool
-bar_side_click(bar_side_t *side, int32_t x, zdwm_action_t *action) {
-  if (side->region.start > x || side->region.end < x) return false;
+bar_side_click(bar_side_t *side, bar_click_info_t info, zdwm_action_t *action) {
+  if (side->region.start > info.x || side->region.end < info.x) return false;
 
   for (size_t i = 0; i < side->count; ++i) {
-    if (bar_item_click(&side->items[i], x, action)) return true;
+    if (bar_item_click(&side->items[i], info, action)) return true;
   }
 
   return true;
 }
 
-bool bar_click(
-  bar_t *bar,
-  zdwm_window_id_t window,
-  int32_t x,
-  zdwm_action_t *action
-) {
+bool bar_click(bar_t *bar, bar_click_info_t info, zdwm_action_t *action) {
   for (size_t i = 0; i < bar->count; ++i) {
     auto bar_output = &bar->bars[i];
-    if (bar_output->window_id != window) continue;
+    if (bar_output->window_id != info.window) continue;
 
-    if (bar_side_click(&bar_output->left, x, action)) return true;
-    if (bar_item_click(&bar_output->center, x, action)) return true;
-    if (bar_side_click(&bar_output->right, x, action)) return true;
+    if (bar_side_click(&bar_output->left, info, action)) return true;
+    if (bar_item_click(&bar_output->center, info, action)) return true;
+    if (bar_side_click(&bar_output->right, info, action)) return true;
   }
 
   return false;

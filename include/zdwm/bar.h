@@ -59,6 +59,15 @@ typedef struct zdwm_bar_cell_api_t {
   void (*cell_set_indicator)(zdwm_bar_item_t *item, size_t index, bool show);
 } zdwm_bar_cell_api_t;
 
+typedef struct zdwm_bar_click_params_t {
+  zdwm_bar_item_t *item;
+  size_t cell_index;
+  int32_t x;
+  zdwm_modifier_mask_t modifiers;
+  zdwm_button_t button;
+  void *state;
+} zdwm_bar_click_params_t;
+
 typedef struct zdwm_bar_item_type_t {
   void *(*create_state)(zdwm_output_id_t output_id, void *config);
   void (*update)(
@@ -66,12 +75,7 @@ typedef struct zdwm_bar_item_type_t {
     const zdwm_bar_cell_api_t *cells,
     void *state
   );
-  zdwm_action_t (*on_click)(
-    zdwm_bar_item_t *item,
-    size_t cell_index,
-    int32_t x,
-    void *state
-  );
+  zdwm_action_t (*on_click)(zdwm_bar_click_params_t *params);
   void (*destroy_state)(void *state);
   zdwm_bar_item_t *instance;
   uint32_t update_interval_ms;

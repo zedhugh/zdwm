@@ -467,8 +467,14 @@ static bool runtime_handle_bar_click(
 
   auto data = &event->as.pointer_button_press;
 
-  zdwm_action_t action = {.type = ZDWM_ACTION_NONE};
-  if (bar_click(bar, data->window, data->local.x, &action)) {
+  zdwm_action_t action  = {.type = ZDWM_ACTION_NONE};
+  bar_click_info_t info = {
+    .window    = data->window,
+    .x         = data->local.x,
+    .modifiers = data->modifiers,
+    .button    = data->button,
+  };
+  if (bar_click(bar, info, &action)) {
     policy_resolve_action(ctx, &action, command_buffer);
     return true;
   }

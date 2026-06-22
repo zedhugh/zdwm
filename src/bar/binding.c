@@ -55,12 +55,7 @@ static void bar_binding_update(
   data->dirty = false;
 }
 
-static zdwm_action_t bar_binding_on_click(
-  zdwm_bar_item_t *item,
-  size_t cell_index,
-  int32_t x,
-  void *state
-) {
+static zdwm_action_t bar_binding_on_click(zdwm_bar_click_params_t *params) {
   return (zdwm_action_t){
     .type                  = ZDWM_ACTION_BINDING_MODE_CYCLE,
     .as.binding_mode_cycle = {.delta = 1},

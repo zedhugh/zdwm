@@ -143,13 +143,10 @@ static void bar_workspaces_update(
   data->dirty = false;
 }
 
-static zdwm_action_t bar_workspace_on_click(
-  zdwm_bar_item_t *item,
-  size_t cell_index,
-  int32_t x,
-  void *state
-) {
-  auto data = (bar_workspace_state_t *)state;
+static zdwm_action_t bar_workspace_on_click(zdwm_bar_click_params_t *params) {
+  auto cell_index = params->cell_index;
+  auto data       = (bar_workspace_state_t *)params->state;
+
   if (cell_index == data->count) {
     return (zdwm_action_t){
       .type            = ZDWM_ACTION_LAYOUT_CYCLE,

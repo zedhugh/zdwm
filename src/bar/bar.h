@@ -43,9 +43,11 @@ void bar_init(bar_t *bar, listeners_t *listeners);
 void bar_cleanup(bar_t *bar);
 void bar_update(bar_t *bar);
 bool bar_draw(bar_t *bar);
-bool bar_click(
-  bar_t *bar,
-  zdwm_window_id_t window,
-  int32_t x,
-  zdwm_action_t *action
-);
+
+typedef struct bar_click_info_t {
+  zdwm_window_id_t window;
+  int32_t x;
+  zdwm_modifier_mask_t modifiers;
+  zdwm_button_t button;
+} bar_click_info_t;
+bool bar_click(bar_t *bar, bar_click_info_t info, zdwm_action_t *action);
