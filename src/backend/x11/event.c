@@ -52,10 +52,6 @@ static bool derive_skip_taskbar(
   return false;
 }
 
-static bool minimized_from_hints(const xcb_icccm_wm_hints_t *hints) {
-  return hints->initial_state == XCB_ICCCM_WM_STATE_ICONIC;
-}
-
 static bool maximized_from_states(
   const atoms_t *atoms,
   const xcb_atom_t *state_atoms,
@@ -130,7 +126,7 @@ bool populate_window_event(
   xcb_icccm_wm_hints_t wm_hints = {0};
   if (window_get_wm_hints(backend, window, &wm_hints)) {
     ev->urgent    = (bool)xcb_icccm_wm_hints_get_urgency(&wm_hints);
-    ev->minimized = minimized_from_hints(&wm_hints);
+    ev->minimized = wm_hints.initial_state == XCB_ICCCM_WM_STATE_ICONIC;
   }
 
   xcb_size_hints_t size_hints = {0};

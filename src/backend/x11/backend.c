@@ -711,18 +711,46 @@ backend_scan_result_t *backend_scan_windows(backend_t *backend) {
 
   auto list = xcb_query_tree_children(reply);
 
-  backend_scan_result_t *result = p_new(backend_scan_result_t, 1);
+  auto result     = p_new(backend_scan_result_t, 1);
+  auto sub_result = p_new(backend_scan_result_t, 1);
 
-  for (int i = 0; i < length; i++) {
-    auto slot = array_push(result->windows, result->count, result->capacity);
-    if (!populate_window_event(backend, list[i], slot)) {
+  for (typeof(length) i = 0; i < length; ++i) {
+    auto window = list[i];
+    auto wa     = window_get_attributes(backend, window);
+    if (!wa) continue;
+
+    auto override_redirect = wa->override_redirect;
+    auto map_state         = wa->map_state;
+    p_delete(&wa);
+    if (override_redirect) continue;
+
+    auto hints        = (xcb_icccm_wm_hints_t){0};
+    auto hints_getted = window_get_wm_hints(backend, window, &hints);
+    if (!(map_state == XCB_MAP_STATE_VIEWABLE ||
+          (hints_getted && hints.initial_state == XCB_ICCCM_WM_STATE_ICONIC))) {
+      continue;
+    }
+
+    auto transient_for = window_get_transient_for(backend, window);
+    auto r             = transient_for == XCB_WINDOW_NONE ? result : sub_result;
+    auto slot          = array_push(r->windows, r->count, r->capacity);
+    if (!populate_window_event(backend, list[i], slot) ||
+        slot->override_redirect) {
       window_layer_props_cleanup(&slot->props);
       window_metadata_cleanup(&slot->metadata);
-      result->count--;
+      r->count--;
     }
   }
 
   p_delete(&reply);
+
+  for (size_t i = 0; i < sub_result->count; ++i) {
+    auto slot = array_push(result->windows, result->count, result->capacity);
+    *slot     = sub_result->windows[i];
+  }
+
+  p_clear(sub_result->windows, sub_result->count);
+  backend_scan_result_destroy(sub_result);
 
   if (result->count == 0) {
     backend_scan_result_destroy(result);
