@@ -517,6 +517,7 @@ static void route_pointer_motion(
   command_buffer_t *out
 ) {
   auto interaction = ctx->interaction;
+  auto window_id   = interaction->window;
 
   switch (interaction->mode) {
   case ZDWM_WINDOW_INTERACTION_NONE:
@@ -538,14 +539,23 @@ static void route_pointer_motion(
     command_buffer_push(out, &configure);
   } break;
   case ZDWM_WINDOW_INTERACTION_RESIZE: {
+    auto window = state_window_get(ctx->state, window_id);
+
     auto rect  = interaction->origin_rect;
     auto start = interaction->start_coordinate;
     auto end   = data->root;
 
+    auto min_size = window->min_size;
+    auto max_size = window->max_size;
+
     auto width  = rect.width + (end.x - start.x);
     auto height = rect.height + (end.y - start.y);
-    width       = MAX(width, 10);
-    height      = MAX(height, 10);
+    width       = MAX(width, min_size.width);
+    height      = MAX(height, min_size.height);
+    width       = MIN(width, max_size.width);
+    height      = MIN(height, max_size.height);
+
+    if (!window_need_resize(window, width, height)) break;
 
     command_t configure_cmd = {
       .type         = ZDWM_COMMAND_CONFIGURE_WINDOW,
