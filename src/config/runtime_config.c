@@ -2,6 +2,7 @@
 
 #include <dlfcn.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/bar.h>
 #include <zdwm/config.h>
 
@@ -28,6 +29,7 @@ struct zdwm_config_builder_t {
   size_t workspace_capacity;
   size_t output_count;
   border_config_t border;
+  uint32_t fps;
   binding_table_t *binding_table;
   listeners_t listeners;
   zdwm_bar_config_t bar;
@@ -200,6 +202,13 @@ static void runtime_config_set_border_config(
   color_parse(focused, &builder->border.focused_color);
 }
 
+static void runtime_config_set_interaction_fps(
+  zdwm_config_builder_t *builder,
+  uint32_t fps
+) {
+  builder->fps = fps;
+}
+
 static void runtime_config_subscribe_current_output(
   zdwm_config_builder_t *builder,
   zdwm_current_output_id_listener *fn,
@@ -300,6 +309,7 @@ static bool config_builder_finish(
   if (!layout_registry_move(&builder->layouts, &out->layouts)) return false;
   if (!rules_move(&builder->rules, &out->rules)) return false;
   out->border                 = builder->border;
+  out->fps                    = builder->fps;
   out->binding_table          = builder->binding_table;
   out->workspaces             = builder->workspaces;
   out->workspace_count        = builder->workspace_count;
@@ -342,6 +352,8 @@ static bool runtime_config_build(
     .set_default_mode  = runtime_config_set_default_mode,
     .set_initial_mode  = runtime_config_set_initial_mode,
     .set_border_config = runtime_config_set_border_config,
+
+    .set_interaction_fps = runtime_config_set_interaction_fps,
 
     .subscribe_current_output = runtime_config_subscribe_current_output,
     .subscribe_initial_workspace_list =

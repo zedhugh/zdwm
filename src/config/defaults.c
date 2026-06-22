@@ -167,6 +167,7 @@ bool config_defaults_build(
   api->set_default_mode(builder, default_mode);
   api->set_initial_mode(builder, default_mode);
   api->set_border_config(builder, 2, "#1c2022", "#606060");
+  api->set_interaction_fps(builder, 30);
 
   zdwm_bar_config_t bar_config = {
     .height      = 28,

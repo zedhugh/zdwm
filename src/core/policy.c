@@ -9,6 +9,7 @@
 #include "base/macros.h"
 #include "base/memory.h"
 #include "base/process.h"
+#include "base/time.h"
 #include "base/window_list.h"
 #include "core/binding.h"
 #include "core/command.h"
@@ -523,6 +524,10 @@ static void route_pointer_motion(
   case ZDWM_WINDOW_INTERACTION_NONE:
     break;
   case ZDWM_WINDOW_INTERACTION_MOVE: {
+    auto time = interaction->last_change_time;
+    auto now  = time_monotonic_ms();
+    if (now - time < 1000 / ctx->fps) break;
+
     auto rect  = interaction->origin_rect;
     auto start = interaction->start_coordinate;
     auto end   = data->root;
@@ -537,8 +542,14 @@ static void route_pointer_motion(
       },
     };
     command_buffer_push(out, &configure);
+
+    interaction->last_change_time = now;
   } break;
   case ZDWM_WINDOW_INTERACTION_RESIZE: {
+    auto time = interaction->last_change_time;
+    auto now  = time_monotonic_ms();
+    if (now - time < 1000 / ctx->fps) break;
+
     auto window = state_window_get(ctx->state, window_id);
     if (!window_can_resize(window)) break;
 
@@ -569,6 +580,7 @@ static void route_pointer_motion(
       }
     };
     command_buffer_push(out, &configure_cmd);
+    interaction->last_change_time = now;
   } break;
   }
 }

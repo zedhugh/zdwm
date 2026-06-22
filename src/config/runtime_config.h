@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
@@ -20,6 +21,7 @@ typedef struct runtime_init_desc_t {
   layout_registry_t layouts;
   rules_t rules;
   border_config_t border;
+  uint32_t fps;
   workspace_desc_t *workspaces;
   size_t workspace_count;
   void *config_module_handle;

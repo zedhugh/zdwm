@@ -141,6 +141,7 @@ typedef struct window_interaction_state_t {
   window_id_t window;
   point_t start_coordinate;
   rect_t origin_rect;
+  uint64_t last_change_time;
 } window_interaction_state_t;
 
 static inline bool window_id_invalid(window_id_t window_id) {

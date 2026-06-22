@@ -44,6 +44,7 @@ typedef struct runtime_t {
   layout_registry_t layouts;
   rules_t rules;
   border_config_t border;
+  uint32_t fps;
   backend_t *backend;
   void *config_module_handle;
   binding_table_t *binding_table;
@@ -138,6 +139,7 @@ static bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   rules_move(&desc->rules, &runtime->rules);
   runtime->signal_fd            = -1;
   runtime->border               = desc->border;
+  runtime->fps                  = MAX(desc->fps, 10);
   runtime->config_module_handle = desc->config_module_handle;
   runtime->binding_table        = desc->binding_table;
   runtime->listeners            = desc->listeners;
@@ -402,6 +404,7 @@ static void runtime_arrange(runtime_t *runtime) {
 
 static policy_context_t policy_context_init(runtime_t *runtime) {
   policy_context_t ctx = {
+    .fps         = runtime->fps,
     .interaction = &runtime->interaction,
 
     .bind_table = runtime->binding_table,

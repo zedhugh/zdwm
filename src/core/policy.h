@@ -22,6 +22,7 @@ typedef struct policy_bar_t {
 } policy_bar_t;
 
 typedef struct policy_context_t {
+  uint32_t fps;
   window_interaction_state_t *interaction;
   binding_table_t *bind_table;
   state_t *state;

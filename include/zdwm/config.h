@@ -157,6 +157,14 @@ typedef struct zdwm_api_t {
     const char *focused
   );
 
+  /**
+   * @brief 设置窗口移动和调整大小时的刷新率
+   *
+   * @param builder 配置构建上下文
+   * @param fps     刷新帧率，最小 10 帧，若设置小于 10 帧会设置为 10 帧
+   */
+  void (*set_interaction_fps)(zdwm_config_builder_t *builder, uint32_t fps);
+
   /** @name Listener 注册
    * @{ */
 
