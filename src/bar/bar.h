@@ -3,6 +3,7 @@
 #include <cairo.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <zdwm/action.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
@@ -42,3 +43,9 @@ void bar_init(bar_t *bar, listeners_t *listeners);
 void bar_cleanup(bar_t *bar);
 void bar_update(bar_t *bar);
 bool bar_draw(bar_t *bar);
+bool bar_click(
+  bar_t *bar,
+  zdwm_window_id_t window,
+  int32_t x,
+  zdwm_action_t *action
+);

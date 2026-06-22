@@ -8,6 +8,7 @@
 #include <sys/poll.h>
 #include <sys/signalfd.h>
 #include <unistd.h>
+#include <zdwm/action.h>
 #include <zdwm/layout.h>
 
 #include "bar/bar.h"
@@ -456,10 +457,30 @@ static void runtime_scan(runtime_t *runtime) {
   listeners_notify_initial_windows(&runtime->listeners, &runtime->state);
 }
 
+static bool runtime_handle_bar_click(
+  const policy_context_t *ctx,
+  const event_t *event,
+  bar_t *bar,
+  command_buffer_t *command_buffer
+) {
+  if (event->type != ZDWM_EVENT_POINTER_BUTTON_PRESS) return false;
+
+  auto data = &event->as.pointer_button_press;
+
+  zdwm_action_t action = {.type = ZDWM_ACTION_NONE};
+  if (bar_click(bar, data->window, data->local.x, &action)) {
+    policy_resolve_action(ctx, &action, command_buffer);
+    return true;
+  }
+
+  return false;
+}
+
 static void runtime_handle_event(runtime_t *runtime, short int revents) {
   auto backend        = runtime->backend;
   auto command_buffer = &runtime->command_buffer;
   auto plan           = &runtime->plan;
+  auto bar            = &runtime->bar;
   auto ctx            = policy_context_init(runtime);
 
   if (revents & POLLHUP) {
@@ -473,7 +494,10 @@ static void runtime_handle_event(runtime_t *runtime, short int revents) {
     command_buffer_reset(command_buffer);
     plan_reset(plan);
 
-    policy_route_event(&ctx, &event, command_buffer);
+    if (!runtime_handle_bar_click(&ctx, &event, bar, command_buffer)) {
+      policy_route_event(&ctx, &event, command_buffer);
+    }
+
     policy_apply_command(&ctx, command_buffer, plan);
     if (plan->need_relayout) runtime_arrange(runtime);
     if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);

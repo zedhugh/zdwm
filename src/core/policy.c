@@ -371,7 +371,7 @@ static void toggle_bar_visibility(
   command_buffer_push(command_buffer, &set_bar_visibility_command);
 }
 
-static void policy_resolve_action(
+void policy_resolve_action(
   const policy_context_t *ctx,
   const zdwm_action_t *action,
   command_buffer_t *out

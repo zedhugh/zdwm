@@ -33,6 +33,12 @@ typedef struct policy_context_t {
   const policy_bar_t bar;
 } policy_context_t;
 
+void policy_resolve_action(
+  const policy_context_t *ctx,
+  const zdwm_action_t *action,
+  command_buffer_t *out
+);
+
 /**
  * @brief 事件路由：将运行时事件翻译为语义命令
  *

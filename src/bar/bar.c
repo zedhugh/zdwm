@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <zdwm/action.h>
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
@@ -393,4 +394,50 @@ bool bar_draw(bar_t *bar) {
   }
 
   return changed;
+}
+
+static inline bool
+bar_item_click(zdwm_bar_item_t *item, int32_t x, zdwm_action_t *action) {
+  if (!(item->region.start <= x && item->region.end >= x)) return false;
+
+  if (!item->api.on_click) return true;
+
+  for (size_t i = 0; i < item->count; ++i) {
+    auto cell = &item->cells[i];
+    if (cell->region.start <= x && cell->region.end >= x) {
+      *action = item->api.on_click(item, i, x, item->state);
+      return true;
+    }
+  }
+
+  return true;
+}
+
+static inline bool
+bar_side_click(bar_side_t *side, int32_t x, zdwm_action_t *action) {
+  if (side->region.start > x || side->region.end < x) return false;
+
+  for (size_t i = 0; i < side->count; ++i) {
+    if (bar_item_click(&side->items[i], x, action)) return true;
+  }
+
+  return true;
+}
+
+bool bar_click(
+  bar_t *bar,
+  zdwm_window_id_t window,
+  int32_t x,
+  zdwm_action_t *action
+) {
+  for (size_t i = 0; i < bar->count; ++i) {
+    auto bar_output = &bar->bars[i];
+    if (bar_output->window_id != window) continue;
+
+    if (bar_side_click(&bar_output->left, x, action)) return true;
+    if (bar_item_click(&bar_output->center, x, action)) return true;
+    if (bar_side_click(&bar_output->right, x, action)) return true;
+  }
+
+  return false;
 }
