@@ -149,9 +149,15 @@ static zdwm_action_t bar_workspace_on_click(
   int32_t x,
   void *state
 ) {
-  auto data      = (bar_workspace_state_t *)state;
-  auto workspace = &data->workspaces[cell_index];
+  auto data = (bar_workspace_state_t *)state;
+  if (cell_index == data->count) {
+    return (zdwm_action_t){
+      .type            = ZDWM_ACTION_LAYOUT_CYCLE,
+      .as.layout_cycle = {.delta = 1},
+    };
+  }
 
+  auto workspace = &data->workspaces[cell_index];
   if (workspace->info.id == data->workspace_id) {
     return (zdwm_action_t){.type = ZDWM_ACTION_NONE};
   }
