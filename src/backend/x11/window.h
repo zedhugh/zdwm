@@ -54,7 +54,11 @@ bool window_get_types(
   window_type_t **types,
   size_t *count
 );
-bool window_get_fixed_size(backend_t *backend, xcb_window_t window, bool *out);
+bool window_get_size_hints(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_size_hints_t *out
+);
 bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out);
 bool window_get_atom_array(
   backend_t *backend,

@@ -76,8 +76,10 @@ typedef struct window_t {
   bool floating;
   bool sticky;
   bool urgent;
-  bool fixed_size;
   bool skip_taskbar;
+
+  zdwm_size_t min_size;
+  zdwm_size_t max_size;
 
   /* 几何信息（均为包含边框后的外框矩形） */
   rect_t float_rect; /* floating 模式下记忆的外框矩形 */
@@ -104,10 +106,10 @@ void window_set_minimized(window_t *window, bool minimized);
 void window_set_floating(window_t *window, bool floating);
 void window_set_sticky(window_t *window, bool sticky);
 void window_set_urgent(window_t *window, bool urgent);
-void window_set_fixed_size(window_t *window, bool fixed_size);
 void window_set_skip_taskbar(window_t *window, bool skip_taskbar);
 void window_set_float_rect(window_t *window, rect_t rect);
 void window_set_frame_rect(window_t *window, rect_t rect);
+void window_set_size_hint(window_t *window, zdwm_size_t min, zdwm_size_t max);
 void window_set_title(window_t *window, const char *title);
 void window_set_app_id(window_t *window, const char *app_id);
 void window_set_role(window_t *window, const char *role);
@@ -127,3 +129,4 @@ bool window_need_layout(const window_t *window);
 bool window_need_move(const window_t *window, int32_t x, int32_t y);
 bool window_need_resize(const window_t *window, int32_t width, int32_t height);
 bool window_should_has_border(const window_t *window);
+bool window_should_fix_size(const window_t *window);

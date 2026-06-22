@@ -72,8 +72,6 @@ typedef enum window_state_request_type_t {
   ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED,
   ZDWM_WINDOW_STATE_REQUEST_MINIMIZED,
   ZDWM_WINDOW_STATE_REQUEST_SKIP_TASKBAR,
-  ZDWM_WINDOW_STATE_REQUEST_URGENT,
-  ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE,
 } window_state_request_type_t;
 
 typedef enum window_state_request_action_t {
@@ -113,6 +111,24 @@ typedef struct border_config_t {
 typedef struct only_window_data_t {
   window_id_t window;
 } only_window_data_t;
+
+typedef enum hint_field_t {
+  ZDWM_HINT_FIELD_URGENT,
+  ZDWM_HINT_FIELD_SIZE,
+} hint_field_t;
+
+typedef struct zdwm_size_t {
+  int32_t width;
+  int32_t height;
+} zdwm_size_t;
+
+typedef struct hints_data_t {
+  window_id_t window;
+  uint32_t changed_fields;
+  bool urgent;
+  zdwm_size_t min_size;
+  zdwm_size_t max_size;
+} hints_data_t;
 
 typedef enum window_interaction_mode_t {
   ZDWM_WINDOW_INTERACTION_NONE,

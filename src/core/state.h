@@ -224,16 +224,6 @@ void state_window_set_sticky(
   window_id_t window_id,
   bool sticky
 );
-void state_window_set_urgent(
-  state_t *state,
-  window_id_t window_id,
-  bool urgent
-);
-void state_window_set_fixed_size(
-  state_t *state,
-  window_id_t window_id,
-  bool fixed_size
-);
 void state_window_set_border_width(
   state_t *state,
   window_id_t window_id,

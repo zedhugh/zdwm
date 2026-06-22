@@ -47,11 +47,13 @@ typedef struct window_map_request_event_t {
   bool override_redirect;
   bool skip_taskbar;
   bool urgent;
-  bool fixed_size;
   bool fullscreen;
   bool maximized;
   bool minimized;
   rect_t rect;
+
+  zdwm_size_t min_size;
+  zdwm_size_t max_size;
 
   window_layer_props_t props;
   window_metadata_t metadata;
@@ -101,6 +103,7 @@ typedef struct event_t {
     window_map_request_event_t window_map_request;
     window_remove_event_t window_remove;
     window_metadata_change_event_t window_metadata_change;
+    hints_data_t hints;
     window_activate_request_event_t window_activate_request;
     window_state_request_event_t window_state_request;
     configure_data_t configure_request;

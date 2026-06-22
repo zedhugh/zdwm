@@ -328,9 +328,9 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
   window_set_maximized(window, info->maximized);
   window_set_minimized(window, info->minimized);
   window_set_urgent(window, info->urgent);
-  window_set_fixed_size(window, info->fixed_size);
   window_set_frame_rect(window, info->frame_rect);
   window_set_float_rect(window, info->frame_rect);
+  window_set_size_hint(window, info->min_size, info->max_size);
   window_set_title(window, info->title);
   window_set_app_id(window, info->app_id);
   window_set_role(window, info->role);
@@ -469,24 +469,6 @@ void state_window_set_sticky(
   if (window) window_set_sticky(window, sticky);
 }
 
-void state_window_set_urgent(
-  state_t *state,
-  window_id_t window_id,
-  bool urgent
-) {
-  window_t *window = (window_t *)state_window_get(state, window_id);
-  if (window) window_set_urgent(window, urgent);
-}
-
-void state_window_set_fixed_size(
-  state_t *state,
-  window_id_t window_id,
-  bool fixed_size
-) {
-  window_t *window = (window_t *)state_window_get(state, window_id);
-  if (window) window_set_fixed_size(window, fixed_size);
-}
-
 void state_window_set_border_width(
   state_t *state,
   window_id_t window_id,
@@ -502,7 +484,7 @@ void state_window_set_skip_taskbar(
   bool skip_taskbar
 ) {
   window_t *window = (window_t *)state_window_get(state, window_id);
-  if (window) window_set_skip_taskbar(window, skip_taskbar);
+  if (window) window->skip_taskbar = skip_taskbar;
 }
 
 void state_window_set_float_rect(

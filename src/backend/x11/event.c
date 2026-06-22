@@ -92,6 +92,28 @@ static bool urgent_from_states(
   return false;
 }
 
+static void parse_size_hints(
+  const xcb_size_hints_t *hints,
+  zdwm_size_t *min,
+  zdwm_size_t *max
+) {
+  assert(hints != nullptr);
+  assert(min != nullptr);
+  assert(max != nullptr);
+
+  *min = (zdwm_size_t){.width = 0, .height = 0};
+  *max = (zdwm_size_t){.width = INT32_MAX, .height = INT32_MAX};
+
+  if (hints->flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
+    min->width  = hints->min_width;
+    min->height = hints->min_height;
+  }
+  if (hints->flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) {
+    max->width  = hints->max_width;
+    max->height = hints->max_height;
+  }
+}
+
 bool populate_window_event(
   backend_t *backend,
   xcb_window_t window,
@@ -100,8 +122,7 @@ bool populate_window_event(
   ev->window        = (window_id_t)window;
   ev->transient_for = window_get_transient_for(backend, window);
 
-  xcb_get_window_attributes_reply_t *wa =
-    window_get_attributes(backend, window);
+  auto wa = window_get_attributes(backend, window);
   if (!wa) return false;
   ev->override_redirect = (bool)wa->override_redirect;
   p_delete(&wa);
@@ -112,7 +133,10 @@ bool populate_window_event(
     ev->minimized = minimized_from_hints(&wm_hints);
   }
 
-  if (!window_get_fixed_size(backend, window, &ev->fixed_size)) return false;
+  xcb_size_hints_t size_hints = {0};
+  if (!window_get_size_hints(backend, window, &size_hints)) return false;
+  parse_size_hints(&size_hints, &ev->min_size, &ev->max_size);
+
   if (!window_get_geometry(backend, window, &ev->rect)) return false;
 
   const atoms_t *atoms    = &backend->atoms;
@@ -360,34 +384,31 @@ static bool handle_property_notify(
 
   if (xcb_event->atom == XCB_ATOM_WM_HINTS) {
     xcb_icccm_wm_hints_t hints = {0};
-    auto handled = window_get_wm_hints(backend, window_id, &hints);
-    if (!handled) return false;
+    if (!window_get_wm_hints(backend, window_id, &hints)) return false;
 
-    event->type = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+    event->type = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
 
-    auto data    = &event->as.window_state_request;
+    auto data    = &event->as.hints;
     data->window = window_id;
     if (hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY) {
-      data->type   = ZDWM_WINDOW_STATE_REQUEST_URGENT;
-      data->action = xcb_icccm_wm_hints_get_urgency(&hints)
-                       ? ZDWM_WINDOW_STATE_ACTION_ADD
-                       : ZDWM_WINDOW_STATE_ACTION_REMOVE;
+      data->changed_fields |= ZDWM_HINT_FIELD_URGENT;
+      data->urgent          = xcb_icccm_wm_hints_get_urgency(&hints);
       return true;
     }
     return false;
   }
 
   if (xcb_event->atom == XCB_ATOM_WM_NORMAL_HINTS) {
-    bool fixed_size = false;
-    if (!window_get_fixed_size(backend, window_id, &fixed_size)) return false;
+    xcb_size_hints_t hints = {0};
+    if (!window_get_size_hints(backend, window_id, &hints)) return false;
 
-    event->type = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+    event->type = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
 
-    auto data    = &event->as.window_state_request;
+    auto data    = &event->as.hints;
     data->window = window_id;
-    data->type   = ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE;
-    data->action = fixed_size ? ZDWM_WINDOW_STATE_ACTION_ADD
-                              : ZDWM_WINDOW_STATE_ACTION_REMOVE;
+
+    data->changed_fields |= ZDWM_HINT_FIELD_SIZE;
+    parse_size_hints(&hints, &data->min_size, &data->max_size);
     return true;
   }
 
@@ -467,7 +488,11 @@ static bool handle_client_message(
     }
 
     if (urgent_from_states(atoms, properties, count)) {
-      data->type = ZDWM_WINDOW_STATE_REQUEST_URGENT;
+      event->type     = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
+      event->as.hints = (typeof(event->as.hints)){
+        .urgent         = true,
+        .changed_fields = ZDWM_HINT_FIELD_URGENT,
+      };
       return true;
     }
 

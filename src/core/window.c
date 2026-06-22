@@ -49,7 +49,7 @@ void window_set_minimized(window_t *window, bool minimized) {
 }
 
 void window_set_floating(window_t *window, bool floating) {
-  if (!floating && (window->fixed_size || window->sticky)) return;
+  if (!floating && (window_should_fix_size(window) || window->sticky)) return;
 
   if (floating == window->floating) return;
 
@@ -67,11 +67,6 @@ void window_set_urgent(window_t *window, bool urgent) {
   window->urgent = urgent;
 }
 
-void window_set_fixed_size(window_t *window, bool fixed_size) {
-  window->fixed_size = fixed_size;
-  if (fixed_size) window_set_floating(window, true);
-}
-
 void window_set_skip_taskbar(window_t *window, bool skip_taskbar) {
   window->skip_taskbar = skip_taskbar;
 }
@@ -82,6 +77,18 @@ void window_set_float_rect(window_t *window, rect_t rect) {
 
 void window_set_frame_rect(window_t *window, rect_t rect) {
   window->frame_rect = rect;
+}
+
+void window_set_size_hint(window_t *window, zdwm_size_t min, zdwm_size_t max) {
+  window->min_size = min;
+  window->max_size = max;
+  if (!window_should_fix_size(window)) return;
+
+  auto rect   = window->frame_rect;
+  rect.width  = min.width;
+  rect.height = min.height;
+  window_set_frame_rect(window, rect);
+  window_set_floating(window, true);
 }
 
 void window_set_title(window_t *window, const char *title) {
@@ -157,4 +164,10 @@ bool window_need_resize(const window_t *window, int32_t width, int32_t height) {
 bool window_should_has_border(const window_t *window) {
   if (window->fullscreen || window->maximized) return false;
   return window->floating;
+}
+
+bool window_should_fix_size(const window_t *window) {
+  auto max = window->max_size;
+  auto min = window->min_size;
+  return max.width == min.width && max.height == min.height;
 }

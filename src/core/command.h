@@ -22,6 +22,7 @@ typedef enum command_type_t {
   ZDWM_COMMAND_WINDOW_SET_MINIMIZED,
   ZDWM_COMMAND_WINDOW_SET_MAXIMIZED,
   ZDWM_COMMAND_WINDOW_SET_FULLSCREEN,
+  ZDWM_COMMAND_CHANGE_HINTS,
   ZDWM_COMMAND_SWITCH_WORKSPACE,
   ZDWM_COMMAND_SET_CURRENT_OUTPUT,
   ZDWM_COMMAND_SET_LAYOUT,
@@ -110,6 +111,7 @@ typedef struct command_t {
     window_bool_state_t minimized;
     window_bool_state_t maximized;
     window_bool_state_t fullscreen;
+    hints_data_t hints;
     switch_workspace_command_t switch_workspace;
     set_current_output_command_t current_output;
     set_layout_command_t layout;

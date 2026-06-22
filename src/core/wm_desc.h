@@ -27,8 +27,10 @@ typedef struct window_info_t {
   bool maximized;
   bool minimized;
   bool urgent;
-  bool fixed_size;
   bool skip_taskbar;
+
+  zdwm_size_t min_size;
+  zdwm_size_t max_size;
 } window_info_t;
 
 typedef struct workspace_desc_t {

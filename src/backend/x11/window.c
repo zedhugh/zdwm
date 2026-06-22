@@ -160,22 +160,18 @@ bool window_get_types(
   return true;
 }
 
-bool window_get_fixed_size(backend_t *backend, xcb_window_t window, bool *out) {
-  xcb_size_hints_t hints = {0};
+bool window_get_size_hints(
+  backend_t *backend,
+  xcb_window_t window,
+  xcb_size_hints_t *out
+) {
   xcb_connection_t *conn = backend->conn;
   xcb_get_property_cookie_t cookie =
     xcb_icccm_get_wm_normal_hints_unchecked(conn, window);
-  if (!xcb_icccm_get_wm_normal_hints_reply(conn, cookie, &hints, nullptr)) {
+  if (!xcb_icccm_get_wm_normal_hints_reply(conn, cookie, out, nullptr)) {
     return false;
   }
 
-  if ((hints.flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) &&
-      (hints.flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE)) {
-    *out = hints.min_width == hints.max_width &&
-           hints.min_height == hints.max_height;
-  } else {
-    *out = false;
-  }
   return true;
 }
 

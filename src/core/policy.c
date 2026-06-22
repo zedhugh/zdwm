@@ -606,8 +606,9 @@ static void route_map_request(
              .maximized    = e->maximized,
              .minimized    = e->minimized,
              .urgent       = e->urgent,
-             .fixed_size   = e->fixed_size,
              .skip_taskbar = e->skip_taskbar,
+             .min_size     = e->min_size,
+             .max_size     = e->max_size,
       },
     },
   };
@@ -690,28 +691,35 @@ static void route_window_metadata_changed(
   listeners_notify_window_updated(ctx->listeners, state, window_id);
 }
 
+static void route_window_hints_changed(
+  state_t *state,
+  const hints_data_t *data,
+  command_buffer_t *out
+) {
+  auto window = (window_t *)state_window_get(state, data->window);
+  if (!window) return;
+
+  command_t change_hints_cmd = {
+    .type     = ZDWM_COMMAND_CHANGE_HINTS,
+    .as.hints = *data,
+  };
+  command_buffer_push(out, &change_hints_cmd);
+}
+
 static void route_window_activate_request(
   state_t *state,
   const window_activate_request_event_t *e,
   command_buffer_t *out
 ) {
-  auto window = state_window_get(state, e->window);
+  auto window = (window_t *)state_window_get(state, e->window);
   if (!window) return;
 
   switch (e->source) {
   case ZDWM_WINDOW_ACTIVATION_SOURCE_LEGACY:
     break;
-  case ZDWM_WINDOW_ACTIVATION_SOURCE_APPLICATION: {
-    command_t change_window_state_cmd = {
-      .type            = ZDWM_COMMAND_CHANGE_WINDOW_STATE,
-      .as.state_change = {
-        .type   = ZDWM_WINDOW_STATE_REQUEST_URGENT,
-        .window = window->id,
-        .action = ZDWM_WINDOW_STATE_ACTION_ADD,
-      }
-    };
-    command_buffer_push(out, &change_window_state_cmd);
-  } break;
+  case ZDWM_WINDOW_ACTIVATION_SOURCE_APPLICATION:
+    window->urgent = true;
+    break;
   case ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER:
     add_switch_workspace_command(out, window->workspace_id);
     add_focus_window_command(out, window->id);
@@ -776,6 +784,8 @@ void policy_route_event(
 ) {
   auto state = ctx->state;
   switch (event->type) {
+  case ZDWM_EVENT_NONE:
+    break;
   case ZDWM_EVENT_KEY_PRESS:
     route_key_press(ctx, &event->as.key_press, out);
     break;
@@ -800,6 +810,9 @@ void policy_route_event(
   case ZDWM_EVENT_WINDOW_METADATA_CHANGED:
     route_window_metadata_changed(ctx, &event->as.window_metadata_change);
     break;
+  case ZDWM_EVENT_WINDOW_HINTS_CHANGED:
+    route_window_hints_changed(state, &event->as.hints, out);
+    break;
   case ZDWM_EVENT_WINDOW_ACTIVATE_REQUEST: {
     auto data = &event->as.window_activate_request;
     route_window_activate_request(state, data, out);
@@ -811,7 +824,6 @@ void policy_route_event(
     auto data = &event->as.configure_request;
     route_configure_request(state, data, ctx->layouts, out);
   } break;
-  default:
   }
 }
 
@@ -902,11 +914,16 @@ static void manage_window(
   auto window_id    = window->id;
   auto workspace_id = command->workspace;
   state_window_set_workspace(state, window_id, workspace_id);
-  state_window_set_floating(state, window_id, command->floating);
   set_foucs_window(ctx, workspace_id, window_id, plan);
   plan_push_grab_button_effect(plan, window_id);
   push_window_list_effect(state, plan);
   listeners_notify_window_added(ctx->listeners, state, window_id);
+
+  if (window_should_fix_size(window)) {
+    state_window_set_floating(state, window_id, true);
+  } else {
+    state_window_set_floating(state, window_id, command->floating);
+  }
 
   auto need_layout = window_need_layout(window);
   if (need_layout) {
@@ -1297,12 +1314,6 @@ static void change_window_state(
     case ZDWM_WINDOW_STATE_REQUEST_SKIP_TASKBAR:
       value = !window->skip_taskbar;
       break;
-    case ZDWM_WINDOW_STATE_REQUEST_URGENT:
-      value = !window->urgent;
-      break;
-    case ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE:
-      value = !window->fixed_size;
-      break;
     }
   }
 
@@ -1319,12 +1330,6 @@ static void change_window_state(
   /* TODO: 下面三个可能需要添加处理，尤其是 fixed_size 和 floating 相关 */
   case ZDWM_WINDOW_STATE_REQUEST_SKIP_TASKBAR:
     state_window_set_skip_taskbar(state, window->id, value);
-    break;
-  case ZDWM_WINDOW_STATE_REQUEST_URGENT:
-    state_window_set_urgent(state, window->id, value);
-    break;
-  case ZDWM_WINDOW_STATE_REQUEST_FIXED_SIZE:
-    state_window_set_fixed_size(state, window->id, value);
     break;
   }
 
@@ -1490,12 +1495,20 @@ static void command_window_set_maximized(
   maximize_window(ctx, data->window, data->state, plan);
 }
 
-static void command_window_set_fullscreen(
-  const policy_context_t *ctx,
-  const window_bool_state_t *data,
-  plan_t *plan
-) {
-  fullscreen_window(ctx, data->window, data->state, plan);
+static void
+command_change_hints(state_t *state, hints_data_t *data, plan_t *plan) {
+  auto window = (window_t *)state_window_get(state, data->window);
+  if (data->changed_fields & ZDWM_HINT_FIELD_URGENT) {
+    window->urgent = data->urgent;
+  }
+  if (data->changed_fields & ZDWM_HINT_FIELD_SIZE) {
+    window->max_size = data->max_size;
+    window->min_size = data->min_size;
+
+    auto floating = window->floating;
+    if (window_should_fix_size(window)) window_set_floating(window, true);
+    if (floating != window->floating) plan->need_relayout = true;
+  }
 }
 
 static inline void change_current_output(
@@ -1674,8 +1687,13 @@ void policy_apply_command(
     case ZDWM_COMMAND_WINDOW_SET_MAXIMIZED:
       command_window_set_maximized(ctx, &cmd->as.maximized, plan);
       break;
-    case ZDWM_COMMAND_WINDOW_SET_FULLSCREEN:
-      command_window_set_fullscreen(ctx, &cmd->as.fullscreen, plan);
+    case ZDWM_COMMAND_WINDOW_SET_FULLSCREEN: {
+      auto window = cmd->as.fullscreen.window;
+      auto state  = cmd->as.fullscreen.state;
+      fullscreen_window(ctx, window, state, plan);
+    } break;
+    case ZDWM_COMMAND_CHANGE_HINTS:
+      command_change_hints(state, &cmd->as.hints, plan);
       break;
     case ZDWM_COMMAND_SWITCH_WORKSPACE:
       switch_workspace(ctx, cmd->as.switch_workspace.workspace, plan);
