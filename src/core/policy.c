@@ -865,9 +865,6 @@ static void set_foucs_window(
   auto workspace = state_workspace_get(state, workspace_id);
   if (!workspace) return;
 
-  auto old_focused_window_id = workspace->focused_window_id;
-  if (window_id == old_focused_window_id) return;
-
   state_workspace_set_focused_window(state, workspace_id, window_id);
   plan_push_focus_effect(plan, window_id);
 
@@ -875,9 +872,12 @@ static void set_foucs_window(
     auto color = &border->focused_color;
     plan_push_change_border_color_effect(plan, window_id, color);
   }
-  if (state_window_get(state, old_focused_window_id)) {
+  for (size_t i = 0; i < state_window_count(state); ++i) {
+    auto window = state_window_at(state, i);
+    if (window->workspace_id != workspace_id) continue;
+    if (workspace->focused_window_id == window->id) continue;
     auto color = &border->normal_color;
-    plan_push_change_border_color_effect(plan, old_focused_window_id, color);
+    plan_push_change_border_color_effect(plan, window->id, color);
   }
 }
 
@@ -936,8 +936,11 @@ static void manage_window(
     state_window_set_floating(state, window_id, command->floating);
   }
 
+  auto workspace   = state_workspace_get(state, workspace_id);
   auto need_layout = window_need_layout(window);
-  if (need_layout) {
+  auto layout_func = layout_get(ctx->layouts, workspace->layout_id);
+
+  if (need_layout && layout_func) {
     adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
   } else {
     state_window_set_border_width(state, window_id, ctx->border->width);
@@ -948,11 +951,7 @@ static void manage_window(
   plan_push_map_effect(plan, window_id);
   plan_push_focus_effect(plan, window_id);
 
-  if (window_need_layout(window)) {
-    plan->need_relayout = true;
-
-    return;
-  }
+  plan->need_relayout = true;
 
   effect_t configure_effect = {
     .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
