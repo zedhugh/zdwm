@@ -227,6 +227,10 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
     }
     item->region.end = start;
   }
+  if (left->count) {
+    left->region.start = left->items[0].region.start;
+    left->region.end   = left->items[left->count - 1].region.end;
+  }
 
   auto right = &bar_output->right;
   for (size_t i = right->count; i > 0; --i) {
@@ -250,6 +254,10 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
       end = region.start;
     }
     item->region.start = end;
+  }
+  if (right->count) {
+    right->region.start = right->items[0].region.start;
+    right->region.end   = right->items[right->count - 1].region.end;
   }
 
   auto center = &bar_output->center;
