@@ -84,8 +84,8 @@ void window_set_size_hint(window_t *window, zdwm_size_t min, zdwm_size_t max) {
   window->max_size = max;
   if (!window_should_fix_size(window)) return;
 
-  auto rect   = window->frame_rect;
-  rect.width  = min.width;
+  auto rect = window->frame_rect;
+  rect.width = min.width;
   rect.height = min.height;
   window_set_frame_rect(window, rect);
   window_set_floating(window, true);

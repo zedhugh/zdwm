@@ -6,12 +6,6 @@ IndentWidth: 2
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
 
-AlignConsecutiveAssignments:
-  Enabled: true
-  AcrossEmptyLines: false
-  AcrossComments: false
-  AlignCompound: true
-  PadOperators: true
 AlignConsecutiveBitFields:
   Enabled: true
 

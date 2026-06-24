@@ -34,14 +34,16 @@ static char *window_get_text_property(
     xcb_get_property_reply(backend->conn, cookie, nullptr);
   if (!reply) return nullptr;
 
-  int length  = xcb_get_property_value_length(reply);
+  int length = xcb_get_property_value_length(reply);
   char *value = (char *)xcb_get_property_value(reply);
 
   char *text = nullptr;
-  if (length && reply->format == 8 &&
-      (reply->type == XCB_ATOM_STRING ||
-       reply->type == backend->atoms.UTF8_STRING ||
-       reply->type == backend->atoms.COMPOUND_TEXT)) {
+  if (
+    length && reply->format == 8 &&
+    (reply->type == XCB_ATOM_STRING ||
+     reply->type == backend->atoms.UTF8_STRING ||
+     reply->type == backend->atoms.COMPOUND_TEXT)
+  ) {
     text = p_strndup(value, (size_t)length);
   }
 
@@ -56,10 +58,10 @@ char *window_get_role(backend_t *backend, xcb_window_t window) {
 
 char *window_get_title(backend_t *backend, xcb_window_t window) {
   xcb_atom_t property = backend->atoms._NET_WM_NAME;
-  char *name          = window_get_text_property(backend, window, property);
+  char *name = window_get_text_property(backend, window, property);
   if (!name) {
     property = backend->atoms.WM_NAME;
-    name     = window_get_text_property(backend, window, property);
+    name = window_get_text_property(backend, window, property);
   }
   return name;
 }
@@ -134,7 +136,7 @@ bool window_get_types(
   size_t *count
 ) {
   uint32_t atom_count = 0;
-  xcb_atom_t *atoms   = nullptr;
+  xcb_atom_t *atoms = nullptr;
   if (!window_get_atom_array(
         backend,
         window,
@@ -181,9 +183,9 @@ bool window_get_geometry(backend_t *backend, xcb_window_t window, rect_t *out) {
     xcb_get_geometry_reply(backend->conn, cookie, nullptr);
   if (!reply) return false;
 
-  out->x      = reply->x;
-  out->y      = reply->y;
-  out->width  = reply->width;
+  out->x = reply->x;
+  out->y = reply->y;
+  out->width = reply->width;
   out->height = reply->height;
 
   p_delete(&reply);
@@ -215,7 +217,7 @@ bool window_get_atom_array(
     *out_atoms =
       p_copy((xcb_atom_t *)xcb_get_property_value(reply), reply->value_len);
   } else {
-    *out_len   = 0;
+    *out_len = 0;
     *out_atoms = nullptr;
   }
 
@@ -251,7 +253,7 @@ window_send_event(backend_t *backend, xcb_window_t window, xcb_atom_t atom) {
   bool exist = false;
 
   xcb_connection_t *conn = backend->conn;
-  auto WM_PROTOCOLS      = backend->atoms.WM_PROTOCOLS;
+  auto WM_PROTOCOLS = backend->atoms.WM_PROTOCOLS;
 
   xcb_get_property_cookie_t cookie =
     xcb_icccm_get_wm_protocols_unchecked(conn, window, WM_PROTOCOLS);
@@ -266,10 +268,10 @@ window_send_event(backend_t *backend, xcb_window_t window, xcb_atom_t atom) {
   if (exist) {
     xcb_client_message_event_t ev = {
       .response_type = XCB_CLIENT_MESSAGE,
-      .format        = 32,
-      .window        = window,
-      .type          = WM_PROTOCOLS,
-      .data.data32   = {atom, XCB_CURRENT_TIME},
+      .format = 32,
+      .window = window,
+      .type = WM_PROTOCOLS,
+      .data.data32 = {atom, XCB_CURRENT_TIME},
     };
     xcb_send_event(conn, false, window, XCB_EVENT_MASK_NO_EVENT, (char *)&ev);
   }
@@ -288,9 +290,9 @@ void window_kill(backend_t *backend, xcb_window_t window) {
 }
 
 void root_set_event_mask(backend_t *backend) {
-  xcb_connection_t *conn                               = backend->conn;
-  xcb_window_t root                                    = backend->screen->root;
-  xcb_cw_t change_mask                                 = XCB_CW_EVENT_MASK;
+  xcb_connection_t *conn = backend->conn;
+  xcb_window_t root = backend->screen->root;
+  xcb_cw_t change_mask = XCB_CW_EVENT_MASK;
   xcb_change_window_attributes_value_list_t value_list = {
     .event_mask =
       XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_KEY_PRESS,
@@ -299,7 +301,7 @@ void root_set_event_mask(backend_t *backend) {
 }
 
 void window_set_event_mask(xcb_connection_t *conn, xcb_window_t window) {
-  xcb_cw_t change_mask                                 = XCB_CW_EVENT_MASK;
+  xcb_cw_t change_mask = XCB_CW_EVENT_MASK;
   xcb_change_window_attributes_value_list_t value_list = {
     .event_mask = XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_FOCUS_CHANGE |
                   XCB_EVENT_MASK_PROPERTY_CHANGE |
@@ -310,7 +312,7 @@ void window_set_event_mask(xcb_connection_t *conn, xcb_window_t window) {
 }
 
 void window_clean_event_mask(xcb_connection_t *conn, xcb_window_t window) {
-  xcb_cw_t change_mask                                 = XCB_CW_EVENT_MASK;
+  xcb_cw_t change_mask = XCB_CW_EVENT_MASK;
   xcb_change_window_attributes_value_list_t value_list = {
     .event_mask = XCB_EVENT_MASK_NO_EVENT,
   };
@@ -385,7 +387,7 @@ void window_grab_keys(
   const key_bind_t *keys,
   size_t count
 ) {
-  auto conn        = backend->conn;
+  auto conn = backend->conn;
   auto key_symbols = backend->key_symbols;
 
   xcb_ungrab_key(conn, XCB_GRAB_ANY, window, XCB_MOD_MASK_ANY);
@@ -393,7 +395,7 @@ void window_grab_keys(
   xcb_grab_mode_t mode = XCB_GRAB_MODE_ASYNC;
 
   for (size_t i = 0; i < count; ++i) {
-    auto key      = &keys[i];
+    auto key = &keys[i];
     auto keycodes = xcb_key_symbols_get_keycode(key_symbols, key->keysym);
     if (!keycodes) continue;
 
@@ -413,9 +415,9 @@ static visual_t *get_alpha_visual(backend_t *backend) {
     auto visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
     for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
       if (visual_iter.data->_class == XCB_VISUAL_CLASS_TRUE_COLOR) {
-        auto visual    = p_new(visual_t, 1);
+        auto visual = p_new(visual_t, 1);
         visual->visual = visual_iter.data;
-        visual->depth  = depth_iter.data->depth;
+        visual->depth = depth_iter.data->depth;
         return visual;
       }
     }
@@ -426,14 +428,14 @@ static visual_t *get_alpha_visual(backend_t *backend) {
 
 static visual_t *get_root_visual(backend_t *backend) {
   auto depth_iter = xcb_screen_allowed_depths_iterator(backend->screen);
-  auto visual_id  = backend->screen->root_visual;
+  auto visual_id = backend->screen->root_visual;
   for (; depth_iter.rem; xcb_depth_next(&depth_iter)) {
     auto visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
     for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
       if (visual_iter.data->visual_id == visual_id) {
-        auto visual    = p_new(visual_t, 1);
+        auto visual = p_new(visual_t, 1);
         visual->visual = visual_iter.data;
-        visual->depth  = depth_iter.data->depth;
+        visual->depth = depth_iter.data->depth;
         return visual;
       }
     }
@@ -456,7 +458,7 @@ void window_change_cursor(
   xcb_window_t window,
   cursor_t cursor
 ) {
-  auto conn              = backend->conn;
+  auto conn = backend->conn;
   xcb_params_cw_t params = {.cursor = cursor_get_xcb_cursor(backend, cursor)};
   xcb_aux_change_window_attributes(conn, window, XCB_CW_CURSOR, &params);
 }

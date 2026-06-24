@@ -8,14 +8,14 @@
 
 static const char *const cursor_name_map[] = {
   [ZDWM_CURSOR_NORMAL] = "left_ptr",
-  [ZDWM_CURSOR_MOVE]   = "fleur",
+  [ZDWM_CURSOR_MOVE] = "fleur",
   [ZDWM_CURSOR_RESIZE] = "bottom_right_corner",
 };
 
 static xcb_cursor_context_t *get_xcb_cursor_context(backend_t *backend) {
   if (backend->cursor_context) return backend->cursor_context;
 
-  auto conn   = backend->conn;
+  auto conn = backend->conn;
   auto screen = backend->screen;
   if (xcb_cursor_context_new(conn, screen, &backend->cursor_context) == 0) {
     return backend->cursor_context;
@@ -29,7 +29,7 @@ void cursor_init(backend_t *backend) {
   if (!ctx) return;
 
   for (size_t i = 0; i < countof(backend->cursors); ++i) {
-    auto cursor_name    = cursor_name_map[i];
+    auto cursor_name = cursor_name_map[i];
     backend->cursors[i] = xcb_cursor_load_cursor(ctx, cursor_name);
   }
 }

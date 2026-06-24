@@ -86,10 +86,10 @@ bar_workspaces_create_state(zdwm_output_id_t output_id, void *config) {
   const bar_workspace_config_t *workspace_config = config;
   assert(workspace_config);
 
-  auto state          = p_new(bar_workspace_state_t, 1);
-  state->output_id    = output_id;
+  auto state = p_new(bar_workspace_state_t, 1);
+  state->output_id = output_id;
   state->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-  state->config       = *workspace_config;
+  state->config = *workspace_config;
 
   return state;
 }
@@ -109,7 +109,7 @@ static void bar_workspaces_update(
   auto config = &data->config;
   for (size_t i = 0; i < data->count; ++i) {
     auto workspace = &data->workspaces[i];
-    auto info      = &workspace->info;
+    auto info = &workspace->info;
 
     workspace->window_count = state_workspace_get_window_count(state, info->id);
     workspace->urgent_window_count =
@@ -145,11 +145,11 @@ static void bar_workspaces_update(
 
 static zdwm_action_t bar_workspace_on_click(zdwm_bar_click_params_t *params) {
   auto cell_index = params->cell_index;
-  auto data       = (bar_workspace_state_t *)params->state;
+  auto data = (bar_workspace_state_t *)params->state;
 
   if (cell_index == data->count) {
     return (zdwm_action_t){
-      .type            = ZDWM_ACTION_LAYOUT_CYCLE,
+      .type = ZDWM_ACTION_LAYOUT_CYCLE,
       .as.layout_cycle = {.delta = 1},
     };
   }
@@ -160,7 +160,7 @@ static zdwm_action_t bar_workspace_on_click(zdwm_bar_click_params_t *params) {
   }
 
   return (zdwm_action_t){
-    .type                          = ZDWM_ACTION_WORKSPACE_SWITCH,
+    .type = ZDWM_ACTION_WORKSPACE_SWITCH,
     .as.switch_workspace.workspace = workspace->info.id,
   };
 }
@@ -175,10 +175,10 @@ static void bar_workspace_destroy_state(void *state) {
 }
 
 zdwm_bar_item_type_t bar_workspace = {
-  .create_state       = bar_workspaces_create_state,
-  .update             = bar_workspaces_update,
-  .on_click           = bar_workspace_on_click,
-  .destroy_state      = bar_workspace_destroy_state,
+  .create_state = bar_workspaces_create_state,
+  .update = bar_workspaces_update,
+  .on_click = bar_workspace_on_click,
+  .destroy_state = bar_workspace_destroy_state,
   .update_interval_ms = 0,
 };
 
@@ -204,7 +204,7 @@ static void bar_workspace_list_filter(
   }
 
   state->list_inited = true;
-  state->dirty       = true;
+  state->dirty = true;
 }
 
 static void bar_workspace_active_updated(
@@ -219,7 +219,7 @@ static void bar_workspace_active_updated(
   state->workspace_id = workspace_id;
 
   state->active_inited = true;
-  state->dirty         = true;
+  state->dirty = true;
 }
 
 static void
@@ -230,7 +230,7 @@ bar_workspace_layout_notify(zdwm_layout_notify_t layout, void *user_data) {
     auto workspace = &state->workspaces[i];
     if (workspace->info.id == layout.workspace) {
       workspace->layout = layout;
-      state->dirty      = true;
+      state->dirty = true;
       return;
     }
   }
@@ -264,14 +264,14 @@ void bar_workspace_window_updated(
   auto state = (bar_workspace_state_t *)user_data;
 
   auto old_window = state_get_window(state, window->id);
-  *old_window     = *window;
-  state->dirty    = true;
+  *old_window = *window;
+  state->dirty = true;
 }
 
 void bar_workspace_window_removed(zdwm_window_id_t window_id, void *user_data) {
   auto state = (bar_workspace_state_t *)user_data;
 
-  bool found   = false;
+  bool found = false;
   size_t index = 0;
 
   for (size_t i = 0; i < state->window_count; ++i) {

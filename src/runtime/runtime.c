@@ -93,16 +93,16 @@ static void runtime_init_bar(runtime_t *runtime) {
 
   auto show_top = runtime->bar.config.show_top;
   inset_t inset = {
-    .top    = show_top ? bar_height : 0,
+    .top = show_top ? bar_height : 0,
     .bottom = show_top ? 0 : bar_height,
   };
 
   auto state = &runtime->state;
   auto count = state_output_count(state);
 
-  auto bar     = &runtime->bar;
-  bar->bars    = p_new(bar_output_t, count);
-  bar->count   = count;
+  auto bar = &runtime->bar;
+  bar->bars = p_new(bar_output_t, count);
+  bar->count = count;
   bar->visible = true;
 
   color_parse(bar->config.bg, &bar->palette.bg);
@@ -111,21 +111,21 @@ static void runtime_init_bar(runtime_t *runtime) {
   for (size_t i = 0; i < count; ++i) {
     auto output = state_output_at(state, i);
     state_output_inset_workarea(state, output->id, inset);
-    auto geometry   = output->geometry;
+    auto geometry = output->geometry;
     rect_t bar_rect = {
-      .x      = geometry.x,
-      .y      = show_top ? 0 : geometry.y + geometry.height - bar_height,
-      .width  = geometry.width,
+      .x = geometry.x,
+      .y = show_top ? 0 : geometry.y + geometry.height - bar_height,
+      .width = geometry.width,
       .height = bar_height,
     };
-    auto color            = bar->palette.bg.argb;
-    auto bar_window       = backend_create_bar_window(backend, bar_rect, color);
-    auto bar_output       = &bar->bars[i];
-    bar_output->cr        = bar_window.cr;
+    auto color = bar->palette.bg.argb;
+    auto bar_window = backend_create_bar_window(backend, bar_rect, color);
+    auto bar_output = &bar->bars[i];
+    bar_output->cr = bar_window.cr;
     bar_output->window_id = bar_window.window_id;
     bar_output->output_id = output->id;
-    bar_output->width     = bar_rect.width;
-    bar_output->height    = bar_rect.height;
+    bar_output->width = bar_rect.width;
+    bar_output->height = bar_rect.height;
   }
 
   bar_init(&runtime->bar, &runtime->listeners);
@@ -138,16 +138,16 @@ static bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   runtime->backend = desc->backend;
   layout_registry_move(&desc->layouts, &runtime->layouts);
   rules_move(&desc->rules, &runtime->rules);
-  runtime->signal_fd            = -1;
-  runtime->border               = desc->border;
-  runtime->fps                  = MAX(desc->fps, 10);
+  runtime->signal_fd = -1;
+  runtime->border = desc->border;
+  runtime->fps = MAX(desc->fps, 10);
   runtime->config_module_handle = desc->config_module_handle;
-  runtime->binding_table        = desc->binding_table;
-  runtime->listeners            = desc->listeners;
-  runtime->bar.config           = desc->bar;
-  desc->backend                 = nullptr;
-  desc->config_module_handle    = nullptr;
-  desc->binding_table           = nullptr;
+  runtime->binding_table = desc->binding_table;
+  runtime->listeners = desc->listeners;
+  runtime->bar.config = desc->bar;
+  desc->backend = nullptr;
+  desc->config_module_handle = nullptr;
+  desc->binding_table = nullptr;
   p_clear(&desc->listeners, 1);
   p_clear(&desc->bar, 1);
 
@@ -160,7 +160,7 @@ static bool runtime_init(runtime_t *runtime, runtime_init_desc_t *desc) {
   );
 
   workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
-  desc->outputs      = nullptr;
+  desc->outputs = nullptr;
   desc->output_count = 0;
 
   return true;
@@ -178,13 +178,15 @@ static void runtime_init_desc_cleanup(runtime_init_desc_t *desc) {
     desc->backend = nullptr;
   }
 
-  if (desc->layouts.slots || desc->layouts.slot_count ||
-      desc->layouts.slot_capacity) {
+  if (
+    desc->layouts.slots || desc->layouts.slot_count ||
+    desc->layouts.slot_capacity
+  ) {
     layout_registry_cleanup(&desc->layouts);
   }
 
   workspace_desc_list_cleanup(&desc->workspaces, &desc->workspace_count);
-  desc->outputs      = nullptr;
+  desc->outputs = nullptr;
   desc->output_count = 0;
   if (desc->config_module_handle) dlclose(desc->config_module_handle);
   desc->config_module_handle = nullptr;
@@ -216,7 +218,7 @@ static void runtime_shutdown(runtime_t *runtime) {
 
 static void runtime_notify_initial_state(runtime_t *runtime) {
   auto listeners = &runtime->listeners;
-  auto state     = &runtime->state;
+  auto state = &runtime->state;
 
   auto output = state_output_at(state, state->current_output_index);
   if (output) listeners_notify_current_output(listeners, output->id);
@@ -256,17 +258,17 @@ static void runtime_setup_bindings(runtime_t *runtime) {
   if (!bindings) return;
 
   auto backend = runtime->backend;
-  auto plan    = &runtime->plan;
+  auto plan = &runtime->plan;
 
   plan_reset(plan);
 
   auto keys = p_new(key_bind_t, bind_count);
   for (size_t i = 0; i < bind_count; ++i) {
-    keys[i].keysym    = bindings[i].keysym;
+    keys[i].keysym = bindings[i].keysym;
     keys[i].modifiers = bindings[i].modifiers;
   }
   effect_t effect_bind_key = {
-    .type        = ZDWM_EFFECT_BIND_KEY,
+    .type = ZDWM_EFFECT_BIND_KEY,
     .as.bind_key = {.count = bind_count, .keys = keys},
   };
   plan_push_effect(plan, &effect_bind_key);
@@ -306,9 +308,9 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
     auto workspace = state_workspace_get(state, output->current_workspace_id);
     if (!workspace) continue;
 
-    size_t window_count         = 0;
+    size_t window_count = 0;
     size_t window_list_capacity = 0;
-    window_id_t *window_ids     = nullptr;
+    window_id_t *window_ids = nullptr;
 
     for (size_t j = 0; j < state_window_count(state); j++) {
       auto window = state_window_at(state, j);
@@ -321,13 +323,13 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
       } else if (window->fullscreen) {
         layout_item_t item = {
           .window_id = window->id,
-          .rect      = output->geometry,
+          .rect = output->geometry,
         };
         layout_result_push(result, item);
       } else if (window->maximized) {
         layout_item_t item = {
           .window_id = window->id,
-          .rect      = output->workarea,
+          .rect = output->workarea,
         };
         layout_result_push(result, item);
       }
@@ -336,12 +338,12 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
     auto layout_func = layout_get(&runtime->layouts, workspace->layout_id);
     if (window_count && layout_func) {
       zdwm_layout_ctx_t ctx = {
-        .workspace_id      = workspace->id,
+        .workspace_id = workspace->id,
         .focused_window_id = workspace->focused_window_id,
-        .output_geometry   = output->geometry,
-        .workarea          = output->workarea,
-        .window_ids        = window_ids,
-        .window_count      = window_count,
+        .output_geometry = output->geometry,
+        .workarea = output->workarea,
+        .window_ids = window_ids,
+        .window_count = window_count,
       };
       layout_func(&ctx, result);
     }
@@ -361,7 +363,7 @@ static void runtime_apply_window_rect(
   auto window = state_window_get(state, window_id);
   if (!window) return;
 
-  auto need_move   = window_need_move(window, rect.x, rect.y);
+  auto need_move = window_need_move(window, rect.x, rect.y);
   auto need_resize = window_need_resize(window, rect.width, rect.height);
 
   uint32_t changed_fields = 0u;
@@ -373,14 +375,14 @@ static void runtime_apply_window_rect(
     changed_fields |= ZDWM_CONFIGURE_FIELD_BORDER_WIDTH;
   }
   effect_t configure_effect = {
-    .type         = ZDWM_EFFECT_CONFIGURE_WINDOW,
+    .type = ZDWM_EFFECT_CONFIGURE_WINDOW,
     .as.configure = {
-      .window         = window_id,
-      .x              = rect.x,
-      .y              = rect.y,
-      .width          = rect.width - 2 * (int32_t)window->border_width,
-      .height         = rect.height - 2 * (int32_t)window->border_width,
-      .border_width   = window->border_width,
+      .window = window_id,
+      .x = rect.x,
+      .y = rect.y,
+      .width = rect.width - 2 * (int32_t)window->border_width,
+      .height = rect.height - 2 * (int32_t)window->border_width,
+      .border_width = window->border_width,
       .changed_fields = changed_fields,
     }
   };
@@ -396,7 +398,7 @@ static void runtime_arrange(runtime_t *runtime) {
   if (!result) return;
 
   auto state = &runtime->state;
-  auto plan  = &runtime->plan;
+  auto plan = &runtime->plan;
   for (size_t i = 0; i < result->item_count; ++i) {
     auto item = &result->items[i];
     runtime_apply_window_rect(state, item->window_id, item->rect, plan);
@@ -405,20 +407,20 @@ static void runtime_arrange(runtime_t *runtime) {
 
 static policy_context_t policy_context_init(runtime_t *runtime) {
   policy_context_t ctx = {
-    .fps         = runtime->fps,
+    .fps = runtime->fps,
     .interaction = &runtime->interaction,
 
     .bind_table = runtime->binding_table,
-    .state      = &runtime->state,
-    .rules      = &runtime->rules,
-    .listeners  = &runtime->listeners,
-    .border     = &runtime->border,
-    .layouts    = &runtime->layouts,
-    .bar        = {
-             .visible  = &runtime->bar.visible,
-             .windows  = &runtime->bar_windows,
-             .height   = runtime->bar.config.height,
-             .show_top = runtime->bar.config.show_top,
+    .state = &runtime->state,
+    .rules = &runtime->rules,
+    .listeners = &runtime->listeners,
+    .border = &runtime->border,
+    .layouts = &runtime->layouts,
+    .bar = {
+      .visible = &runtime->bar.visible,
+      .windows = &runtime->bar_windows,
+      .height = runtime->bar.config.height,
+      .show_top = runtime->bar.config.show_top,
     },
   };
 
@@ -430,18 +432,18 @@ static void runtime_scan(runtime_t *runtime) {
   if (!result) return;
 
   policy_context_t ctx = policy_context_init(runtime);
-  ctx.listeners        = nullptr;
+  ctx.listeners = nullptr;
 
-  auto backend        = runtime->backend;
+  auto backend = runtime->backend;
   auto command_buffer = &runtime->command_buffer;
-  auto plan           = &runtime->plan;
+  auto plan = &runtime->plan;
 
   command_buffer_reset(command_buffer);
   plan_reset(plan);
 
   for (size_t i = 0; i < result->count; i++) {
     event_t event = {
-      .type                  = ZDWM_EVENT_WINDOW_MAP_REQUEST,
+      .type = ZDWM_EVENT_WINDOW_MAP_REQUEST,
       .as.window_map_request = result->windows[i],
     };
     policy_route_event(&ctx, &event, command_buffer);
@@ -467,12 +469,12 @@ static bool runtime_handle_bar_click(
 
   auto data = &event->as.pointer_button_press;
 
-  zdwm_action_t action  = {.type = ZDWM_ACTION_NONE};
+  zdwm_action_t action = {.type = ZDWM_ACTION_NONE};
   bar_click_info_t info = {
-    .window    = data->window,
-    .x         = data->local.x,
+    .window = data->window,
+    .x = data->local.x,
     .modifiers = data->modifiers,
-    .button    = data->button,
+    .button = data->button,
   };
   if (bar_click(bar, info, &action)) {
     policy_resolve_action(ctx, &action, command_buffer);
@@ -483,11 +485,11 @@ static bool runtime_handle_bar_click(
 }
 
 static void runtime_handle_event(runtime_t *runtime, short int revents) {
-  auto backend        = runtime->backend;
+  auto backend = runtime->backend;
   auto command_buffer = &runtime->command_buffer;
-  auto plan           = &runtime->plan;
-  auto bar            = &runtime->bar;
-  auto ctx            = policy_context_init(runtime);
+  auto plan = &runtime->plan;
+  auto bar = &runtime->bar;
+  auto ctx = policy_context_init(runtime);
 
   if (revents & POLLHUP) {
     runtime->running = false;
@@ -509,7 +511,7 @@ static void runtime_handle_event(runtime_t *runtime, short int revents) {
     if (plan->count) backend_apply_effect(backend, plan->effects, plan->count);
 
     if (plan->quit) {
-      runtime->running      = false;
+      runtime->running = false;
       runtime->will_restart = plan->will_restart;
     }
 
@@ -566,14 +568,14 @@ static void runtime_run_event_loop(runtime_t *runtime) {
 
 bool runtime_run(const char *config_so_path, const char *display_name) {
   auto backend = backend_create(nullptr);
-  auto detect  = backend_detect(backend);
+  auto detect = backend_detect(backend);
   if (!backend || !detect || detect->output_count == 0) {
     fatal("backend detect failed");
   }
 
   runtime_init_desc_t desc = {
-    .backend      = backend,
-    .outputs      = detect->outputs,
+    .backend = backend,
+    .outputs = detect->outputs,
     .output_count = detect->output_count,
   };
   if (!runtime_config_load(nullptr, &desc)) {
@@ -583,7 +585,7 @@ bool runtime_run(const char *config_so_path, const char *display_name) {
   backend = nullptr;
 
   auto runtime = p_new(runtime_t, 1);
-  bool inited  = runtime_init(runtime, &desc);
+  bool inited = runtime_init(runtime, &desc);
 
   runtime_init_desc_cleanup(&desc);
   backend_detect_destroy(detect);

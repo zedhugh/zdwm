@@ -17,9 +17,9 @@ static constexpr char launcher[] =
 typedef struct zdwm_action_data_raise_or_run_t raise_or_run_data_t;
 
 static raise_or_run_data_t terminal = {"XTerm", "xterm"};
-static raise_or_run_data_t editor   = {"Emacs", "emacsclient -a '' -r -n"};
-static raise_or_run_data_t browser  = {"firefox", "firefox-bin"};
-static raise_or_run_data_t chrome   = {"Google-chrome", "google-chrome-stable"};
+static raise_or_run_data_t editor = {"Emacs", "emacsclient -a '' -r -n"};
+static raise_or_run_data_t browser = {"firefox", "firefox-bin"};
+static raise_or_run_data_t chrome = {"Google-chrome", "google-chrome-stable"};
 
 bool config_defaults_build(
   const zdwm_api_t *api,
@@ -52,10 +52,12 @@ bool config_defaults_build(
   );
   zdwm_layout_id_t floating_id =
     api->register_layout(builder, "floating", "><>", "floating", nullptr);
-  if (fair_id == ZDWM_LAYOUT_ID_INVALID ||
-      maximize_id == ZDWM_LAYOUT_ID_INVALID ||
-      fullscreen_id == ZDWM_LAYOUT_ID_INVALID ||
-      floating_id == ZDWM_LAYOUT_ID_INVALID) {
+  if (
+    fair_id == ZDWM_LAYOUT_ID_INVALID ||
+    maximize_id == ZDWM_LAYOUT_ID_INVALID ||
+    fullscreen_id == ZDWM_LAYOUT_ID_INVALID ||
+    floating_id == ZDWM_LAYOUT_ID_INVALID
+  ) {
     return false;
   }
 
@@ -105,7 +107,7 @@ bool config_defaults_build(
     MODE,                                                              \
     KEY,                                                               \
     {                                                                  \
-      .type            = ZDWM_ACTION_RAISE_OR_RUN,                     \
+      .type = ZDWM_ACTION_RAISE_OR_RUN,                                \
       .as.raise_or_run = (zdwm_action_data_raise_or_run_t)__VA_ARGS__, \
     }                                                                  \
   )
@@ -136,7 +138,7 @@ bool config_defaults_build(
   );
 
   zdwm_action_t window_cycle_output_action = {
-    .type                   = ZDWM_ACTION_WINDOW_CYCLE_OUTPUT,
+    .type = ZDWM_ACTION_WINDOW_CYCLE_OUTPUT,
     .as.window_cycle_output = {.delta = 1, .keep_focus = true},
   };
   BIND_DEFAULT(Super("o"), window_cycle_output_action);
@@ -154,7 +156,7 @@ bool config_defaults_build(
     zdwm_action_t send_window_to_workspace_action = {
       .type = ZDWM_ACTION_WINDOW_SEND_TO_WORKSPACE_SAME_OUTPUT_BY_INDEX,
       .as.window_send_to_workspace_same_output_by_index = {
-        .index            = i,
+        .index = i,
         .switch_workspace = false,
       },
     };
@@ -170,32 +172,32 @@ bool config_defaults_build(
   api->set_interaction_fps(builder, 30);
 
   zdwm_bar_config_t bar_config = {
-    .height      = 28,
-    .show_top    = true,
-    .padding_x   = 10,
-    .fps         = 30,
+    .height = 28,
+    .show_top = true,
+    .padding_x = 10,
+    .fps = 30,
     .font_family = "Terminus, Sarasa Term SC",
-    .font_size   = 10,
-    .dpi         = 144,
+    .font_size = 10,
+    .dpi = 144,
 
     .bg = "#222222",
     .fg = "#bbbbbb",
 
-    .tag_cell_padding_x  = 10,
+    .tag_cell_padding_x = 10,
     .tag_indicator_width = 4,
-    .tag_bg              = "#222222",
-    .tag_fg              = "#bbbbbb",
-    .tag_active_bg       = "#005577",
-    .tag_active_fg       = "#eeeeee",
-    .tag_urgent_bg       = "#222222",
-    .tag_urgent_fg       = "#ff0000",
-    .layout_bg           = "#222222",
-    .layout_fg           = "#bbbbbb",
+    .tag_bg = "#222222",
+    .tag_fg = "#bbbbbb",
+    .tag_active_bg = "#005577",
+    .tag_active_fg = "#eeeeee",
+    .tag_urgent_bg = "#222222",
+    .tag_urgent_fg = "#ff0000",
+    .layout_bg = "#222222",
+    .layout_fg = "#bbbbbb",
 
     .binding_show_default = true,
-    .binding_padding_x    = 2,
-    .binding_mode_bg      = "#900000",
-    .binding_mode_fg      = "#ffffff",
+    .binding_padding_x = 2,
+    .binding_mode_bg = "#900000",
+    .binding_mode_fg = "#ffffff",
 
     .window_focused_bg = "#005577",
     .window_focused_fg = "#eeeeee",

@@ -40,7 +40,7 @@ typedef struct atom_item_t {
 
 static void atoms_init(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
-  atoms_t *atoms         = &backend->atoms;
+  atoms_t *atoms = &backend->atoms;
 
 #define ATOM_ITEM(name) {#name, sizeof(#name) - 1, &atoms->name},
   atom_item_t atom_list[] = {ATOM_LIST(ATOM_ITEM)};
@@ -58,7 +58,7 @@ static void atoms_init(backend_t *backend) {
     if (!reply) continue;
 
     atom_item_t *atom = &atom_list[i];
-    *atom->atom       = reply->atom;
+    *atom->atom = reply->atom;
     p_delete(&reply);
   }
 
@@ -80,22 +80,22 @@ static void atoms_init(backend_t *backend) {
 
 static void create_wm_check_window(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
-  xcb_window_t root      = backend->screen->root;
-  uint8_t depth          = backend->screen->root_depth;
-  xcb_visualid_t v       = backend->screen->root_visual;
-  uint16_t _c            = XCB_WINDOW_CLASS_COPY_FROM_PARENT;
-  uint32_t m             = XCB_NONE;
-  void *p                = nullptr;
+  xcb_window_t root = backend->screen->root;
+  uint8_t depth = backend->screen->root_depth;
+  xcb_visualid_t v = backend->screen->root_visual;
+  uint16_t _c = XCB_WINDOW_CLASS_COPY_FROM_PARENT;
+  uint32_t m = XCB_NONE;
+  void *p = nullptr;
 
   xcb_window_t win = xcb_generate_id(conn);
   xcb_create_window(conn, depth, win, root, -1, -1, 1, 1, 0, _c, v, m, p);
   window_set_class_instance(conn, win);
 
   window_set_name_static(conn, win, APP_NAME);
-  uint8_t mode    = XCB_PROP_MODE_REPLACE;
+  uint8_t mode = XCB_PROP_MODE_REPLACE;
   xcb_atom_t prop = backend->atoms._NET_WM_NAME;
   xcb_atom_t type = backend->atoms.UTF8_STRING;
-  auto data_len   = sizeof(APP_NAME) - 1;
+  auto data_len = sizeof(APP_NAME) - 1;
   xcb_change_property(conn, mode, win, prop, type, 8, data_len, APP_NAME);
 
   prop = backend->atoms._NET_SUPPORTING_WM_CHECK;
@@ -103,27 +103,27 @@ static void create_wm_check_window(backend_t *backend) {
   xcb_change_property(conn, mode, win, prop, type, 32, 1, &win);
   xcb_change_property(conn, mode, root, prop, type, 32, 1, &win);
 
-  prop      = backend->atoms._NET_WM_PID;
-  type      = XCB_ATOM_CARDINAL;
+  prop = backend->atoms._NET_WM_PID;
+  type = XCB_ATOM_CARDINAL;
   pid_t pid = getpid();
   xcb_change_property(conn, mode, win, prop, type, 32, 1, &pid);
 }
 
 static void create_no_focus_window(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
-  xcb_window_t root      = backend->screen->root;
-  uint8_t d              = backend->screen->root_depth;
-  xcb_visualid_t v       = backend->screen->root_visual;
-  uint16_t _c            = XCB_WINDOW_CLASS_COPY_FROM_PARENT;
+  xcb_window_t root = backend->screen->root;
+  uint8_t d = backend->screen->root_depth;
+  xcb_visualid_t v = backend->screen->root_visual;
+  uint16_t _c = XCB_WINDOW_CLASS_COPY_FROM_PARENT;
 
   xcb_window_t win = xcb_generate_id(conn);
-  uint32_t m       = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+  uint32_t m = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
                XCB_CW_OVERRIDE_REDIRECT | XCB_CW_COLORMAP;
   const xcb_create_window_value_list_t p = {
     .override_redirect = true,
-    .background_pixel  = backend->screen->black_pixel,
-    .border_pixel      = backend->screen->black_pixel,
-    .colormap          = backend->screen->default_colormap,
+    .background_pixel = backend->screen->black_pixel,
+    .border_pixel = backend->screen->black_pixel,
+    .colormap = backend->screen->default_colormap,
   };
   xcb_create_window_aux(conn, d, win, root, -1, -1, 1, 1, 0, _c, v, m, &p);
   window_set_class_instance(conn, win);
@@ -134,9 +134,9 @@ static void create_no_focus_window(backend_t *backend) {
 }
 
 backend_t *backend_create(const char *display_name) {
-  int screen_num         = 0;
+  int screen_num = 0;
   xcb_connection_t *conn = xcb_connect(display_name, &screen_num);
-  int xcb_conn_error     = xcb_connection_has_error(conn);
+  int xcb_conn_error = xcb_connection_has_error(conn);
   if (xcb_conn_error) {
     fatal("cannot open display %s, error %d", display_name, xcb_conn_error);
   }
@@ -145,7 +145,7 @@ backend_t *backend_create(const char *display_name) {
   if (!screen) fatal("cannot get screen info");
   xcb_window_t root = screen->root;
 
-  uint32_t mask                = XCB_CW_EVENT_MASK;
+  uint32_t mask = XCB_CW_EVENT_MASK;
   const xcb_params_cw_t params = {
     .event_mask = XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT,
   };
@@ -159,9 +159,9 @@ backend_t *backend_create(const char *display_name) {
   }
 
   backend_t *backend = p_new(backend_t, 1);
-  backend->conn      = conn;
-  backend->screen    = screen;
-  backend->screenp   = screen_num;
+  backend->conn = conn;
+  backend->screen = screen;
+  backend->screenp = screen_num;
 
   xcb_prefetch_extension_data(conn, &xcb_xfixes_id);
   const xcb_query_extension_reply_t *query =
@@ -268,10 +268,10 @@ static bool detect_monitor_by_randr(
   xcb_randr_monitor_info_iterator_t iter =
     xcb_randr_get_monitors_monitors_iterator(monitors_reply);
   for (int i = 0; iter.rem; xcb_randr_monitor_info_next(&iter), i++) {
-    output_info_t *output   = &output_list[i];
-    output->geometry.x      = iter.data->x;
-    output->geometry.y      = iter.data->y;
-    output->geometry.width  = iter.data->width;
+    output_info_t *output = &output_list[i];
+    output->geometry.x = iter.data->x;
+    output->geometry.y = iter.data->y;
+    output->geometry.width = iter.data->width;
     output->geometry.height = iter.data->height;
 
     xcb_get_atom_name_cookie_t name_cookie =
@@ -280,8 +280,8 @@ static bool detect_monitor_by_randr(
       xcb_get_atom_name_reply(backend->conn, name_cookie, nullptr);
 
     if (name_reply) {
-      char *name   = xcb_get_atom_name_name(name_reply);
-      int length   = xcb_get_atom_name_name_length(name_reply);
+      char *name = xcb_get_atom_name_name(name_reply);
+      int length = xcb_get_atom_name_name_length(name_reply);
       output->name = p_strndup(name, length);
       p_delete(&name_reply);
     }
@@ -350,10 +350,10 @@ static bool detect_monitor_by_xinerama(
 
   output_info_t *output_list = p_new(output_info_t, len);
   for (int i = 0; i < len; i++) {
-    output_info_t *output   = &output_list[i];
-    output->geometry.x      = screen_info[i].x_org;
-    output->geometry.y      = screen_info[i].y_org;
-    output->geometry.width  = screen_info[i].width;
+    output_info_t *output = &output_list[i];
+    output->geometry.x = screen_info[i].x_org;
+    output->geometry.y = screen_info[i].y_org;
+    output->geometry.width = screen_info[i].width;
     output->geometry.height = screen_info[i].height;
   }
   p_delete(&screens_reply);
@@ -371,7 +371,7 @@ static bool detect_monitor_by_xinerama(
 
 backend_detect_t *backend_detect(backend_t *backend) {
   output_info_t *outputs = nullptr;
-  size_t count           = 0;
+  size_t count = 0;
 
   if (detect_monitor_by_randr(backend, &outputs, &count)) {
     backend_detect_t *detect = output_remove_duplication(outputs, count);
@@ -385,15 +385,15 @@ backend_detect_t *backend_detect(backend_t *backend) {
     return detect;
   }
 
-  output_info_t *output   = p_new(output_info_t, 1);
-  output->geometry.x      = 0;
-  output->geometry.y      = 0;
-  output->geometry.width  = backend->screen->width_in_pixels;
+  output_info_t *output = p_new(output_info_t, 1);
+  output->geometry.x = 0;
+  output->geometry.y = 0;
+  output->geometry.width = backend->screen->width_in_pixels;
   output->geometry.height = backend->screen->height_in_pixels;
 
   backend_detect_t *detect = p_new(backend_detect_t, 1);
-  detect->outputs          = output;
-  detect->output_count     = 1;
+  detect->outputs = output;
+  detect->output_count = 1;
   return detect;
 }
 
@@ -410,16 +410,16 @@ void backend_detect_destroy(backend_detect_t *detect) {
 
 static void backend_focus_window(backend_t *backend, xcb_window_t window) {
   xcb_connection_t *conn = backend->conn;
-  xcb_window_t root      = backend->screen->root;
-  const atoms_t *atoms   = &backend->atoms;
-  xcb_atom_t property    = atoms->_NET_ACTIVE_WINDOW;
-  xcb_timestamp_t time   = XCB_TIME_CURRENT_TIME;
+  xcb_window_t root = backend->screen->root;
+  const atoms_t *atoms = &backend->atoms;
+  xcb_atom_t property = atoms->_NET_ACTIVE_WINDOW;
+  xcb_timestamp_t time = XCB_TIME_CURRENT_TIME;
   if (window == XCB_WINDOW_NONE || window == root) {
     window = backend->window_no_focus;
     xcb_set_input_focus(conn, XCB_INPUT_FOCUS_PARENT, window, time);
     xcb_delete_property(conn, root, property);
   } else {
-    uint8_t mode    = XCB_PROP_MODE_REPLACE;
+    uint8_t mode = XCB_PROP_MODE_REPLACE;
     xcb_atom_t type = XCB_ATOM_WINDOW;
     xcb_set_input_focus(conn, XCB_INPUT_FOCUS_PARENT, window, time);
     xcb_change_property(conn, mode, root, property, type, 32, 1, &window);
@@ -449,12 +449,12 @@ static void
 backend_restack_windows(backend_t *backend, const effect_window_list_t *list) {
   if (list->count == 0) return;
 
-  xcb_connection_t *conn      = backend->conn;
+  xcb_connection_t *conn = backend->conn;
   xcb_window_t sibling_window = backend->window_no_focus;
   for (size_t i = 0; i < list->count; ++i) {
     uint16_t mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
     xcb_configure_window_value_list_t params = {
-      .sibling    = sibling_window,
+      .sibling = sibling_window,
       .stack_mode = XCB_STACK_MODE_ABOVE
     };
     sibling_window = list->windows[i];
@@ -468,7 +468,7 @@ static void window_configure_list_reset(window_configure_list_t *configs) {
 }
 
 static void backend_apply_window_configure_list(backend_t *backend) {
-  xcb_connection_t *conn           = backend->conn;
+  xcb_connection_t *conn = backend->conn;
   window_configure_list_t *configs = &backend->config_list;
   for (size_t i = 0; i < configs->count; ++i) {
     window_configure_t *cfg = &configs->cfgs[i];
@@ -489,7 +489,7 @@ find_or_push_configure(window_configure_list_t *configs, xcb_window_t window) {
   cfg = array_push(configs->cfgs, configs->count, configs->capacity);
   p_clear(cfg, 1);
   cfg->window = window;
-  cfg->mask   = 0;
+  cfg->mask = 0;
   return cfg;
 }
 
@@ -501,8 +501,8 @@ static void merge_window_configure_params(
 
 #define FIELD_MERGE(MASK, VALUE_FIELD, DATA_FIELD) \
   if (data->changed_fields & (MASK)) {             \
-    cfg->mask              |= (MASK);              \
-    cfg->value.VALUE_FIELD  = data->DATA_FIELD;    \
+    cfg->mask |= (MASK);                           \
+    cfg->value.VALUE_FIELD = data->DATA_FIELD;     \
   }
 
   FIELD_MERGE(ZDWM_CONFIGURE_FIELD_X, x, x);
@@ -526,13 +526,13 @@ static void backend_grab_button(
   backend_t *backend,
   const effect_grab_button_t *grab_button
 ) {
-  auto conn   = backend->conn;
+  auto conn = backend->conn;
   auto window = grab_button->window;
   xcb_ungrab_button(conn, XCB_BUTTON_INDEX_ANY, window, XCB_MOD_MASK_ANY);
 
   auto buttons = grab_button->buttons;
   for (size_t i = 0; i < grab_button->count; ++i) {
-    auto button    = buttons[i].button;
+    auto button = buttons[i].button;
     auto modifiers = buttons[i].modifiers;
     window_grab_button(backend, window, button, modifiers);
   }
@@ -543,9 +543,9 @@ static void backend_grab_pointer(backend_t *backend, cursor_t cursor) {
   auto root = backend->screen->root;
   auto mask = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE |
               XCB_EVENT_MASK_POINTER_MOTION;
-  auto mode    = XCB_GRAB_MODE_ASYNC;
+  auto mode = XCB_GRAB_MODE_ASYNC;
   auto xcursor = cursor_get_xcb_cursor(backend, cursor);
-  auto time    = XCB_TIME_CURRENT_TIME;
+  auto time = XCB_TIME_CURRENT_TIME;
   xcb_grab_pointer(conn, false, root, mask, mode, mode, root, xcursor, time);
 }
 
@@ -584,7 +584,7 @@ static void backend_merge_effects(
       backend_grab_pointer(backend, ZDWM_CURSOR_RESIZE);
       break;
     case ZDWM_EFFECT_MINIMIZE_WINDOW: {
-      auto window                = e->as.minimize.window;
+      auto window = e->as.minimize.window;
       xcb_icccm_wm_state_t state = XCB_ICCCM_WM_STATE_NORMAL;
       if (e->as.minimize.value) state = XCB_ICCCM_WM_STATE_ICONIC;
       window_set_icccm_wm_state(backend->conn, window, state);
@@ -697,10 +697,10 @@ bool backend_apply_effect(
 }
 
 backend_scan_result_t *backend_scan_windows(backend_t *backend) {
-  auto conn   = backend->conn;
-  auto root   = backend->screen->root;
+  auto conn = backend->conn;
+  auto root = backend->screen->root;
   auto cookie = xcb_query_tree_unchecked(conn, root);
-  auto reply  = xcb_query_tree_reply(conn, cookie, nullptr);
+  auto reply = xcb_query_tree_reply(conn, cookie, nullptr);
   if (!reply) return nullptr;
 
   auto length = xcb_query_tree_children_length(reply);
@@ -711,20 +711,20 @@ backend_scan_result_t *backend_scan_windows(backend_t *backend) {
 
   auto list = xcb_query_tree_children(reply);
 
-  auto result     = p_new(backend_scan_result_t, 1);
+  auto result = p_new(backend_scan_result_t, 1);
   auto sub_result = p_new(backend_scan_result_t, 1);
 
   for (typeof(length) i = 0; i < length; ++i) {
     auto window = list[i];
-    auto wa     = window_get_attributes(backend, window);
+    auto wa = window_get_attributes(backend, window);
     if (!wa) continue;
 
     auto override_redirect = wa->override_redirect;
-    auto map_state         = wa->map_state;
+    auto map_state = wa->map_state;
     p_delete(&wa);
     if (override_redirect) continue;
 
-    auto hints        = (xcb_icccm_wm_hints_t){0};
+    auto hints = (xcb_icccm_wm_hints_t){0};
     auto hints_getted = window_get_wm_hints(backend, window, &hints);
     if (!(map_state == XCB_MAP_STATE_VIEWABLE ||
           (hints_getted && hints.initial_state == XCB_ICCCM_WM_STATE_ICONIC))) {
@@ -732,10 +732,11 @@ backend_scan_result_t *backend_scan_windows(backend_t *backend) {
     }
 
     auto transient_for = window_get_transient_for(backend, window);
-    auto r             = transient_for == XCB_WINDOW_NONE ? result : sub_result;
-    auto slot          = array_push(r->windows, r->count, r->capacity);
-    if (!populate_window_event(backend, list[i], slot) ||
-        slot->override_redirect) {
+    auto r = transient_for == XCB_WINDOW_NONE ? result : sub_result;
+    auto slot = array_push(r->windows, r->count, r->capacity);
+    if (
+      !populate_window_event(backend, list[i], slot) || slot->override_redirect
+    ) {
       window_layer_props_cleanup(&slot->props);
       window_metadata_cleanup(&slot->metadata);
       r->count--;
@@ -746,7 +747,7 @@ backend_scan_result_t *backend_scan_windows(backend_t *backend) {
 
   for (size_t i = 0; i < sub_result->count; ++i) {
     auto slot = array_push(result->windows, result->count, result->capacity);
-    *slot     = sub_result->windows[i];
+    *slot = sub_result->windows[i];
   }
 
   p_clear(sub_result->windows, sub_result->count);
@@ -779,13 +780,13 @@ backend_bar_window_t backend_create_bar_window(
   rect_t geometry,
   uint32_t bg_pixel
 ) {
-  auto conn   = backend->conn;
-  auto root   = backend->screen->root;
+  auto conn = backend->conn;
+  auto root = backend->screen->root;
   auto visual = window_get_visual(backend, true);
 
   static xcb_colormap_t colormap = XCB_NONE;
   if (colormap == XCB_NONE) {
-    colormap      = xcb_generate_id(conn);
+    colormap = xcb_generate_id(conn);
     uint8_t alloc = XCB_COLORMAP_ALLOC_NONE;
     xcb_create_colormap(conn, alloc, colormap, root, visual->visual->visual_id);
   }
@@ -793,18 +794,18 @@ backend_bar_window_t backend_create_bar_window(
   window_clean_event_mask(conn, root);
   xcb_grab_server(conn);
 
-  auto window_id      = xcb_generate_id(conn);
-  uint16_t _class     = XCB_WINDOW_CLASS_INPUT_OUTPUT;
+  auto window_id = xcb_generate_id(conn);
+  uint16_t _class = XCB_WINDOW_CLASS_INPUT_OUTPUT;
   uint32_t value_mask = XCB_CW_OVERRIDE_REDIRECT | XCB_CW_BACK_PIXEL |
                         XCB_CW_BORDER_PIXEL | XCB_CW_EVENT_MASK |
                         XCB_CW_COLORMAP;
 
   const xcb_create_window_value_list_t value_list = {
     .override_redirect = true,
-    .background_pixel  = bg_pixel,
-    .border_pixel      = 0,
-    .event_mask        = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE,
-    .colormap          = colormap,
+    .background_pixel = bg_pixel,
+    .border_pixel = 0,
+    .event_mask = XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_EXPOSURE,
+    .colormap = colormap,
   };
   auto cookie = xcb_create_window_aux_checked(
     conn,
@@ -833,11 +834,11 @@ backend_bar_window_t backend_create_bar_window(
   root_set_event_mask(backend);
   xcb_aux_sync(conn);
 
-  auto width   = geometry.width;
-  auto height  = geometry.height;
-  auto vid     = visual->visual;
+  auto width = geometry.width;
+  auto height = geometry.height;
+  auto vid = visual->visual;
   auto surface = cairo_xcb_surface_create(conn, window_id, vid, width, height);
-  auto cr      = cairo_create(surface);
+  auto cr = cairo_create(surface);
 
   cairo_surface_destroy(surface);
   p_delete(&visual);

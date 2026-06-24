@@ -54,9 +54,9 @@ void color_parse(const char *hex, color_t *const color) {
 bool hex_color_to_rgba(const char *hex, uint32_t *rgba) {
   if (hex[0] == '#') hex++;
 
-  size_t len       = strlen(hex);
+  size_t len = strlen(hex);
   char extended[9] = {0};
-  uint32_t color   = 0x00000000;
+  uint32_t color = 0x00'00'00'00;
 
   if (len == 3 || len == 4) {
     extended[0] = extended[1] = hex[0];
@@ -76,7 +76,7 @@ bool hex_color_to_rgba(const char *hex, uint32_t *rgba) {
     return false;
   }
 
-  color = strtoul(extended, nullptr, 16) & 0xffffffff;
+  color = strtoul(extended, nullptr, 16) & 0xff'ff'ff'ff;
   *rgba = color;
   return true;
 }
@@ -100,8 +100,8 @@ void extract_color_channel(
   double *blue,
   double *alpha
 ) {
-  *red   = COLOR_SPLIT(rgba, 24);
+  *red = COLOR_SPLIT(rgba, 24);
   *green = COLOR_SPLIT(rgba, 16);
-  *blue  = COLOR_SPLIT(rgba, 8);
+  *blue = COLOR_SPLIT(rgba, 8);
   *alpha = COLOR_SPLIT(rgba, 0);
 }

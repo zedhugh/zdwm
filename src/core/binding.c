@@ -43,9 +43,9 @@ binding_table_add_mode(binding_table_t *table, const char *mode_name) {
   }
 
   zdwm_binding_mode_id_t id = (zdwm_binding_mode_id_t)table->count;
-  auto new_mode  = array_push(table->modes, table->count, table->capacity);
+  auto new_mode = array_push(table->modes, table->count, table->capacity);
   new_mode->name = mode_name;
-  new_mode->id   = id;
+  new_mode->id = id;
 
   return id;
 }
@@ -82,8 +82,10 @@ static const mod_entry_t mod_table[] = {
 
 static modifier_mask_t lookup_modifier(const char *name, size_t len) {
   for (size_t i = 0; i < countof(mod_table); ++i) {
-    if (strlen(mod_table[i].name) == len &&
-        strncmp(name, mod_table[i].name, len) == 0) {
+    if (
+      strlen(mod_table[i].name) == len &&
+      strncmp(name, mod_table[i].name, len) == 0
+    ) {
       return mod_table[i].mask;
     }
   }
@@ -118,13 +120,13 @@ static bool parse_key_sequence(
   if (!key_sequence || !modifiers || !keysym) return false;
 
   modifier_mask_t mods = ZDWM_MOD_NONE;
-  xkb_keysym_t key     = XKB_KEY_NoSymbol;
+  xkb_keysym_t key = XKB_KEY_NoSymbol;
 
-  const char *p   = key_sequence;
+  const char *p = key_sequence;
   const char *end = key_sequence + strlen(key_sequence);
 
   while (p < end) {
-    const char *plus    = strchr(p, '+');
+    const char *plus = strchr(p, '+');
     const char *seg_end = plus ? plus : end;
 
     const char *s = p;
@@ -139,7 +141,7 @@ static bool parse_key_sequence(
       modifier_mask_t mod = lookup_modifier(s, (size_t)(e - s));
       if (mod == ZDWM_MOD_NONE) return false;
       mods |= mod;
-      p     = plus + 1;
+      p = plus + 1;
     } else {
       char key_buf[64];
       size_t key_len = (size_t)(e - s);
@@ -152,7 +154,7 @@ static bool parse_key_sequence(
         return false;
       } else {
         *modifiers = mods;
-        *keysym    = key;
+        *keysym = key;
         return true;
       }
     }
@@ -171,13 +173,13 @@ bool binding_table_add_bind(
   if (!mode) return false;
 
   modifier_mask_t modifiers = 0;
-  xkb_keysym_t keysym       = XKB_KEY_NoSymbol;
+  xkb_keysym_t keysym = XKB_KEY_NoSymbol;
   if (!parse_key_sequence(key_sequence, &modifiers, &keysym)) return false;
 
-  auto item       = array_push(mode->items, mode->count, mode->capacity);
+  auto item = array_push(mode->items, mode->count, mode->capacity);
   item->modifiers = modifiers;
-  item->keysym    = keysym;
-  item->action    = action;
+  item->keysym = keysym;
+  item->action = action;
 
   return true;
 }
@@ -188,13 +190,13 @@ void binding_table_destroy(binding_table_t *table) {
   for (size_t i = 0; i < table->count; ++i) {
     binding_mode_t *mode = &table->modes[i];
     p_delete(&mode->items);
-    mode->count    = 0;
+    mode->count = 0;
     mode->capacity = 0;
   }
 
   p_delete(&table->modes);
-  table->count        = 0;
-  table->capacity     = 0;
+  table->count = 0;
+  table->capacity = 0;
   table->default_mode = ZDWM_BINDING_MODE_ID_INVALID;
 
   p_delete(&table);
@@ -243,7 +245,7 @@ binding_table_cycle_mode(const binding_table_t *table, int32_t delta) {
   } else {
     for (size_t i = 0; i < table->count; ++i) {
       if (table->modes[i].id == table->current_mode) {
-        index   = i;
+        index = i;
         matched = true;
         break;
       }
@@ -252,7 +254,7 @@ binding_table_cycle_mode(const binding_table_t *table, int32_t delta) {
 
   if (!matched) return ZDWM_BINDING_MODE_ID_INVALID;
 
-  int64_t count      = (int64_t)table->count;
+  int64_t count = (int64_t)table->count;
   int64_t next_index = ((int64_t)index + (int64_t)delta) % count;
   if (next_index < 0) next_index += count;
 

@@ -56,7 +56,7 @@ zdwm_layout_result_push(zdwm_layout_result_t *result, zdwm_layout_item_t item) {
       realloc(result->items, capacity * sizeof(*result->items));
     if (!items) abort();
 
-    result->items         = items;
+    result->items = items;
     result->item_capacity = capacity;
   }
 

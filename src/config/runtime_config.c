@@ -38,8 +38,10 @@ struct zdwm_config_builder_t {
 void runtime_config_cleanup(runtime_init_desc_t *desc) {
   if (!desc) return;
 
-  if (desc->layouts.slots || desc->layouts.slot_count ||
-      desc->layouts.slot_capacity) {
+  if (
+    desc->layouts.slots || desc->layouts.slot_count ||
+    desc->layouts.slot_capacity
+  ) {
     layout_registry_cleanup(&desc->layouts);
   }
   binding_table_destroy(desc->binding_table);
@@ -53,13 +55,15 @@ void runtime_config_cleanup(runtime_init_desc_t *desc) {
 static void config_builder_cleanup(zdwm_config_builder_t *builder) {
   if (!builder) return;
 
-  if (builder->layouts.slots || builder->layouts.slot_count ||
-      builder->layouts.slot_capacity) {
+  if (
+    builder->layouts.slots || builder->layouts.slot_count ||
+    builder->layouts.slot_capacity
+  ) {
     layout_registry_cleanup(&builder->layouts);
   }
   workspace_desc_list_cleanup(&builder->workspaces, &builder->workspace_count);
   builder->workspace_capacity = 0;
-  builder->output_count       = 0;
+  builder->output_count = 0;
 
   binding_table_destroy(builder->binding_table);
   builder->binding_table = nullptr;
@@ -93,10 +97,10 @@ static workspace_id_t runtime_config_define_workspace(
   }
 
   workspace_desc_t desc = {
-    .output_index      = output_index,
-    .name              = name,
-    .layout_ids        = layout_ids,
-    .layout_count      = layout_count,
+    .output_index = output_index,
+    .name = name,
+    .layout_ids = layout_ids,
+    .layout_count = layout_count,
     .initial_layout_id = initial_layout_id,
   };
   if (!workspace_desc_valid(&desc, builder->output_count)) {
@@ -110,15 +114,15 @@ static workspace_id_t runtime_config_define_workspace(
   }
 
   workspace_id_t workspace_id = (workspace_id_t)builder->workspace_count;
-  workspace_desc_t *slot      = array_push(
+  workspace_desc_t *slot = array_push(
     builder->workspaces,
     builder->workspace_count,
     builder->workspace_capacity
   );
-  slot->output_index      = output_index;
-  slot->name              = p_strdup(name);
-  slot->layout_ids        = p_copy(layout_ids, layout_count);
-  slot->layout_count      = layout_count;
+  slot->output_index = output_index;
+  slot->name = p_strdup(name);
+  slot->layout_ids = p_copy(layout_ids, layout_count);
+  slot->layout_count = layout_count;
   slot->initial_layout_id = initial_layout_id;
   return workspace_id;
 }
@@ -151,14 +155,14 @@ static bool runtime_config_add_rule(
   if (!rule_match_valid(match)) return false;
   if (!rule_action_valid(action, builder->workspace_count)) return false;
 
-  rules_t *rules    = &builder->rules;
+  rules_t *rules = &builder->rules;
   rule_item_t *rule = array_push(rules->items, rules->count, rules->capacity);
 
-  rule->match.app_id        = p_strdup_nullable(match->app_id);
-  rule->match.role          = p_strdup_nullable(match->role);
-  rule->match.class_name    = p_strdup_nullable(match->class_name);
+  rule->match.app_id = p_strdup_nullable(match->app_id);
+  rule->match.role = p_strdup_nullable(match->role);
+  rule->match.class_name = p_strdup_nullable(match->class_name);
   rule->match.instance_name = p_strdup_nullable(match->instance_name);
-  rule->action              = *action;
+  rule->action = *action;
 
   return true;
 }
@@ -308,18 +312,18 @@ static bool config_builder_finish(
 
   if (!layout_registry_move(&builder->layouts, &out->layouts)) return false;
   if (!rules_move(&builder->rules, &out->rules)) return false;
-  out->border                 = builder->border;
-  out->fps                    = builder->fps;
-  out->binding_table          = builder->binding_table;
-  out->workspaces             = builder->workspaces;
-  out->workspace_count        = builder->workspace_count;
-  out->listeners              = builder->listeners;
-  out->bar                    = builder->bar;
-  builder->binding_table      = nullptr;
-  builder->workspaces         = nullptr;
-  builder->workspace_count    = 0;
+  out->border = builder->border;
+  out->fps = builder->fps;
+  out->binding_table = builder->binding_table;
+  out->workspaces = builder->workspaces;
+  out->workspace_count = builder->workspace_count;
+  out->listeners = builder->listeners;
+  out->bar = builder->bar;
+  builder->binding_table = nullptr;
+  builder->workspaces = nullptr;
+  builder->workspace_count = 0;
   builder->workspace_capacity = 0;
-  builder->output_count       = 0;
+  builder->output_count = 0;
   p_clear(&builder->listeners, 1);
   p_clear(&builder->bar, 1);
   return true;
@@ -333,17 +337,17 @@ static bool runtime_config_build(
 ) {
   if (!setup || !out) return false;
   zdwm_config_builder_t builder = {0};
-  builder.output_count          = output_count;
-  builder.binding_table         = binding_table_create();
+  builder.output_count = output_count;
+  builder.binding_table = binding_table_create();
 
+  /* clang-format off */
   zdwm_api_t api = {
     .abi_version = ZDWM_CONFIG_ABI_VERSION,
-    .builtin_layouts =
-      {
-        .fair       = fair,
-        .fullscreen = fullscreen,
-        .maximize   = maximize,
-      },
+    .builtin_layouts = {
+      .fair       = fair,
+      .fullscreen = fullscreen,
+      .maximize   = maximize,
+    },
     .register_layout   = runtime_config_register_layout,
     .define_workspace  = runtime_config_define_workspace,
     .add_rule          = runtime_config_add_rule,
@@ -355,20 +359,19 @@ static bool runtime_config_build(
 
     .set_interaction_fps = runtime_config_set_interaction_fps,
 
-    .subscribe_current_output = runtime_config_subscribe_current_output,
-    .subscribe_initial_workspace_list =
-      runtime_config_subscribe_initial_workspace_list,
-    .subscribe_workspace_active = runtime_config_subscribe_workspace_active,
-    .subscribe_layout           = runtime_config_subscribe_layout,
-    .subscribe_binding_mode     = runtime_config_subscribe_binding_mode,
-    .subscribe_initial_window_list =
-      runtime_config_subscribe_initial_window_list,
-    .subscribe_window_added   = runtime_config_subscribe_window_added,
-    .subscribe_window_updated = runtime_config_subscribe_window_updated,
-    .subscribe_window_removed = runtime_config_subscribe_window_removed,
+    .subscribe_current_output         = runtime_config_subscribe_current_output,
+    .subscribe_initial_workspace_list = runtime_config_subscribe_initial_workspace_list,
+    .subscribe_workspace_active       = runtime_config_subscribe_workspace_active,
+    .subscribe_layout                 = runtime_config_subscribe_layout,
+    .subscribe_binding_mode           = runtime_config_subscribe_binding_mode,
+    .subscribe_initial_window_list    = runtime_config_subscribe_initial_window_list,
+    .subscribe_window_added           = runtime_config_subscribe_window_added,
+    .subscribe_window_updated         = runtime_config_subscribe_window_updated,
+    .subscribe_window_removed         = runtime_config_subscribe_window_removed,
 
     .set_bar_config = runtime_config_set_bar_config,
   };
+  /* clang-format on */
   bool ok = setup(&api, &builder, outputs, output_count) &&
             config_builder_finish(&builder, out);
   config_builder_cleanup(&builder);
@@ -390,7 +393,7 @@ bool runtime_config_load(const char *override_path, runtime_init_desc_t *out) {
   bool ok = runtime_config_build(setup, out->outputs, out->output_count, out);
   if (ok) {
     out->config_module_handle = loader.handle;
-    loader.handle             = nullptr;
+    loader.handle = nullptr;
   }
 
   config_loader_cleanup(&loader);

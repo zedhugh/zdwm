@@ -75,11 +75,13 @@ typedef struct window_metadata_change_event_t {
   window_metadata_t metadata;
 } window_metadata_change_event_t;
 
+/* clang-format off */
 typedef enum window_activation_source_t {
   ZDWM_WINDOW_ACTIVATION_SOURCE_LEGACY      = 0,
   ZDWM_WINDOW_ACTIVATION_SOURCE_APPLICATION = 1,
   ZDWM_WINDOW_ACTIVATION_SOURCE_PAGER       = 2,
 } window_activation_source_t;
+/* clang-format on */
 
 typedef struct window_activate_request_event_t {
   window_id_t window;

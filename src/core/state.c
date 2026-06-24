@@ -26,13 +26,13 @@ void state_init(
   state->outputs = p_new(output_t, output_count);
   for (size_t i = 0; i < output_count; i++) {
     const output_info_t *output_info = &outputs[i];
-    output_t *output                 = &state->outputs[i];
+    output_t *output = &state->outputs[i];
 
-    output->id                   = (output_id_t)i;
+    output->id = (output_id_t)i;
     output->current_workspace_id = ZDWM_WORKSPACE_ID_INVALID;
-    output->name                 = p_strdup_nullable(output_info->name);
-    output->geometry             = output_info->geometry;
-    output->workarea             = output_info->geometry;
+    output->name = p_strdup_nullable(output_info->name);
+    output->geometry = output_info->geometry;
+    output->workarea = output_info->geometry;
   }
   state->output_count = output_count;
 
@@ -43,16 +43,16 @@ void state_init(
       fatal("workspace desc at index %zu invalid", i);
     }
 
-    output_t *output       = &state->outputs[workspace_desc->output_index];
+    output_t *output = &state->outputs[workspace_desc->output_index];
     workspace_t *workspace = &state->workspaces[i];
-    workspace->id          = (workspace_id_t)i;
-    workspace->output_id   = output->id;
+    workspace->id = (workspace_id_t)i;
+    workspace->output_id = output->id;
     workspace->focused_window_id = ZDWM_WINDOW_ID_INVALID;
     workspace->available_layouts =
       p_copy(workspace_desc->layout_ids, workspace_desc->layout_count);
-    workspace->layout_id    = workspace_desc->initial_layout_id;
+    workspace->layout_id = workspace_desc->initial_layout_id;
     workspace->layout_count = workspace_desc->layout_count;
-    workspace->name         = p_strdup(workspace_desc->name);
+    workspace->name = p_strdup(workspace_desc->name);
 
     if (workspace_id_invalid(output->current_workspace_id)) {
       output->current_workspace_id = workspace->id;
@@ -84,7 +84,7 @@ void state_cleanup(state_t *state) {
   for (size_t i = 0; i < ZDWM_WINDOW_LAYER_COUNT; ++i) {
     layer_stack_t *layer = &state->stacks[i];
     p_delete(&layer->order);
-    layer->order    = 0;
+    layer->order = 0;
     layer->capacity = 0;
   }
 
@@ -134,7 +134,7 @@ static void state_workspace_adjust_focused_window(
     const layer_stack_t *layer = &state->stacks[i];
     for (size_t i = layer->count; i > 0; --i) {
       window_id_t window_id = layer->order[i - 1];
-      window                = state_window_get(state, window_id);
+      window = state_window_get(state, window_id);
       if (window && window->workspace_id == workspace_id) {
         workspace->focused_window_id = window_id;
         return;
@@ -218,7 +218,7 @@ bool state_workspace_valid(const state_t *state, workspace_id_t id) {
 
 bool state_workspace_show(const state_t *state, workspace_id_t workspace_id) {
   auto workspace = state_workspace_get(state, workspace_id);
-  auto output    = state_output_get(state, workspace->output_id);
+  auto output = state_output_get(state, workspace->output_id);
   return output->current_workspace_id == workspace_id;
 }
 
@@ -240,12 +240,12 @@ void state_output_inset_workarea(
   auto output = (output_t *)state_output_get(state, output_id);
   if (!output) return;
 
-  auto workarea     = output->geometry;
-  workarea.y       += inset.top;
-  workarea.x       += inset.left;
-  workarea.width   -= inset.left + inset.right;
-  workarea.height  -= inset.top + inset.bottom;
-  output->workarea  = workarea;
+  auto workarea = output->geometry;
+  workarea.y += inset.top;
+  workarea.x += inset.left;
+  workarea.width -= inset.left + inset.right;
+  workarea.height -= inset.top + inset.bottom;
+  output->workarea = workarea;
 }
 
 void state_output_set_workarea(
@@ -308,7 +308,7 @@ bool state_set_current_output(state_t *state, output_id_t output_id) {
 }
 
 const window_t *state_window_add(state_t *state, const window_info_t *info) {
-  window_id_t id   = info->id;
+  window_id_t id = info->id;
   window_t *window = (window_t *)state_window_get(state, id);
   if (!window) {
     window =
@@ -318,10 +318,10 @@ const window_t *state_window_add(state_t *state, const window_info_t *info) {
     layer_stack_append(layer, id);
 
     p_clear(window, 1);
-    window->id            = id;
+    window->id = id;
     window->transient_for = info->transient_for;
-    window->workspace_id  = ZDWM_WORKSPACE_ID_INVALID;
-    window->layer         = info->layer_type;
+    window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
+    window->layer = info->layer_type;
   }
 
   window_set_fullscreen(window, info->fullscreen);
@@ -361,15 +361,15 @@ void state_window_remove(state_t *state, window_id_t id) {
   for (size_t i = 0; i < state->window_count; i++) {
     if (state->windows[i].id == id) {
       matched = true;
-      index   = i;
+      index = i;
       break;
     }
   }
   if (!matched) return;
 
-  window_t *window               = &state->windows[index];
+  window_t *window = &state->windows[index];
   window_layer_type_t layer_type = window->layer;
-  workspace_id_t workspace_id    = window->workspace_id;
+  workspace_id_t workspace_id = window->workspace_id;
   p_delete(&window->title);
   p_delete(&window->app_id);
   p_delete(&window->role);
@@ -379,9 +379,9 @@ void state_window_remove(state_t *state, window_id_t id) {
   if (array_erase(state->windows, state->window_count, index)) {
     window = &state->windows[state->window_count];
     p_clear(window, 1);
-    window->id            = ZDWM_WINDOW_ID_INVALID;
+    window->id = ZDWM_WINDOW_ID_INVALID;
     window->transient_for = ZDWM_WINDOW_ID_INVALID;
-    window->workspace_id  = ZDWM_WORKSPACE_ID_INVALID;
+    window->workspace_id = ZDWM_WORKSPACE_ID_INVALID;
 
     for (size_t i = 0; i < state->window_count; ++i) {
       window = &state->windows[i];
@@ -411,10 +411,10 @@ void state_window_set_workspace(
   workspace_id_t workspace_id
 ) {
   const workspace_t *workspace = state_workspace_get(state, workspace_id);
-  window_t *window             = (window_t *)state_window_get(state, window_id);
+  window_t *window = (window_t *)state_window_get(state, window_id);
   if (!workspace || !window || window->workspace_id == workspace_id) return;
 
-  workspace            = state_workspace_get(state, window->workspace_id);
+  workspace = state_workspace_get(state, window->workspace_id);
   window->workspace_id = workspace_id;
 
   if (workspace && workspace->focused_window_id == window_id) {

@@ -46,8 +46,8 @@ static inline void workspace_desc_cleanup(workspace_desc_t *workspace) {
 
   p_delete(&workspace->name);
   p_delete(&workspace->layout_ids);
-  workspace->output_index      = 0;
-  workspace->layout_count      = 0;
+  workspace->output_index = 0;
+  workspace->layout_count = 0;
   workspace->initial_layout_id = ZDWM_LAYOUT_ID_INVALID;
 }
 

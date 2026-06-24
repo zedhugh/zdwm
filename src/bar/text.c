@@ -41,10 +41,10 @@ text_context_create(const char *family, uint32_t size, uint32_t dpi) {
   g_object_unref(fontmap);
 
   auto ctx = p_new(text_context_t, 1);
-  *ctx     = (text_context_t){
-        .context   = context,
-        .layout    = layout,
-        .attr_list = attr_list,
+  *ctx = (text_context_t){
+    .context = context,
+    .layout = layout,
+    .attr_list = attr_list,
   };
 
   return ctx;

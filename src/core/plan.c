@@ -38,23 +38,23 @@ void plan_reset(plan_t *plan) {
 void plan_cleanup(plan_t *plan) {
   free_memory_hold_by_effects(plan->effects, plan->count);
   p_delete(&plan->effects);
-  plan->count         = 0;
-  plan->capacity      = 0;
+  plan->count = 0;
+  plan->capacity = 0;
   plan->need_relayout = false;
-  plan->quit          = false;
-  plan->will_restart  = false;
+  plan->quit = false;
+  plan->will_restart = false;
 }
 
 void plan_push_effect(plan_t *plan, const effect_t *effect) {
   effect_t *eft = array_push(plan->effects, plan->count, plan->capacity);
-  *eft          = *effect;
+  *eft = *effect;
 }
 
 void plan_push_map_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type          = ZDWM_EFFECT_MAP_WINDOW,
+    .type = ZDWM_EFFECT_MAP_WINDOW,
     .as.map.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -64,7 +64,7 @@ void plan_push_unmap_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type            = ZDWM_EFFECT_UNMAP_WINDOW,
+    .type = ZDWM_EFFECT_UNMAP_WINDOW,
     .as.unmap.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -74,7 +74,7 @@ void plan_push_focus_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type            = ZDWM_EFFECT_FOCUS_WINDOW,
+    .type = ZDWM_EFFECT_FOCUS_WINDOW,
     .as.focus.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -84,7 +84,7 @@ void plan_push_kill_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type           = ZDWM_EFFECT_KILL_WINDOW,
+    .type = ZDWM_EFFECT_KILL_WINDOW,
     .as.kill.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -94,7 +94,7 @@ void plan_push_withdraw_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type               = ZDWM_EFFECT_WITHDRAW_WINDOW,
+    .type = ZDWM_EFFECT_WITHDRAW_WINDOW,
     .as.withdraw.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -104,7 +104,7 @@ void plan_push_move_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type           = ZDWM_EFFECT_START_MOVE_WINDOW,
+    .type = ZDWM_EFFECT_START_MOVE_WINDOW,
     .as.move.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -114,7 +114,7 @@ void plan_push_resize_effect(plan_t *plan, window_id_t window_id) {
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type             = ZDWM_EFFECT_START_RESIZE_WINDOW,
+    .type = ZDWM_EFFECT_START_RESIZE_WINDOW,
     .as.resize.window = window_id,
   };
   plan_push_effect(plan, &effect);
@@ -128,10 +128,10 @@ void plan_push_fullscreen_effect(
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type          = ZDWM_EFFECT_FULLSCREEN_WINDOW,
+    .type = ZDWM_EFFECT_FULLSCREEN_WINDOW,
     .as.fullscreen = {
       .window = window_id,
-      .value  = value,
+      .value = value,
     },
   };
   plan_push_effect(plan, &effect);
@@ -145,10 +145,10 @@ void plan_push_maximize_effect(
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type        = ZDWM_EFFECT_MAXIMIZE_WINDOW,
+    .type = ZDWM_EFFECT_MAXIMIZE_WINDOW,
     .as.maximize = {
       .window = window_id,
-      .value  = value,
+      .value = value,
     },
   };
   plan_push_effect(plan, &effect);
@@ -162,10 +162,10 @@ void plan_push_minimize_effect(
   if (window_id_invalid(window_id)) return;
 
   effect_t effect = {
-    .type        = ZDWM_EFFECT_MINIMIZE_WINDOW,
+    .type = ZDWM_EFFECT_MINIMIZE_WINDOW,
     .as.minimize = {
       .window = window_id,
-      .value  = value,
+      .value = value,
     },
   };
   plan_push_effect(plan, &effect);
@@ -179,10 +179,10 @@ void plan_push_change_border_color_effect(
   if (window_id_invalid(window_id) || color == nullptr) return;
 
   effect_t effect = {
-    .type                   = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
+    .type = ZDWM_EFFECT_CHANGE_BORDER_COLOR,
     .as.change_border_color = {
       .window = window_id,
-      .color  = color,
+      .color = color,
     },
   };
   plan_push_effect(plan, &effect);

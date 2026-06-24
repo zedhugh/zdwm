@@ -25,6 +25,7 @@ typedef enum zdwm_button_t {
   ZDWM_BUTTON_MIDDLE,
 } zdwm_button_t;
 
+/* clang-format off */
 typedef enum zdwm_modifier_bit_t {
   ZDWM_MOD_NONE    = 0u,
   ZDWM_MOD_SHIFT   = 1u << 0,
@@ -35,6 +36,8 @@ typedef enum zdwm_modifier_bit_t {
   ZDWM_MOD_4       = 1u << 5,
   ZDWM_MOD_5       = 1u << 6,
 } zdwm_modifier_bit_t;
+/* clang-format on */
+
 typedef uint32_t zdwm_modifier_mask_t;
 
 typedef struct zdwm_rect_t {

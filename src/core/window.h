@@ -40,6 +40,7 @@ typedef enum window_layer_type_t {
   ZDWM_WINDOW_LAYER_COUNT,
 } window_layer_type_t;
 
+/* clang-format off */
 typedef enum window_metadata_change_flags_t {
   ZDWM_WINDOW_METADATA_CHANGE_TITLE    = 1u << 0,
   ZDWM_WINDOW_METADATA_CHANGE_APP_ID   = 1u << 1,
@@ -47,6 +48,7 @@ typedef enum window_metadata_change_flags_t {
   ZDWM_WINDOW_METADATA_CHANGE_CLASS    = 1u << 3,
   ZDWM_WINDOW_METADATA_CHANGE_INSTANCE = 1u << 4,
 } window_metadata_change_flags_t;
+/* clang-format on */
 
 typedef struct window_layer_props_t {
   window_type_t *types;

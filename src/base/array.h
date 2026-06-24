@@ -86,7 +86,7 @@ array_erase_impl(void *items, size_t item_size, size_t *count, size_t index) {
   size_t tail_count = *count - index - 1;
   if (tail_count > 0) {
     char *dest = (char *)items + index * item_size;
-    char *src  = dest + item_size;
+    char *src = dest + item_size;
     memmove(dest, src, tail_count * item_size);
   }
 
@@ -98,11 +98,11 @@ array_erase_impl(void *items, size_t item_size, size_t *count, size_t index) {
 #define array_reserve(items, capacity, need) \
   array_reserve_impl((void **)&(items), sizeof(*(items)), &(capacity), (need))
 
+/* clang-format off */
 /** @brief 为具体类型数组追加一个槽位。 */
-#define array_push(items, count, capacity) \
-  (                                        \
-    typeof(items)                          \
-  )array_push_impl((void **)&(items), sizeof(*(items)), &(count), &(capacity))
+#define array_push(items, count, capacity)\
+(typeof(items))array_push_impl((void **)&(items), sizeof(*(items)), &(count), &(capacity))
+/* clang-format on */
 
 /** @brief 删除具体类型数组中指定下标的元素。 */
 #define array_erase(items, count, index) \

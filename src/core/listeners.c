@@ -6,10 +6,10 @@
 #include "core/layout.h"
 #include "core/state.h"
 
-#define ADD_LISTENER(FIELD)                                               \
-  auto list       = &listeners->FIELD;                                    \
-  auto item       = array_push(list->items, list->count, list->capacity); \
-  item->fn        = fn;                                                   \
+#define ADD_LISTENER(FIELD)                                         \
+  auto list = &listeners->FIELD;                                    \
+  auto item = array_push(list->items, list->count, list->capacity); \
+  item->fn = fn;                                                    \
   item->user_data = user_data
 
 void listeners_add_output_listener(
@@ -88,7 +88,7 @@ void listeners_add_window_removed_listener(
 
 #define CLEANUP_LIST(FIELD)          \
   p_delete(&listeners->FIELD.items); \
-  listeners->FIELD.count    = 0;     \
+  listeners->FIELD.count = 0;        \
   listeners->FIELD.capacity = 0
 
 void listeners_cleanup(listeners_t *listeners) {
@@ -131,14 +131,14 @@ void listeners_notify_initial_workspaces(
   if (!listeners || !state) return;
 
   size_t count = state_workspace_count(state);
-  auto items   = count ? p_new(zdwm_workspace_t, count) : nullptr;
+  auto items = count ? p_new(zdwm_workspace_t, count) : nullptr;
   for (size_t i = 0; i < count; ++i) {
     auto workspace = state_workspace_at(state, i);
 
     items[i] = (zdwm_workspace_t){
       .output_id = workspace->output_id,
-      .id        = workspace->id,
-      .name      = workspace->name,
+      .id = workspace->id,
+      .name = workspace->name,
     };
   }
 
@@ -173,10 +173,10 @@ void listeners_notify_layout(
   if (!slot) return;
 
   zdwm_layout_notify_t notify = {
-    .workspace   = workspace_id,
-    .id          = layout_id,
-    .name        = slot->name,
-    .symbol      = slot->symbol,
+    .workspace = workspace_id,
+    .id = layout_id,
+    .name = slot->name,
+    .symbol = slot->symbol,
     .description = slot->description,
   };
 
@@ -191,12 +191,12 @@ void listeners_notify_binding_mode(
 
   auto default_mode = binding_table_get_default_mode(binding_table);
   auto current_mode = binding_table_get_current_mode(binding_table);
-  auto name         = binding_table_get_mode_name(binding_table, current_mode);
+  auto name = binding_table_get_mode_name(binding_table, current_mode);
 
   zdwm_binding_mode_notify_t notify = {
     .is_default_mode = default_mode == current_mode,
-    .id              = current_mode,
-    .name            = name,
+    .id = current_mode,
+    .name = name,
   };
 
   FOR_EACH_LISTENER(binding_mode_listeners, item->fn(notify, item->user_data));
@@ -216,11 +216,11 @@ static bool listeners_window_snapshot(
   if (!workspace) return false;
 
   *out = (zdwm_window_t){
-    .workspace    = window->workspace_id,
-    .id           = window->id,
-    .title        = window->title,
-    .focused      = workspace->focused_window_id == window->id,
-    .urgent       = window->urgent,
+    .workspace = window->workspace_id,
+    .id = window->id,
+    .title = window->title,
+    .focused = workspace->focused_window_id == window->id,
+    .urgent = window->urgent,
     .skip_taskbar = window->skip_taskbar,
   };
   return true;
@@ -232,7 +232,7 @@ void listeners_notify_initial_windows(
 ) {
   if (!listeners || !state) return;
 
-  size_t count         = state_window_count(state);
+  size_t count = state_window_count(state);
   zdwm_window_t *items = count ? p_new(zdwm_window_t, count) : nullptr;
   for (size_t i = 0; i < count; ++i) {
     auto window = state_window_at(state, i);

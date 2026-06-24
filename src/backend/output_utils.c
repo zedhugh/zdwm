@@ -42,14 +42,14 @@ output_remove_duplication(const output_info_t *output, const size_t count) {
   }
 
   output_info_t *list = p_new(output_info_t, amount);
-  amount              = 0;
+  amount = 0;
   for (size_t i = 0; i < count; i++) {
     if (remove[i]) continue;
     list[amount++] = output[i];
   }
   p_delete(&remove);
   backend_detect_t *detect = p_new(backend_detect_t, 1);
-  detect->outputs          = list;
-  detect->output_count     = amount;
+  detect->outputs = list;
+  detect->output_count = amount;
   return detect;
 }

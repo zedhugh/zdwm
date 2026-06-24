@@ -78,19 +78,23 @@ static void
 bar_cell_set_icon(zdwm_bar_item_t *item, size_t index, zdwm_icon_t icon) {
   if (index >= item->count) return;
 
-  auto cell     = &item->cells[index];
+  auto cell = &item->cells[index];
   auto icon_ptr = &cell->icon;
 
   if (icon_ptr->type == icon.type) {
     switch (icon.type) {
     case ZDWM_ICON_TEXT:
-      if (icon_ptr->as.text == icon.as.text ||
-          strcmp(icon_ptr->as.text, icon.as.text) == 0) {
+      if (
+        icon_ptr->as.text == icon.as.text ||
+        strcmp(icon_ptr->as.text, icon.as.text) == 0
+      ) {
         return;
       }
     case ZDWM_ICON_IMAGE:
-      if (icon_ptr->as.image_path == icon.as.image_path ||
-          strcmp(icon_ptr->as.image_path, icon.as.image_path) == 0) {
+      if (
+        icon_ptr->as.image_path == icon.as.image_path ||
+        strcmp(icon_ptr->as.image_path, icon.as.image_path) == 0
+      ) {
         return;
       }
     }
@@ -115,6 +119,7 @@ bar_cell_set_indicator(zdwm_bar_item_t *item, size_t index, bool show) {
   item->dirty = true;
 }
 
+/* clang-format off */
 zdwm_bar_cell_api_t bar_cell_api = {
   .get_cell_count     = bar_cell_get_count,
   .set_cell_count     = bar_cell_set_count,
@@ -124,6 +129,7 @@ zdwm_bar_cell_api_t bar_cell_api = {
   .cell_set_icon      = bar_cell_set_icon,
   .cell_set_indicator = bar_cell_set_indicator,
 };
+/* clang-format on */
 
 void bar_cell_set_region(
   zdwm_bar_item_t *item,
@@ -133,7 +139,7 @@ void bar_cell_set_region(
   if (index >= item->count) return;
 
   auto cell = &item->cells[index];
-  auto r    = &cell->region;
+  auto r = &cell->region;
 
   if (r->start == region.start && r->end == region.end) return;
 

@@ -28,7 +28,7 @@ static window_state_t *derive_window_states(
     return nullptr;
   }
   window_state_t *buf = p_new(window_state_t, count);
-  size_t valid        = 0;
+  size_t valid = 0;
   for (uint32_t i = 0; i < count; i++) {
     window_state_t s = atom_to_window_state(atoms, raw[i]);
     if (s != (window_state_t)-1) buf[valid++] = s;
@@ -58,8 +58,10 @@ static bool maximized_from_states(
   uint32_t state_count
 ) {
   for (uint32_t i = 0; i < state_count; i++) {
-    if (state_atoms[i] == atoms->_NET_WM_STATE_MAXIMIZED_VERT ||
-        state_atoms[i] == atoms->_NET_WM_STATE_MAXIMIZED_HORZ)
+    if (
+      state_atoms[i] == atoms->_NET_WM_STATE_MAXIMIZED_VERT ||
+      state_atoms[i] == atoms->_NET_WM_STATE_MAXIMIZED_HORZ
+    )
       return true;
   }
   return false;
@@ -101,11 +103,11 @@ static void parse_size_hints(
   *max = (zdwm_size_t){.width = INT32_MAX, .height = INT32_MAX};
 
   if (hints->flags & XCB_ICCCM_SIZE_HINT_P_MIN_SIZE) {
-    min->width  = hints->min_width;
+    min->width = hints->min_width;
     min->height = hints->min_height;
   }
   if (hints->flags & XCB_ICCCM_SIZE_HINT_P_MAX_SIZE) {
-    max->width  = hints->max_width;
+    max->width = hints->max_width;
     max->height = hints->max_height;
   }
 }
@@ -115,7 +117,7 @@ bool populate_window_event(
   xcb_window_t window,
   window_map_request_event_t *ev
 ) {
-  ev->window        = (window_id_t)window;
+  ev->window = (window_id_t)window;
   ev->transient_for = window_get_transient_for(backend, window);
 
   auto wa = window_get_attributes(backend, window);
@@ -125,7 +127,7 @@ bool populate_window_event(
 
   xcb_icccm_wm_hints_t wm_hints = {0};
   if (window_get_wm_hints(backend, window, &wm_hints)) {
-    ev->urgent    = (bool)xcb_icccm_wm_hints_get_urgency(&wm_hints);
+    ev->urgent = (bool)xcb_icccm_wm_hints_get_urgency(&wm_hints);
     ev->minimized = wm_hints.initial_state == XCB_ICCCM_WM_STATE_ICONIC;
   }
 
@@ -135,9 +137,9 @@ bool populate_window_event(
 
   if (!window_get_geometry(backend, window, &ev->rect)) return false;
 
-  const atoms_t *atoms    = &backend->atoms;
+  const atoms_t *atoms = &backend->atoms;
   xcb_atom_t *state_atoms = nullptr;
-  uint32_t state_count    = 0;
+  uint32_t state_count = 0;
   if (!window_get_atom_array(
         backend,
         window,
@@ -149,8 +151,8 @@ bool populate_window_event(
   }
 
   if (state_atoms) {
-    ev->maximized    = maximized_from_states(atoms, state_atoms, state_count);
-    ev->fullscreen   = fullscreen_from_states(atoms, state_atoms, state_count);
+    ev->maximized = maximized_from_states(atoms, state_atoms, state_count);
+    ev->fullscreen = fullscreen_from_states(atoms, state_atoms, state_count);
     ev->skip_taskbar = derive_skip_taskbar(atoms, state_atoms, state_count);
     ev->props.states = derive_window_states(
       atoms,
@@ -171,7 +173,7 @@ bool populate_window_event(
     return false;
   }
 
-  ev->metadata.role  = window_get_role(backend, window);
+  ev->metadata.role = window_get_role(backend, window);
   ev->metadata.title = window_get_title(backend, window);
   window_get_class(
     backend,
@@ -201,7 +203,7 @@ static bool handle_unmap_notify(
   event_t *event,
   const xcb_unmap_notify_event_t *xcb_event
 ) {
-  event->type                    = ZDWM_EVENT_WINDOW_REMOVE;
+  event->type = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
   if (XCB_EVENT_SENT(xcb_event)) {
     event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_WITHDRAWN;
@@ -217,7 +219,7 @@ static bool handle_destroy_notify(
   event_t *event,
   const xcb_destroy_notify_event_t *xcb_event
 ) {
-  event->type                    = ZDWM_EVENT_WINDOW_REMOVE;
+  event->type = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
   event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_DESTROY;
 
@@ -229,14 +231,14 @@ static bool handle_configure_request(
   event_t *event,
   const xcb_configure_request_event_t *xcb_event
 ) {
-  event->type          = ZDWM_EVENT_CONFIGURE_REQUEST;
-  auto data            = &event->as.configure_request;
-  data->window         = xcb_event->window;
+  event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
+  auto data = &event->as.configure_request;
+  data->window = xcb_event->window;
   data->changed_fields = 0u;
 
 #define EXTRACT_FIELD(XCB_MASK, FIELD_MASK, DATA_FIELD, EVENT_FIELD) \
   if (xcb_event->value_mask & XCB_CONFIG_WINDOW_##XCB_MASK) {        \
-    data->DATA_FIELD      = xcb_event->EVENT_FIELD;                  \
+    data->DATA_FIELD = xcb_event->EVENT_FIELD;                       \
     data->changed_fields |= ZDWM_CONFIGURE_FIELD_##FIELD_MASK;       \
   }
 
@@ -263,9 +265,9 @@ static bool handle_key_press(
   /* keysym without any modifiers */
   auto keysym = xcb_key_symbols_get_keysym(backend->key_symbols, keycode, 0);
 
-  event->type                   = ZDWM_EVENT_KEY_PRESS;
-  event->as.key_press.keycode   = keycode;
-  event->as.key_press.keysym    = keysym;
+  event->type = ZDWM_EVENT_KEY_PRESS;
+  event->as.key_press.keycode = keycode;
+  event->as.key_press.keysym = keysym;
   event->as.key_press.modifiers = modifiers_xcb_to_zdwm(xcb_event->state);
 
   return true;
@@ -278,10 +280,10 @@ static bool fill_button_event(
   auto button = button_xcb_to_zdwm(xcb_event->detail);
 
   data->modifiers = modifiers_xcb_to_zdwm(xcb_event->state);
-  data->button    = button;
-  data->window    = xcb_event->event;
-  data->root      = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
-  data->local     = (point_t){.x = xcb_event->event_x, .y = xcb_event->event_y};
+  data->button = button;
+  data->window = xcb_event->event;
+  data->root = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
+  data->local = (point_t){.x = xcb_event->event_x, .y = xcb_event->event_y};
 
   return true;
 }
@@ -291,7 +293,7 @@ static bool handle_button_press(
   event_t *event,
   const xcb_button_press_event_t *xcb_event
 ) {
-  auto press   = &event->as.pointer_button_press;
+  auto press = &event->as.pointer_button_press;
   auto handled = fill_button_event(xcb_event, press);
   if (handled) event->type = ZDWM_EVENT_POINTER_BUTTON_PRESS;
 
@@ -317,10 +319,10 @@ static bool handle_motion_notify(
 ) {
   event->type = ZDWM_EVENT_POINTER_MOTION;
 
-  auto data    = &event->as.pointer_motion;
+  auto data = &event->as.pointer_motion;
   data->window = xcb_event->event;
-  data->root   = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
-  data->local  = (point_t){.x = xcb_event->event_x, .y = xcb_event->event_y};
+  data->root = (point_t){.x = xcb_event->root_x, .y = xcb_event->root_y};
+  data->local = (point_t){.x = xcb_event->event_x, .y = xcb_event->event_y};
   return true;
 }
 
@@ -329,7 +331,7 @@ static bool handle_enter_notify(
   event_t *event,
   const xcb_enter_notify_event_t *xcb_event
 ) {
-  event->type                    = ZDWM_EVENT_POINTER_ENTER;
+  event->type = ZDWM_EVENT_POINTER_ENTER;
   event->as.pointer_enter.window = xcb_event->event;
 
   return true;
@@ -341,12 +343,14 @@ static bool handle_property_notify(
   const xcb_property_notify_event_t *xcb_event
 ) {
   auto window_id = xcb_event->window;
-  if (xcb_event->atom == backend->atoms.WM_NAME ||
-      xcb_event->atom == backend->atoms._NET_WM_NAME) {
+  if (
+    xcb_event->atom == backend->atoms.WM_NAME ||
+    xcb_event->atom == backend->atoms._NET_WM_NAME
+  ) {
     event->type = ZDWM_EVENT_WINDOW_METADATA_CHANGED;
 
-    auto data            = &event->as.window_metadata_change;
-    data->window         = window_id;
+    auto data = &event->as.window_metadata_change;
+    data->window = window_id;
     data->metadata.title = window_get_title(backend, window_id);
     data->changed_fields = ZDWM_WINDOW_METADATA_CHANGE_TITLE;
     return true;
@@ -355,9 +359,9 @@ static bool handle_property_notify(
   if (xcb_event->atom == backend->atoms.WM_WINDOW_ROLE) {
     event->type = ZDWM_EVENT_WINDOW_METADATA_CHANGED;
 
-    auto data            = &event->as.window_metadata_change;
-    data->window         = window_id;
-    data->metadata.role  = window_get_role(backend, window_id);
+    auto data = &event->as.window_metadata_change;
+    data->window = window_id;
+    data->metadata.role = window_get_role(backend, window_id);
     data->changed_fields = ZDWM_WINDOW_METADATA_CHANGE_ROLE;
     return true;
   }
@@ -365,7 +369,7 @@ static bool handle_property_notify(
   if (xcb_event->atom == XCB_ATOM_WM_CLASS) {
     event->type = ZDWM_EVENT_WINDOW_METADATA_CHANGED;
 
-    auto data    = &event->as.window_metadata_change;
+    auto data = &event->as.window_metadata_change;
     data->window = window_id;
     window_get_class(
       backend,
@@ -384,11 +388,11 @@ static bool handle_property_notify(
 
     event->type = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
 
-    auto data    = &event->as.hints;
+    auto data = &event->as.hints;
     data->window = window_id;
     if (hints.flags & XCB_ICCCM_WM_HINT_X_URGENCY) {
       data->changed_fields |= ZDWM_HINT_FIELD_URGENT;
-      data->urgent          = xcb_icccm_wm_hints_get_urgency(&hints);
+      data->urgent = xcb_icccm_wm_hints_get_urgency(&hints);
       return true;
     }
     return false;
@@ -400,7 +404,7 @@ static bool handle_property_notify(
 
     event->type = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
 
-    auto data    = &event->as.hints;
+    auto data = &event->as.hints;
     data->window = window_id;
 
     data->changed_fields |= ZDWM_HINT_FIELD_SIZE;
@@ -427,7 +431,7 @@ static bool handle_client_message(
 
   if (xcb_event->type == atoms->WM_CHANGE_STATE) {
     if (xcb_event->data.data32[0] == XCB_ICCCM_WM_STATE_ICONIC) {
-      event->type                           = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+      event->type = ZDWM_EVENT_WINDOW_STATE_REQUEST;
       event->as.window_state_request.window = xcb_event->window;
       event->as.window_state_request.type = ZDWM_WINDOW_STATE_REQUEST_MINIMIZED;
       event->as.window_state_request.action = ZDWM_WINDOW_STATE_ACTION_ADD;
@@ -437,8 +441,8 @@ static bool handle_client_message(
   }
 
   if (xcb_event->type == atoms->_NET_WM_STATE) {
-    event->type  = ZDWM_EVENT_WINDOW_STATE_REQUEST;
-    auto data    = &event->as.window_state_request;
+    event->type = ZDWM_EVENT_WINDOW_STATE_REQUEST;
+    auto data = &event->as.window_state_request;
     data->window = xcb_event->window;
     /**
      * _NET_WM_STATE 协议数据格式为
@@ -467,7 +471,7 @@ static bool handle_client_message(
       break;
     }
     auto properties = &xcb_event->data.data32[1];
-    uint32_t count  = 2;
+    uint32_t count = 2;
 
     if (maximized_from_states(atoms, properties, count)) {
       data->type = ZDWM_WINDOW_STATE_REQUEST_MAXIMIZED;
@@ -484,9 +488,9 @@ static bool handle_client_message(
     }
 
     if (urgent_from_states(atoms, properties, count)) {
-      event->type     = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
+      event->type = ZDWM_EVENT_WINDOW_HINTS_CHANGED;
       event->as.hints = (typeof(event->as.hints)){
-        .urgent         = true,
+        .urgent = true,
         .changed_fields = ZDWM_HINT_FIELD_URGENT,
       };
       return true;
@@ -504,7 +508,7 @@ static bool handle_event(
   event_t *event
 ) {
   uint8_t response_type = XCB_EVENT_RESPONSE_TYPE(raw_event);
-  bool handled          = false;
+  bool handled = false;
 
   auto label = xcb_event_get_label(response_type);
   printf("xcb event type: %s[%u]\n", label, response_type);

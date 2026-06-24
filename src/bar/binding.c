@@ -25,7 +25,7 @@ bar_binding_create_state(zdwm_output_id_t output_id, void *config) {
   const bar_binding_config_t *bar_config = config;
   assert(bar_config);
 
-  auto state    = p_new(bar_binding_state_t, 1);
+  auto state = p_new(bar_binding_state_t, 1);
   state->config = *bar_config;
 
   return state;
@@ -40,7 +40,7 @@ static void bar_binding_update(
   if (!data->inited || !data->dirty) return;
 
   auto config = &data->config;
-  auto mode   = &data->mode;
+  auto mode = &data->mode;
 
   if (!config->show_default && mode->is_default_mode) {
     cells->set_cell_count(item, 0);
@@ -57,7 +57,7 @@ static void bar_binding_update(
 
 static zdwm_action_t bar_binding_on_click(zdwm_bar_click_params_t *params) {
   return (zdwm_action_t){
-    .type                  = ZDWM_ACTION_BINDING_MODE_CYCLE,
+    .type = ZDWM_ACTION_BINDING_MODE_CYCLE,
     .as.binding_mode_cycle = {.delta = 1},
   };
 }
@@ -70,10 +70,10 @@ static void bar_binding_destroy_state(void *state) {
 }
 
 zdwm_bar_item_type_t bar_binding = {
-  .create_state       = bar_binding_create_state,
-  .update             = bar_binding_update,
-  .on_click           = bar_binding_on_click,
-  .destroy_state      = bar_binding_destroy_state,
+  .create_state = bar_binding_create_state,
+  .update = bar_binding_update,
+  .on_click = bar_binding_on_click,
+  .destroy_state = bar_binding_destroy_state,
   .update_interval_ms = 0,
 };
 
@@ -84,7 +84,7 @@ bar_binding_mode_notify(zdwm_binding_mode_notify_t mode, void *user_data) {
     state->mode = mode;
 
     state->inited = true;
-    state->dirty  = true;
+    state->dirty = true;
     return;
   }
 

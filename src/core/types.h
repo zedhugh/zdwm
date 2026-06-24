@@ -65,6 +65,7 @@ typedef enum window_state_request_action_t {
   ZDWM_WINDOW_STATE_ACTION_TOGGLE,
 } window_state_request_action_t;
 
+/* clang-format off */
 typedef enum configure_field_t {
   ZDWM_CONFIGURE_FIELD_X            = 1u << 0,
   ZDWM_CONFIGURE_FIELD_Y            = 1u << 1,
@@ -74,6 +75,7 @@ typedef enum configure_field_t {
   ZDWM_CONFIGURE_FIELD_SIBLING      = 1u << 5,
   ZDWM_CONFIGURE_FIELD_STACK_MODE   = 1u << 6,
 } configure_field_t;
+/* clang-format on */
 
 typedef struct configure_data_t {
   window_id_t window;

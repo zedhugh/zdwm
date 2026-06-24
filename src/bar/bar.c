@@ -61,16 +61,16 @@ void bar_output_add_workspace(
   listeners_t *listeners
 ) {
   bar_workspace_config_t workspace_config = {
-    .cell_padding    = VALUE(config->tag_cell_padding_x, config->padding_x),
+    .cell_padding = VALUE(config->tag_cell_padding_x, config->padding_x),
     .indicator_width = VALUE(config->tag_indicator_width, 4),
-    .bg              = VALUE(config->tag_bg, config->bg),
-    .fg              = VALUE(config->tag_fg, config->fg),
-    .active_bg       = config->tag_active_bg,
-    .active_fg       = config->tag_active_fg,
-    .urgent_bg       = config->tag_urgent_bg,
-    .urgent_fg       = config->tag_urgent_fg,
-    .layout_bg       = VALUE(config->layout_bg, config->bg),
-    .layout_fg       = VALUE(config->layout_fg, config->fg),
+    .bg = VALUE(config->tag_bg, config->bg),
+    .fg = VALUE(config->tag_fg, config->fg),
+    .active_bg = config->tag_active_bg,
+    .active_fg = config->tag_active_fg,
+    .urgent_bg = config->tag_urgent_bg,
+    .urgent_fg = config->tag_urgent_fg,
+    .layout_bg = VALUE(config->layout_bg, config->bg),
+    .layout_fg = VALUE(config->layout_fg, config->fg),
   };
   auto item = bar_add_item(
     bar_output->output_id,
@@ -78,7 +78,7 @@ void bar_output_add_workspace(
     bar_workspace,
     &workspace_config
   );
-  item->cell_padding    = workspace_config.cell_padding;
+  item->cell_padding = workspace_config.cell_padding;
   item->indicator_width = workspace_config.indicator_width;
 
   bar_workspace_add_listeners(listeners, item->state);
@@ -92,8 +92,8 @@ static void bar_output_add_binding(
   bar_binding_config_t binding_config = {
     .show_default = config->binding_show_default,
     .cell_padding = VALUE(config->binding_padding_x, config->padding_x),
-    .bg           = VALUE(config->binding_mode_bg, config->bg),
-    .fg           = VALUE(config->binding_mode_fg, config->fg),
+    .bg = VALUE(config->binding_mode_bg, config->bg),
+    .fg = VALUE(config->binding_mode_fg, config->fg),
   };
   auto item = bar_add_item(
     bar_output->output_id,
@@ -115,24 +115,24 @@ static void bar_output_add_windows(
 
   bar_windows_config_t window_config = {
     .cell_padding = VALUE(config->window_padding_x, config->padding_x),
-    .bg           = VALUE(config->window_bg, config->bg),
-    .fg           = VALUE(config->window_fg, config->fg),
-    .focused_bg   = VALUE(config->window_focused_bg, config->bg),
-    .focused_fg   = VALUE(config->window_focused_fg, config->fg),
+    .bg = VALUE(config->window_bg, config->bg),
+    .fg = VALUE(config->window_fg, config->fg),
+    .focused_bg = VALUE(config->window_focused_bg, config->bg),
+    .focused_fg = VALUE(config->window_focused_fg, config->fg),
   };
   item->cell_padding = window_config.cell_padding;
 
   item->api = bar_windows;
 
   auto create_state = item->api.create_state;
-  auto output_id    = bar_output->output_id;
+  auto output_id = bar_output->output_id;
   if (create_state) item->state = create_state(output_id, &window_config);
 
   bar_windows_add_listeners(listeners, item->state);
 }
 
 void bar_init(bar_t *bar, listeners_t *listeners) {
-  auto c   = &bar->config;
+  auto c = &bar->config;
   bar->ctx = text_context_create(c->font_family, c->font_size, c->dpi);
 
   for (size_t i = 0; i < bar->count; ++i) {
@@ -179,8 +179,8 @@ static inline void bar_item_update(zdwm_bar_item_t *item) {
   if (!update) return;
 
   auto update_interval_ms = item->api.update_interval_ms;
-  auto last_updated_time  = item->last_updated_time;
-  auto now                = time_monotonic_ms();
+  auto last_updated_time = item->last_updated_time;
+  auto now = time_monotonic_ms();
   if (now < last_updated_time + update_interval_ms) return;
 
   item->last_updated_time = now;
@@ -204,7 +204,7 @@ void bar_update(bar_t *bar) {
 
 static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
   int32_t start = 0;
-  auto end      = bar_output->width;
+  auto end = bar_output->width;
 
   auto left = &bar_output->left;
   for (size_t i = 0; i < left->count; ++i) {
@@ -219,7 +219,7 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
 
       bar_x_region_t region = {
         .start = start,
-        .end   = start + width + item->cell_padding * 2,
+        .end = start + width + item->cell_padding * 2,
       };
       bar_cell_set_region(item, j, region);
 
@@ -229,25 +229,25 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
   }
   if (left->count) {
     left->region.start = left->items[0].region.start;
-    left->region.end   = left->items[left->count - 1].region.end;
+    left->region.end = left->items[left->count - 1].region.end;
   }
 
   auto right = &bar_output->right;
   for (size_t i = right->count; i > 0; --i) {
     auto item_index = i - 1;
-    auto item       = &right->items[item_index];
+    auto item = &right->items[item_index];
 
     item->region.end = end;
     for (size_t j = item->count; j > 0; --j) {
       auto cell_index = j - 1;
-      auto cell       = &item->cells[cell_index];
+      auto cell = &item->cells[cell_index];
 
       int32_t width = 0;
       text_context_get_text_size(ctx, cell->text, &width, nullptr);
 
       bar_x_region_t region = {
         .start = end - width - item->cell_padding * 2,
-        .end   = end,
+        .end = end,
       };
       bar_cell_set_region(item, cell_index, region);
 
@@ -257,7 +257,7 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
   }
   if (right->count) {
     right->region.start = right->items[0].region.start;
-    right->region.end   = right->items[right->count - 1].region.end;
+    right->region.end = right->items[right->count - 1].region.end;
   }
 
   auto center = &bar_output->center;
@@ -268,7 +268,7 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
   for (size_t i = 0; i < center->count; ++i) {
     bar_x_region_t region = {
       .start = start,
-      .end   = start + width + center->cell_padding * 2,
+      .end = start + width + center->cell_padding * 2,
     };
     start = region.end;
     bar_cell_set_region(center, i, region);
@@ -282,13 +282,13 @@ static void bar_item_draw(
   int32_t height
 ) {
   for (size_t i = 0; i < item->count; ++i) {
-    auto cell   = &item->cells[i];
+    auto cell = &item->cells[i];
     auto region = &cell->region;
 
     zdwm_rect_t cell_area = {
-      .x      = region->start,
-      .y      = 0,
-      .width  = region->end - region->start,
+      .x = region->start,
+      .y = 0,
+      .width = region->end - region->start,
       .height = height,
     };
     if (cell_area.width <= 0) {
@@ -300,13 +300,13 @@ static void bar_item_draw(
 
     if (cell->show_indicator) {
       auto size = MIN(item->indicator_width, cell_area.width);
-      size      = MIN(size, height);
+      size = MIN(size, height);
 
       if (size > 0) {
         zdwm_rect_t indicator_area = {
-          .x      = region->start,
-          .y      = 0,
-          .width  = size,
+          .x = region->start,
+          .y = 0,
+          .width = size,
           .height = size,
         };
         draw_background(cr, &cell->fg, indicator_area);
@@ -314,9 +314,9 @@ static void bar_item_draw(
     }
 
     zdwm_rect_t text_area = {
-      .x      = cell_area.x + item->cell_padding,
-      .y      = 0,
-      .width  = cell_area.width - item->cell_padding * 2,
+      .x = cell_area.x + item->cell_padding,
+      .y = 0,
+      .width = cell_area.width - item->cell_padding * 2,
       .height = height,
     };
     if (text_area.width > 0 && cell->text && cell->text[0] != '\0') {
@@ -368,9 +368,9 @@ bar_output_draw(bar_output_t *bar_output, text_context_t *ctx, color_t *bg) {
   clean_cairo_context(cr);
 
   zdwm_rect_t output_area = {
-    .x      = 0,
-    .y      = 0,
-    .width  = bar_output->width,
+    .x = 0,
+    .y = 0,
+    .width = bar_output->width,
     .height = bar_output->height,
   };
   draw_background(cr, bg, output_area);
@@ -418,12 +418,12 @@ static inline bool bar_item_click(
     auto cell = &item->cells[i];
     if (cell->region.start <= x && cell->region.end >= x) {
       zdwm_bar_click_params_t params = {
-        .item       = item,
+        .item = item,
         .cell_index = i,
-        .x          = x,
-        .modifiers  = info.modifiers,
-        .button     = info.button,
-        .state      = item->state,
+        .x = x,
+        .modifiers = info.modifiers,
+        .button = info.button,
+        .state = item->state,
       };
       *action = item->api.on_click(&params);
       return true;
