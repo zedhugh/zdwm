@@ -1,0 +1,256 @@
+#+title: ZDWM Tray 系统托盘设计
+#+OPTIONS: toc:2
+
+* 背景与动机
+
+ZDWM 当前没有系统托盘（system tray / systray）功能。本文档描述如何在 bar 中实现 X11 系统托盘，让外部应用（输入法、音量、蓝牙、网络等）的托盘图标显示在状态栏右侧并正常交互，同时保持现有前后端分离架构，为未来 Wayland 后端预留扩展空间。
+
+* 设计目标与约束
+
+** 前后端分离
+
+tray 协议（=_NET_SYSTEM_TRAY= + XEMBED）必须*闭环在后端内部*。core 的 =event_t= / =policy= / =plan= 完全不感知 tray——tray 不产生 =event_t=、不进 policy 路由、不进 plan/effect。
+
+这与现有架构的三条解耦通道一致：
+- =backend -> core=：后端把平台原始事件归一化为 =event_t=
+- =core -> backend=：core 产出 =effect_t=，后端执行
+- =runtime= 作为唯一桥接点：bar 模块本身拿不到 backend，所有平台访问经 runtime 中转
+
+** Wayland 预留
+
+bar 与 runtime 层必须后端无关、零 xcb。未来加 Wayland 后端时，只需新增一个后端实现——Wayland 用 StatusNotifierItem（SNI）over D-Bus，icon 是像素数据而非真实窗口，由前端 cairo 绘制。只要后端接口形状不变，上层（bar/runtime）零改动。
+
+** tray 是 bar 的附属组件
+
+没有 bar 就没有 tray。tray 的生命周期随 bar 窗口，*不*作为独立公共接口（不进 =include/zdwm/=）。tray 能力内嵌在 bar 窗口的创建/销毁里。
+
+* 方案选型：嵌入式容器子窗口（A'）
+
+X11 系统托盘协议只要求：tray 创建一个 window 成为 =_NET_SYSTEM_TRAY_S<n>= 的 selection owner，客户端向 owner 发 =_NET_SYSTEM_TRAY_REQUEST_DOCK= 请求，tray 用 XEMBED reparent icon。协议本身*不*规定 icon reparent 到 bar 窗口还是独立窗口。
+
+** 为何不用独立 top-level 窗口
+
+完全独立的 top-level tray 窗口（如 stalonetray）是为*没有状态栏*的环境设计的。ZDWM 已有 bar，用独立窗口会引入"两个窗口的几何/对齐同步"问题（tray 窗口要贴 bar 右端、随 icon 数动态 resize、跟随 bar 移动），且无功能收益。
+
+** 为何用专门的容器子窗口
+
+虽然直接 reparent 到 bar 的 cairo 绘制窗口技术上可行（bar 已是 ARGB，子窗口叠加在 cairo 内容之上），但用一个*专门的 tray 容器子窗口*做 selection owner 更正统、更干净：
+
+1. *职责分离*：bar 窗口专注 cairo 绘制，tray 容器专注 XEMBED / icon 管理。dock 请求和 =_XEMBED= 消息定向到容器，不进 bar 的 =handle_client_message=。
+2. *事件隔离*：tray 协议事件在容器窗口闭环，bar 的窗口管理事件流零污染。
+3. *视觉不变*：容器是 bar 窗口的子窗口，位于 tray region 内，icon 跟随 bar 移动/resize（X 子窗口语义），不占额外屏幕空间。
+
+* 后端接口设计
+
+tray 契约独立成头 =src/bar/tray.h= —— *不放 core*，因为 tray 与 core 无关（core 不感知 tray）。由 bar 定义、后端实现（消费方定义接口、提供方实现的依赖倒置；契约是纯抽象头）。它只依赖 =core/types.h=（=window_id_t=），不含 =backend_t=，所以 bar include 它而不碰 =core/backend.h=，保持"bar 不知道后端内部"。=core/backend.h= 反过来 include =bar/tray.h=，让 =backend_bar_window_t= 内嵌 =tray_t=。
+
+#+begin_src c
+typedef void (*tray_icons_change_cb_t)(void *user_data);
+
+typedef struct tray_api_t {
+  /* 返回 tray 当前挂载的 bar window_id；invalid 表示无 tray 挂载 */
+  window_id_t (*host_window)(void *handle);
+  /* 当前 icon 数量 */
+  size_t      (*icon_count)(void *handle);
+  /* icon 边长（= bar height），bar 据此算 cell 宽度 */
+  int32_t     (*icon_size)(void *handle);
+  /* 把容器 + icon 摆到 region 起点 x */
+  void        (*place)(void *handle, int32_t x);
+  /* 注册 icon 数量变化回调 */
+  void        (*set_listener)(void *handle,
+                              tray_icons_change_cb_t cb,
+                              void *user_data);
+} tray_api_t;
+
+typedef struct tray_t {
+  tray_api_t api;    /* 值类型，后端总填充，一直可用 */
+  void      *handle; /* 指向 backend（bar 不知其类型） */
+} tray_t;
+
+typedef struct backend_bar_window_t {
+  window_id_t    window_id;
+  cairo_t       *cr;
+  tray_t         tray;
+} backend_bar_window_t;
+
+/* 扩展：加 enable_tray；icon_size 直接用 geometry.height */
+backend_bar_window_t backend_create_bar_window(
+  backend_t *backend, rect_t geometry, uint32_t bg_pixel, bool enable_tray);
+#+end_src
+
+** 关键设计点
+
+- *api 是值类型*：后端用一个全局 =static const= vtable 填充，保证一直可用，bar 不需判 NULL。这与项目现有 =zdwm_bar_item_type_t=（纯 vtable）+ =zdwm_bar_item_t=（实例持有 api + state）的模式一致。
+- *handle 总有效*：实际指向 =backend_t*=（tray api 函数内用 =backend->conn=、=backend->tray= host），对 bar 透明（=void*=）。有无 tray 统一由 =host_window()= 返回值判断（invalid = 无），不靠 api 是否 NULL，避免"先判 api、再判 host_window"两个判断点。
+- *icon_size 来自 handle*（单一数据源）：后端 configure icon 用的尺寸 = bar 查布局用的尺寸，杜绝两边各算导致 icon 错位/溢出。这比在 =tray_t= 冗余存一份快照更纯粹。
+- *生命周期随 bar/backend*：=backend_create_bar_window(enable_tray=true)= 时创建/迁移 host；=backend_destroy= 释放。无 =tray_host_create/destroy= 独立入口，体现"tray 是 bar 附属"。
+
+** 挂载语义
+
+X11 的 =_NET_SYSTEM_TRAY_S0= selection owner *整个 display 只能有一个*，但 =backend_create_bar_window= 是 per-output 调用的。处理方式：
+
+- tray host 是后端单例（内联在 =backend_t=）。
+- 每次传 =enable_tray=true= 的 =create_bar_window= 把容器 reparent 到本次 bar 窗口，最终挂在*最后一个* true 的 output 上。
+- =host_window()= 返回当前挂载的 bar window_id，bar 据此决定哪个 output 渲染 tray。
+
+** 为何 set_listener 不配 remove_listener
+
+tray icon 变化的唯一消费者是 bar 的 tray item，且其生命周期 = host 生命周期（=backend_destroy= 时自然消失）。与 core 的 =listeners= 模块一致（listener 跟宿主容器走，靠容器销毁回收），不引入 =remove_listener=。
+
+* bar item 框架扩展
+
+tray 作为 right-side 的普通 item，复用 =zdwm_bar_item_type_t= 框架。为支持 tray 的两个本质差异（cell 无文本 + 需要在 layout 后把结果同步到后端真实窗口），对框架做最小*通用*扩展——不为 tray 特例化。
+
+** cell_api 全包 cell 相关（不引入 item_api）
+
+=set_cell_count= / =get_cell_count= 本质是 *cell 集合的管理*（类比 =std::vector= 的 =size()/resize()= 与 =operator[]= 同属 vector），留在 =zdwm_bar_cell_api_t=。
+
+新增两个 cell 级接口：
+
+#+begin_src c
+/* 固定宽度：>0 = 固定宽度，0 = 走文本测量（零值默认），<0 = 隐藏 */
+void cell_set_fixed_width(zdwm_bar_item_t *, size_t index, int32_t width);
+/* 单个 cell 的 region（layout 后的坐标） */
+bar_x_region_t cell_get_region(zdwm_bar_item_t *, size_t index);
+#+end_src
+
+=bar_cell_t= 加 =int32_t fixed_width=，默认 =0=（走文本测量）。把零值留给最常见的默认行为（测量），=p_clear= 清零后新 cell 天然正确，=set_cell_count= 无需补初始化；=-1= 当"隐藏"哨兵（负数宽度本就无意义），与 =0=（测量）明确区分，没有歧义。
+
+=bar_output_layout= 改一处：
+
+#+begin_src c
+int32_t width;
+if (cell->fixed_width > 0)       width = cell->fixed_width;   /* 固定 */
+else if (cell->fixed_width == 0) width = 文本测量;            /* 测量（默认）*/
+else                             width = 0;                   /* 隐藏 */
+#+end_src
+
+** after_layout / after_draw 钩子
+
+普通 item 是 cairo 绘制；tray 是"layout 后把 region 应用到后端真实窗口"。给 =zdwm_bar_item_type_t= 加两个*可空*通用钩子，参数打包（仿现有 =zdwm_bar_click_params_t= 先例）：
+
+#+begin_src c
+typedef struct zdwm_bar_item_layout_params_t {
+  zdwm_bar_item_t *item;
+  const zdwm_bar_cell_api_t *cell_api;
+  bar_x_region_t region;
+  void *state;
+} zdwm_bar_item_layout_params_t;
+
+void (*after_layout)(const zdwm_bar_item_layout_params_t *);  /* 可空 */
+void (*after_draw)(const zdwm_bar_item_layout_params_t *);    /* 可空 */
+#+end_src
+
+设计要点：
+- 钩子为 NULL 则跳过，普通 item 零影响。
+- =after_layout= / =after_draw= 比 =update= 多一个 =region=（它们在 layout 之后调用），且通过 =cell_api= 可调 =cell_get_region= 取 per-cell 位置。
+- =update= 不打包参数（3 个参数不多，保持现有 =workspaces= / =binding= / =windows= 三个 item 零改动）。
+
+=bar_draw= 流程：
+
+#+begin_src c
+bar_output_layout(bo, ctx);
+for each item: if (after_layout) after_layout(params);   /* params 含 region */
+bar_output_draw(bo, ctx, bg);
+for each item: if (after_draw) after_draw(params);
+#+end_src
+
+* bar tray item
+
+新增 =src/bar/tray.c=，作为普通 right-side item（参考 [[file:../src/bar/workspaces.c][workspaces.c]] 的实现模式）：
+
+#+begin_src c
+zdwm_bar_item_type_t bar_tray = {
+  .create_state  = bar_tray_create_state,
+  .update        = bar_tray_update,
+  .on_click      = bar_tray_on_click,    /* 返回 NONE：icon 真实子窗口自收点击 */
+  .after_layout  = bar_tray_after_layout,
+  .destroy_state = bar_tray_destroy_state,
+};
+#+end_src
+
+- =create_state=：拷贝 =tray_t=，调 =set_listener= 注册回调（回调置 =state->dirty = true=）。
+- =update=：=dirty= 时 =set_cell_count(icon_count)= + 循环 =cell_set_fixed_width(i, icon_size)=。
+- =after_layout=：=place(handle, params->region.start)=。
+
+tray cell 不画 cairo 内容（text 为空，=bar_item_draw= 只画融入 bar 的背景色块，被真实 icon 窗口盖住）。
+
+* runtime 桥接
+
+=runtime_init_bar=（=src/runtime/runtime.c=）的 create 循环：
+
+#+begin_src c
+for (size_t i = 0; i < count; ++i) {
+  bool enable_tray = ((int32_t)i == runtime->bar.config.tray_output_index);
+  auto bar_window = backend_create_bar_window(backend, bar_rect, color, enable_tray);
+  ...
+  runtime->bar.tray = bar_window.tray;   /* 每个返回都一样，存一份 */
+}
+bar_init(&runtime->bar, &runtime->listeners);
+#+end_src
+
+=bar_init= 遍历 =bar_output=，对 =host_window()= 匹配自身 =window_id= 的那个 output 调 =bar_output_add_tray=（right side），其余不加。tray 生命周期随 =backend_destroy=，runtime 无特殊清理。
+
+* 配置
+
+=zdwm_bar_config_t=（=include/zdwm/config.h=）加：
+
+#+begin_src c
+int32_t tray_output_index;   /* 默认 0 = 第一个 output */
+#+end_src
+
+配置 setup 中可通过 output 信息确定具体 index。
+
+* 数据流（触发链）
+
+#+begin_example
+icon 增删
+  -> 后端 set_listener 回调 -> state->dirty = true
+  -> 下个 timerfd tick -> bar_update -> bar_tray_update
+  -> set_cell_count + cell_set_fixed_width -> item 标 dirty
+  -> bar_draw -> bar_output_layout 重算 region（cell 数变了）
+  -> tray 的 after_layout -> backend place(handle, region.start)
+  -> 后端 move 容器 + configure 每个 icon 到 (region.start + i*icon_size, 0)
+#+end_example
+
+bar 重绘是 timerfd（fps）驱动，非事件驱动。tray icon 是真实窗口，X server 自管绘制，不依赖 cairo 重绘。
+
+* 实现范围（第一版）
+
+第一版做*基础可用*：
+
+- =_NET_SYSTEM_TRAY_S0= selection owner + MANAGER 广播
+- 基础 XEMBED（reparent 容器、=_XEMBED_EMBEDDED_NOTIFY=）
+- icon 显示与点击
+- icon 尺寸 = bar 高度（统一，不缩放）
+
+放后续迭代：
+- 完整 XEMBED 焦点 / 激活转发
+- icon 尺寸协商与缩放
+- 客户端异常断开的清理
+
+*透明背景*第一版基本白送——bar 窗口已是 ARGB visual（见 =backend_create_bar_window= 调用 =window_get_visual(backend, true)=），tray 容器作为子窗口继承。
+
+* 关键文件清单
+
+| 文件                         | 改动                                                                                                     |
+|------------------------------+----------------------------------------------------------------------------------------------------------|
+| =src/bar/tray.h=             | **新增** tray 契约：=tray_t= / =tray_api_t= / =tray_icons_change_cb_t=（bar 定义、后端实现；不进 core） |
+| =src/core/backend.h=         | include =bar/tray.h=；=backend_bar_window_t= 内嵌 =tray_t=；扩展 =backend_create_bar_window=（加 =enable_tray=） |
+| =src/backend/x11/tray.c=     | *新增*：selection / MANAGER / 基础 XEMBED / icon 管理 / =place=                                          |
+| =src/backend/x11/internal.h= | =ATOM_LIST= 追加 tray/XEMBED atoms；=backend_t= 加 =tray= 字段                                           |
+| =src/backend/x11/event.c=    | 消化 tray 相关 client message（不产 =event_t=）                                                          |
+| =src/backend/x11/backend.c=  | =backend_create_bar_window= 实现 enable_tray 分支；=backend_destroy= 释放 tray                           |
+| =src/bar/types.h=            | =bar_cell_t= 加 =fixed_width=；=bar_t= 加 =tray=                                                         |
+| =src/bar/cell.h= / =cell.c=  | =cell_api= 加 =cell_set_fixed_width= / =cell_get_region=                                                 |
+| =src/bar/bar.c=              | layout 支持 =fixed_width=；=bar_draw= 调 after 钩子；=bar_init= 加 tray item；新增 layout params 类型    |
+| =src/bar/tray.c=             | *新增*：tray item 实现                                                                                   |
+| =src/runtime/runtime.c=      | =runtime_init_bar= 传 =enable_tray=、存 =bar->tray=                                                      |
+| =include/zdwm/config.h=      | =zdwm_bar_config_t= 加 =tray_output_index=                                                               |
+
+* 复用现有
+
+- =backend_create_bar_window=（=src/backend/x11/backend.c=）：bar 窗口已是 ARGB，tray 容器继承透明。
+- =zdwm_bar_item_type_t= vtable 框架 + [[file:../src/bar/workspaces.c][workspaces.c]]：tray item 同模式落地。
+- =zdwm_bar_click_params_t=：=after_layout= / =after_draw= 的 params 打包仿此先例。
+- =cell_api= 机制：tray =update= 通过它操作 cell（与 workspaces 一致）。
