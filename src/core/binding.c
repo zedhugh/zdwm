@@ -12,7 +12,7 @@
 #include "base/array.h"
 #include "base/macros.h"
 #include "base/memory.h"
-#include "core/types.h"
+#include "interface/types.h"
 
 typedef struct binding_mode_t {
   zdwm_binding_mode_id_t id;

@@ -10,7 +10,7 @@
 #include "bar/text.h"
 #include "bar/types.h"
 #include "base/color.h"
-#include "core/listeners.h"
+#include "common/listeners.h"
 
 typedef struct bar_output_t {
   cairo_t *cr;

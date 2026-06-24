@@ -7,8 +7,8 @@
 #include <xcb/xcb_keysyms.h>
 #include <xcb/xproto.h>
 
-#include "base/window_list.h"
-#include "core/event.h"
+#include "common/window.h"
+#include "interface/event.h"
 
 #define EWMH_ATOMS(X)                  \
   X(_NET_WM_NAME)                      \

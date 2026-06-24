@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <zdwm/bar.h>
 
-#include "core/listeners.h"
+#include "common/listeners.h"
 
 typedef struct bar_windows_config_t {
   uint32_t cell_padding;

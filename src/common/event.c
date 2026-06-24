@@ -1,7 +1,7 @@
-#include "core/event.h"
+#include "interface/event.h"
 
 #include "base/memory.h"
-#include "core/window.h"
+#include "common/window.h"
 
 void event_cleanup(event_t *event) {
   if (!event || event->type == ZDWM_EVENT_NONE) return;

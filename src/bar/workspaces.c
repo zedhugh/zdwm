@@ -10,7 +10,7 @@
 
 #include "base/array.h"
 #include "base/memory.h"
-#include "core/listeners.h"
+#include "common/listeners.h"
 
 typedef struct bar_workspace_t {
   zdwm_workspace_t info;

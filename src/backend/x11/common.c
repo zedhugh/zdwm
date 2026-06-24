@@ -5,7 +5,7 @@
 #include <xcb/xproto.h>
 
 #include "base/macros.h"
-#include "core/types.h"
+#include "interface/types.h"
 
 typedef struct modifier_map_t {
   modifier_bit_t modifier;

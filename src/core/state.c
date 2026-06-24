@@ -8,11 +8,12 @@
 #include "base/array.h"
 #include "base/log.h"
 #include "base/memory.h"
-#include "base/window_list.h"
+#include "common/window.h"
+#include "common/workspace.h"
 #include "core/layer.h"
-#include "core/types.h"
 #include "core/window.h"
-#include "core/wm_desc.h"
+#include "core/window_info.h"
+#include "interface/types.h"
 
 void state_init(
   state_t *state,

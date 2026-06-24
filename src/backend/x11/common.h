@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <xcb/xproto.h>
 
-#include "core/types.h"
+#include "interface/types.h"
 
 modifier_mask_t modifiers_xcb_to_zdwm(uint16_t mask);
 uint16_t modifiers_zdwm_to_xcb(modifier_mask_t mask);

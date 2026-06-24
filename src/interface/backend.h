@@ -3,9 +3,9 @@
 #include <cairo.h>
 #include <stddef.h>
 
-#include "core/event.h"
-#include "core/plan.h"
-#include "core/types.h"
+#include "interface/effect.h"
+#include "interface/event.h"
+#include "interface/types.h"
 
 typedef struct backend_t backend_t;
 

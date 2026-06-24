@@ -12,8 +12,6 @@
 #include "backend/x11/cursor.h"
 #include "base/macros.h"
 #include "base/memory.h"
-#include "core/backend.h"
-#include "core/types.h"
 #include "internal.h"
 
 static char *window_get_text_property(

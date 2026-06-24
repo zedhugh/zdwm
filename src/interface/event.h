@@ -2,8 +2,7 @@
 
 #include <stdint.h>
 
-#include "core/types.h"
-#include "core/window.h"
+#include "interface/types.h"
 
 typedef enum event_type_t {
   ZDWM_EVENT_NONE,
@@ -111,6 +110,3 @@ typedef struct event_t {
     configure_data_t configure_request;
   } as;
 } event_t;
-
-void event_cleanup(event_t *event);
-void event_reset(event_t *event);

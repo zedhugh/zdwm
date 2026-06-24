@@ -4,7 +4,7 @@
 
 #include "base/array.h"
 #include "base/memory.h"
-#include "core/types.h"
+#include "interface/types.h"
 
 void layer_stack_cleanup(layer_stack_t *layer) {
   p_delete(&layer->order);

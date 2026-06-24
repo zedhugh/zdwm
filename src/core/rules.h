@@ -2,8 +2,7 @@
 
 #include <stddef.h>
 
-#include "core/types.h"
-#include "core/window.h"
+#include "interface/types.h"
 
 typedef struct rule_item_t {
   rule_match_t match;

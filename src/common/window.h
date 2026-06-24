@@ -1,7 +1,10 @@
 #pragma once
 
-#include <stddef.h>
-#include <zdwm/types.h>
+#include "interface/types.h"
+
+window_layer_type_t window_classify_layer(const window_layer_props_t *props);
+void window_layer_props_cleanup(window_layer_props_t *props);
+void window_metadata_cleanup(window_metadata_t *metadata);
 
 typedef struct window_list_t {
   zdwm_window_id_t *windows;

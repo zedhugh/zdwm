@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/types.h"
-#include "core/wm_desc.h"
+#include "core/window_info.h"
+#include "interface/types.h"
 
 typedef enum command_type_t {
   ZDWM_COMMAND_MANAGE_WINDOW,

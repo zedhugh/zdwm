@@ -5,18 +5,19 @@
 #include <stdint.h>
 #include <zdwm/bar.h>
 #include <zdwm/config.h>
+#include <zdwm/listeners.h>
 
 #include "base/array.h"
 #include "base/color.h"
 #include "base/memory.h"
+#include "common/listeners.h"
+#include "common/workspace.h"
 #include "config/defaults.h"
 #include "config/loader.h"
 #include "core/binding.h"
 #include "core/layout.h"
-#include "core/listeners.h"
 #include "core/rules.h"
-#include "core/types.h"
-#include "core/wm_desc.h"
+#include "interface/types.h"
 #include "layouts/fair.h"
 #include "layouts/fullscreen.h"
 #include "layouts/maximize.h"

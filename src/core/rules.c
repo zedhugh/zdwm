@@ -5,7 +5,7 @@
 #include <zdwm/types.h>
 
 #include "base/memory.h"
-#include "core/types.h"
+#include "interface/types.h"
 
 bool rules_move(rules_t *src, rules_t *dest) {
   if (!dest || !src) return false;

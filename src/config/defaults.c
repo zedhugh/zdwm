@@ -9,7 +9,7 @@
 
 #include "base/log.h"
 #include "base/macros.h"
-#include "core/types.h"
+#include "interface/types.h"
 
 static constexpr char launcher[] =
   "rofi -show combi -modes combi -combi-modes window,drun,run,ssh,windowcd";

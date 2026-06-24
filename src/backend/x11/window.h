@@ -8,7 +8,7 @@
 #include <xcb/xproto.h>
 
 #include "base/app.h"
-#include "core/backend.h"
+#include "interface/backend.h"
 #include "internal.h"
 
 typedef struct atoms_t atoms_t;

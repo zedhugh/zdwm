@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 
-#include "core/types.h"
+#include "interface/types.h"
 
 typedef struct layer_stack_t {
   window_id_t *order;

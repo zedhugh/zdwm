@@ -42,15 +42,18 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/base/log.c
     ${SOURCE_DIR}/base/process.c
     ${SOURCE_DIR}/base/time.c
-    ${SOURCE_DIR}/base/window_list.c
 
     ${SOURCE_DIR}/config/defaults.c
     ${SOURCE_DIR}/config/loader.c
     ${SOURCE_DIR}/config/runtime_config.c
 
+    ${SOURCE_DIR}/common/event.c
+    ${SOURCE_DIR}/common/listeners.c
+    ${SOURCE_DIR}/common/window.c
+    ${SOURCE_DIR}/common/workspace.c
+
     ${SOURCE_DIR}/core/binding.c
     ${SOURCE_DIR}/core/command_buffer.c
-    ${SOURCE_DIR}/core/event.c
     ${SOURCE_DIR}/core/layer.c
     ${SOURCE_DIR}/core/layout.c
     ${SOURCE_DIR}/core/listeners.c

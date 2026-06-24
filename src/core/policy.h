@@ -3,16 +3,29 @@
 #include <stdint.h>
 #include <zdwm/action.h>
 
-#include "base/window_list.h"
+#include "common/listeners.h"
+#include "common/window.h"
 #include "core/binding.h"
 #include "core/command_buffer.h"
-#include "core/event.h"
 #include "core/layout.h"
-#include "core/listeners.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
-#include "core/types.h"
+#include "interface/event.h"
+
+typedef enum window_interaction_mode_t {
+  ZDWM_WINDOW_INTERACTION_NONE,
+  ZDWM_WINDOW_INTERACTION_MOVE,
+  ZDWM_WINDOW_INTERACTION_RESIZE,
+} window_interaction_mode_t;
+
+typedef struct window_interaction_state_t {
+  window_interaction_mode_t mode;
+  window_id_t window;
+  point_t start_coordinate;
+  rect_t origin_rect;
+  uint64_t last_change_time;
+} window_interaction_state_t;
 
 typedef struct policy_bar_t {
   bool *visible;

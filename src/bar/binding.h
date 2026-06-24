@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <zdwm/bar.h>
 
-#include "core/listeners.h"
+#include "common/listeners.h"
 
 typedef struct bar_binding_config_t {
   bool show_default;

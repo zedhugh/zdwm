@@ -5,7 +5,7 @@
 #include <zdwm/action.h>
 #include <zdwm/types.h>
 
-#include "core/types.h"
+#include "interface/types.h"
 
 typedef struct binding_table_t binding_table_t;
 

@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <zdwm/layout.h>
 
-#include "core/types.h"
+#include "interface/types.h"
 
 typedef zdwm_layout_ctx_t layout_ctx_t;
 typedef zdwm_layout_item_t layout_item_t;

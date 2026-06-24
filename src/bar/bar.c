@@ -20,7 +20,6 @@
 #include "base/macros.h"
 #include "base/memory.h"
 #include "base/time.h"
-#include "core/listeners.h"
 
 static zdwm_bar_item_t *bar_add_item(
   zdwm_output_id_t output_id,

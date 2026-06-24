@@ -4,7 +4,8 @@
 
 #include "base/array.h"
 #include "base/memory.h"
-#include "core/types.h"
+#include "interface/effect.h"
+#include "interface/types.h"
 
 static void free_memory_hold_by_effects(effect_t *effects, size_t count) {
   for (size_t i = 0; i < count; ++i) {

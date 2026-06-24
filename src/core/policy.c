@@ -10,19 +10,19 @@
 #include "base/memory.h"
 #include "base/process.h"
 #include "base/time.h"
-#include "base/window_list.h"
+#include "common/listeners.h"
+#include "common/window.h"
 #include "core/binding.h"
 #include "core/command.h"
 #include "core/command_buffer.h"
-#include "core/event.h"
 #include "core/layout.h"
 #include "core/listeners.h"
 #include "core/plan.h"
 #include "core/rules.h"
 #include "core/state.h"
-#include "core/types.h"
 #include "core/window.h"
-#include "core/wm_desc.h"
+#include "interface/event.h"
+#include "interface/types.h"
 
 static void quit(bool restart, command_buffer_t *command_buffer) {
   command_t quit_command = {

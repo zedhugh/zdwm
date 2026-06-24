@@ -6,7 +6,7 @@
 
 #include "base/array.h"
 #include "base/memory.h"
-#include "core/types.h"
+#include "interface/types.h"
 
 void layout_result_cleanup(layout_result_t *result) {
   p_delete(&result->items);

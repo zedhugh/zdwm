@@ -5,13 +5,12 @@
 #include <zdwm/bar.h>
 #include <zdwm/types.h>
 
-#include "core/backend.h"
+#include "common/listeners.h"
+#include "common/workspace.h"
 #include "core/binding.h"
 #include "core/layout.h"
-#include "core/listeners.h"
 #include "core/rules.h"
-#include "core/types.h"
-#include "core/wm_desc.h"
+#include "interface/backend.h"
 
 typedef struct runtime_init_desc_t {
   backend_t *backend;

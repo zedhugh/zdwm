@@ -17,11 +17,17 @@
 
 关键推论：**只需消费"类型"的层，不该被迫背上"操作函数"的依赖**。这是把类型和操作分到两个目录的根本理由。
 
-* 两个目录的定位
+* 目录的定位
+
+先明确三层关系：=base/= 是**项目无关**的通用底层（任何 C 项目都能直接用），=interface/= 和 =common/= 是**项目业务相关**的通用内容。后两者依赖前者（业务依赖基础设施）。
+
+** =src/base/=       ：项目无关的通用底层，零业务依赖
+
+放任何 C 项目都能直接用的纯工具（=memory= / =array= / =macros= / =color= / =log= / =time= / =process=）。不依赖 interface/common/任何实现层——它根本不知道 ZDWM 的业务。=interface/= 和 =common/= 都可以依赖它。
 
 ** =src/interface/=  ：跨模块共享的【声明】，零 .c
 
-只放类型定义、多态接口的函数声明。绝对不放假装、零实现代码。被所有实现层依赖，自身不依赖任何实现层。
+只放类型定义、多态接口的函数声明。绝对不放假装、零实现代码。被所有实现层依赖，自身不依赖任何实现层（可依赖 =base/= 的纯类型）。
 
 ** =src/common/=     ：被多实现层共用的【操作函数】，.h + .c
 
@@ -32,21 +38,25 @@
 * 依赖方向
 
 #+begin_example
-interface/   ← 零依赖（纯声明），所有实现层都依赖它
+base/         ← 项目无关的通用底层（任何 C 项目可用），零业务依赖
    ↑
-common/      ← 依赖 interface（用类型）+ base/（工具），被需要操作的层依赖
+interface/    ← 零业务依赖（纯类型声明，含 backend 抽象接口）；可依赖 base
    ↑
-core/   runtime/   (依赖 common + interface)
-backend/   bar/    (只依赖 interface —— 不碰 common 的操作)
+common/       ← 项目业务通用的共享 ADT 操作；依赖 interface + base
+   ↑
+core/  runtime/  backend/  bar/   ← 实现层，都依赖 common + interface（+ base）
 #+end_example
 
+注意：没有实现层"只依赖 interface"——所有实现层都用 =common/= 的业务通用操作。interface 的纯净性约束的是 interface *内部*（含 backend 抽象接口不依赖 interface 之外的任何东西），不是约束某个实现层的依赖深度。
+
 不变量：
-- =interface/= 不依赖任何实现层。
+- =base/= 不依赖任何业务层（interface/common/实现层），是项目无关的纯工具。
+- =interface/=（含 backend 抽象接口）不依赖 =interface/= 之外的任何业务内容；可依赖 =base/= 的纯类型（业务层依赖基础设施，合理）。
 - =common/= 只依赖 =interface/= 和 =base/=，不依赖任何实现层。
-- 实现层之间（core/backend/bar/runtime）不直接相互依赖跨模块契约，都经由 =interface/= 或 =common/=。
+- 所有实现层（core/runtime/backend/bar）都依赖 =common/= + =interface/=（+ =base/=）；它们之间不直接相互依赖跨模块契约，都经由 =interface/= 或 =common/=。
 - 因此 =bar ↔ backend= 这类对等层之间不再有交叉依赖：都通过 =interface/tray.h= 通信。
 
-* 判定示例：effect / plan / event
+* 判定示例：effect / plan / event / listeners
 
 用上面的标准，逐个判定现有跨模块类型：
 
@@ -59,35 +69,45 @@ backend/   bar/    (只依赖 interface —— 不碰 common 的操作)
   bool backend_apply_effect(backend_t *backend, const effect_t *effects, size_t effect_count);
 #+end_src
 
-** =plan_t=  →  common（完整 ADT：类型 + 操作）
+** =plan_t=  →  留 core（完整 ADT：类型 + 操作）
 
-消费方：只 core（policy 产生、收集 effect）和 runtime（提交后 reset/cleanup）。backend 完全不消费 =plan_t=——runtime 提交时把 plan 拆成 =effect_t= 数组喂给 backend。所以 =plan_t= 非跨模块，类型和操作整个 ADT 都落 =common/plan.h= + =common/plan.c=。
+消费方：只 core（policy 产生、收集 effect）和 runtime（提交后 reset/cleanup）。两者之间是 *runtime→core 的天然单向依赖*（runtime 是桥接层，本就依赖 core 的 policy/state 等）。把 =plan_t= 放 =core/plan.h= + =core/plan.c=，runtime 正向 include 即可，不破坏任何方向——所以它*不必*进 common。
+
+这把 common 的门槛精确化：common 是为"对等、无天然依赖"的消费者中立化（见下文 =listeners_t=）；若消费者之间已有单向依赖（如 plan 的 core+runtime），共享操作放被依赖方（core）即可，不必上浮 common。
 
 ** =event_t=  →  interface（类型）+ common（操作）
 
-=event_t= 类型被 backend（产生/填充）和 core/runtime（路由/清理）直接消费 → 类型进 =interface/event.h=。
-但 =event_reset= / =event_cleanup= 这些操作被 backend 和 runtime 共用，而两者对等、不该互相依赖，操作不能归属任一层 → 操作落 =common/event.h= + =common/event.c=。
+=event_t= 类型进 =interface/event.h= 的关键理由：interface 内的 =backend.h= 契约直接 *#include 了 event.h*——=backend_poll_event= / =backend_next_event= 的参数是 =event_t *=，且契约注释讨论 event 的所有权与 =event_cleanup= 语义。一份完整的后端契约要让读者看到 event_t 全貌（字段、联合、生命周期责任），而非甩一个前向声明。所以 event_t 必须在 interface：若放 common，=backend.h= 要么退化为前向声明（契约不完整），要么 interface 反向依赖 common（破坏零依赖）。
 
-这是"类型和操作分两个目录"的典型：类型跨模块必须在 interface（backend 要产 =event_t=），操作对等共用必须在 common。
+=event_reset= / =event_cleanup= 这些操作被 backend 和 runtime 共用，两者对等、不该互相依赖 → 操作落 =common/event.h= + =common/event.c=。于是 event 是"类型在 interface、操作在 common"的典型。
+
+** =listeners_t=  →  common（类型 + 维护）+ core（notify）
+
+=listeners_t= 类型被 bar（订阅）、core（发布）、runtime（生命周期）消费，但 **backend 完全不碰它**。判定关键：它的消费者（bar/config/runtime）都*既用类型又用维护操作*（=add_*= / =cleanup=），没有哪个层"只需类型、不需操作"——按核心推论（只有"只需消费类型"的层才迫使类型单独上提 interface），类型不必进 interface。与 =event_t= 的对照就在这里：=event_t= 因被 interface 内的 =backend.h= 契约需要完整定义而必须留 interface；=listeners_t= 则*不被 interface 内任何契约依赖*（=backend.h= 完全不碰它），所以能整个进 common：
+
+- 类型 =listeners_t= + 维护操作 =add_*= / =cleanup=：自包含容器操作，被 bar/config/runtime 多个对等层共用 → 整个 ADT 进 =common/listeners.{h,c}=。
+- =notify_*=（触发）：单消费者（只 core/runtime 发布侧调用），且依赖 core 内部（把 =state_t= 翻译成 =zdwm_window_t= 等 DTO）→ 声明 + 实现都留 =core/listeners=。
+
+真正的跨层契约（回调签名 =zdwm_window_added= 等 + DTO）已在 =include/zdwm/listeners.h=（比 interface 更公开的那层），=listeners_t= 只是这些回调的容器，所以它整个待在 common 自洽，不必单独占一个 interface 头。
 
 * 汇总表
 
-| 东西                         | 类型在哪                | 操作在哪                            | 判定理由                                                                 |
-|------------------------------+-------------------------+-------------------------------------+--------------------------------------------------------------------------|
-| =effect_t=                   | =interface/effect.h=    | （无，构造归 plan 操作）            | 类型跨模块（core 产 + backend 执行），纯数据                             |
-| =plan_t=                     | =common/plan.h=         | =common/plan.c=                     | 非跨模块，只 core/runtime 用，整个 ADT 在 common                         |
-| =event_t=                    | =interface/event.h=     | =common/event.h= + =common/event.c= | 类型跨模块；操作对等共用                                                 |
-| 后端接口（=backend_t= 等）   | =interface/backend.h=   | =backend/x11/*.c=                   | 多态接口：声明在 interface，实现在具体后端                               |
-| tray 契约（=tray_t= 等）     | =interface/tray.h=      | =backend/x11/tray.c=                | 多态接口：bar 用、backend 实现，声明在 interface 消除 =bar↔backend= 交叉 |
-| 通知协议（listeners）        | =interface/listeners.h= | =core/listeners.c=                  | 多态接口：core 发布、bar 订阅，声明在 interface                          |
-| 基础类型（=window_id_t= 等） | =interface/types.h=     | （按需）                            | 所有层共用                                                               |
+| 东西                         | 类型在哪              | 操作在哪                                  | 判定理由                                                                 |
+|------------------------------+-----------------------+-------------------------------------------+--------------------------------------------------------------------------|
+| =effect_t=                   | =interface/effect.h=  | （无，构造归 plan 操作）                  | 类型跨模块（core 产 + backend 执行），纯数据                             |
+| =plan_t=                     | =core/plan.h=         | =core/plan.c=                             | 消费者 runtime→core 单向，放 core 不破坏方向，不必 common                |
+| =event_t=                    | =interface/event.h=   | =common/event.h= + =common/event.c=       | 类型跨模块；操作对等共用                                                 |
+| 后端接口（=backend_t= 等）   | =interface/backend.h= | =backend/x11/*.c=                         | 多态接口：声明在 interface，实现在具体后端                               |
+| tray 契约（=tray_t= 等）     | =interface/tray.h=    | =backend/x11/tray.c=                      | 多态接口：bar 用、backend 实现，声明在 interface 消除 =bar↔backend= 交叉 |
+| 通知协议（listeners）        | =common/listeners.h=  | =common/listeners.c= + =core/listeners.c= | 消费者 bar↔core 对等，必须 common 中立化；notify 依赖 core 留 core        |
+| 基础类型（=window_id_t= 等） | =interface/types.h=   | （按需）                                  | 所有层共用                                                               |
 
 * 多态接口 vs 共享 ADT：.c 归属的不同
 
 =interface/= 里有两类声明，它们的 .c 归属不同，务必区分：
 
-- **多态接口**（=backend.h=、=tray.h=、=listeners.h=）：声明一组"由谁来实现"的函数，实现依赖具体实现层（xcb / 未来 wayland）。这类 .c **必须在实现层**（=backend/x11/=、=core/=），不能在 interface——否则 interface 就"知道"了具体实现。
-- **共享 ADT 的操作**（plan、event 的操作）：实现自包含、不依赖任何实现层。这类 .c 进 =common/=。
+- **多态接口**（=backend.h=、=tray.h=）：声明一组"由谁来实现"的函数，实现依赖具体实现层（xcb / 未来 wayland）。这类 .c **必须在实现层**（=backend/x11/=、=core/=），不能在 interface——否则 interface 就"知道"了具体实现。
+- **共享 ADT 的操作**（event 的操作）：实现自包含、不依赖任何实现层。这类 .c 进 =common/=。
 
 换句话说：=interface/= 永远零 .c。多态接口的 .c 在实现层，共享操作的 .c 在 =common/=。
 
@@ -104,9 +124,9 @@ backend/   bar/    (只依赖 interface —— 不碰 common 的操作)
 
 1. 建 =src/interface/= 和 =src/common/= 目录，加入 CMakeLists。
 2. 先迁移"纯类型、零依赖"的声明进 =interface/=：=types.h=、=effect.h=（从 =core/plan.h= 抽出 =effect_t=）、=event.h= 的类型部分。
-3. 多态接口声明迁移：=backend.h=、=listeners.h= 进 =interface/=（=.c= 留原处）。
-4. 共享 ADT 迁移：=plan.h= + =plan.c= 整体进 =common/=；=event.h= 操作部分 + =event.c= 进 =common/=。
-5. 更新全项目 include 路径（="core/plan.h"= → ="common/plan.h"= 等）。
+3. 多态接口声明迁移：=backend.h= 进 =interface/=（=.c= 留原处）。=listeners= 走共享 ADT、不进 interface：=listeners_t= 类型 + =add_*= / =cleanup= 整体进 =common/listeners.{h,c}=，=notify_*= 留 =core/listeners=（详见上方判定示例）。
+4. 共享 ADT 迁移：=event.h= 操作部分 + =event.c= 进 =common/=。（=plan= 留 core：消费者 runtime→core 单向，不必上浮。）
+5. 更新全项目 include 路径（="core/types.h"= → ="interface/types.h"= 等）。
 6. 每步后编译验证，确保依赖方向单向、无循环。
 
 注意边界：遇到"看起来该进 interface、但其类型依赖还在 core"的情况（如某个 event 子结构引用了 =core/window.h= 的类型），要么把那个被引用的类型也提到 =interface/=，要么承认它暂不进 interface——**进 interface 的前提是它的所有依赖都在 interface**，不能硬塞。

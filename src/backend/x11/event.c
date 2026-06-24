@@ -1,4 +1,4 @@
-#include "core/event.h"
+#include "common/event.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -12,9 +12,8 @@
 #include "backend/x11/common.h"
 #include "backend/x11/window.h"
 #include "base/memory.h"
-#include "core/backend.h"
-#include "core/types.h"
-#include "core/window.h"
+#include "interface/backend.h"
+#include "interface/event.h"
 #include "internal.h"
 
 static window_state_t *derive_window_states(

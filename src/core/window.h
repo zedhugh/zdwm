@@ -3,68 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "core/types.h"
-
-/* Internal semantic window types mapped from backend-specific protocols. */
-typedef enum window_type_t {
-  ZDWM_WINDOW_TYPE_NORMAL = 0,
-  ZDWM_WINDOW_TYPE_DESKTOP,
-  ZDWM_WINDOW_TYPE_DOCK,
-  ZDWM_WINDOW_TYPE_TOOLBAR,
-  ZDWM_WINDOW_TYPE_DIALOG,
-  ZDWM_WINDOW_TYPE_UTILITY,
-  ZDWM_WINDOW_TYPE_SPLASH,
-  ZDWM_WINDOW_TYPE_MENU,
-  ZDWM_WINDOW_TYPE_DROPDOWN_MENU,
-  ZDWM_WINDOW_TYPE_POPUP_MENU,
-  ZDWM_WINDOW_TYPE_TOOLTIP,
-  ZDWM_WINDOW_TYPE_COMBO,
-  ZDWM_WINDOW_TYPE_DND,
-  ZDWM_WINDOW_TYPE_NOTIFICATION,
-} window_type_t;
-
-/* Internal semantic window states mapped from backend-specific protocols. */
-typedef enum window_state_t {
-  ZDWM_WINDOW_STATE_ABOVE = 0,
-  ZDWM_WINDOW_STATE_FULLSCREEN,
-  ZDWM_WINDOW_STATE_MODAL,
-  ZDWM_WINDOW_STATE_STICKY,
-} window_state_t;
-
-/* 层级从低到高 */
-typedef enum window_layer_type_t {
-  ZDWM_WINDOW_LAYER_DESKTOP = 0,
-  ZDWM_WINDOW_LAYER_NORMAL,
-  ZDWM_WINDOW_LAYER_TOP,
-  ZDWM_WINDOW_LAYER_OVERLAY,
-  ZDWM_WINDOW_LAYER_COUNT,
-} window_layer_type_t;
-
-/* clang-format off */
-typedef enum window_metadata_change_flags_t {
-  ZDWM_WINDOW_METADATA_CHANGE_TITLE    = 1u << 0,
-  ZDWM_WINDOW_METADATA_CHANGE_APP_ID   = 1u << 1,
-  ZDWM_WINDOW_METADATA_CHANGE_ROLE     = 1u << 2,
-  ZDWM_WINDOW_METADATA_CHANGE_CLASS    = 1u << 3,
-  ZDWM_WINDOW_METADATA_CHANGE_INSTANCE = 1u << 4,
-} window_metadata_change_flags_t;
-/* clang-format on */
-
-typedef struct window_layer_props_t {
-  window_type_t *types;
-  size_t type_count;
-
-  window_state_t *states;
-  size_t state_count;
-} window_layer_props_t;
-
-typedef struct window_metadata_t {
-  char *title;
-  char *app_id;
-  char *role;
-  char *class_name;
-  char *instance_name;
-} window_metadata_t;
+#include "interface/types.h"
 
 typedef struct window_t {
   window_id_t id;
@@ -96,11 +35,6 @@ typedef struct window_t {
 
   uint32_t border_width;
 } window_t;
-
-window_layer_type_t window_classify_layer(const window_layer_props_t *props);
-
-void window_layer_props_cleanup(window_layer_props_t *props);
-void window_metadata_cleanup(window_metadata_t *metadata);
 
 void window_set_fullscreen(window_t *window, bool fullscreen);
 void window_set_maximized(window_t *window, bool maximized);

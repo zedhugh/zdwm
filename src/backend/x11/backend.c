@@ -1,4 +1,4 @@
-#include "core/backend.h"
+#include "interface/backend.h"
 
 #include <cairo-xcb.h>
 #include <cairo.h>
@@ -25,11 +25,7 @@
 #include "base/log.h"
 #include "base/macros.h"
 #include "base/memory.h"
-#include "base/window_list.h"
-#include "core/event.h"
-#include "core/plan.h"
-#include "core/types.h"
-#include "core/window.h"
+#include "common/window.h"
 #include "internal.h"
 
 typedef struct atom_item_t {

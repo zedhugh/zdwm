@@ -8,7 +8,7 @@
 
 #include "base/array.h"
 #include "base/memory.h"
-#include "core/listeners.h"
+#include "common/listeners.h"
 
 typedef struct bar_windows_state_t {
   zdwm_output_id_t output_id;
