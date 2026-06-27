@@ -7,10 +7,7 @@
 
 #include "base/color.h"
 
-typedef struct bar_x_region_t {
-  int32_t start;
-  int32_t end;
-} bar_x_region_t;
+typedef struct zdwm_bar_x_region_t bar_x_region_t;
 
 typedef struct bar_cell_t {
   zdwm_icon_t icon;
@@ -20,6 +17,7 @@ typedef struct bar_cell_t {
   color_t fg;
   color_t bg;
   bar_x_region_t region;
+  int32_t fixed_width;
   bool show_indicator;
   bool dirty;
 } bar_cell_t;

@@ -212,14 +212,16 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
     item->region.start = start;
     for (size_t j = 0; j < item->count; ++j) {
       auto cell = &item->cells[j];
+      auto fixed_width = cell->fixed_width;
 
-      int32_t width = 0;
-      text_context_get_text_size(ctx, cell->text, &width, nullptr);
-
-      bar_x_region_t region = {
-        .start = start,
-        .end = start + width + item->cell_padding * 2,
-      };
+      bar_x_region_t region = {.start = start, .end = start};
+      if (fixed_width == 0) {
+        int32_t width = 0;
+        text_context_get_text_size(ctx, cell->text, &width, nullptr);
+        region.end += width + 2 * item->cell_padding;
+      } else if (fixed_width > 0) {
+        region.end += fixed_width;
+      }
       bar_cell_set_region(item, j, region);
 
       start = region.end;
@@ -240,14 +242,16 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
     for (size_t j = item->count; j > 0; --j) {
       auto cell_index = j - 1;
       auto cell = &item->cells[cell_index];
+      auto fixed_width = cell->fixed_width;
 
-      int32_t width = 0;
-      text_context_get_text_size(ctx, cell->text, &width, nullptr);
-
-      bar_x_region_t region = {
-        .start = end - width - item->cell_padding * 2,
-        .end = end,
-      };
+      bar_x_region_t region = {.start = end, .end = end};
+      if (fixed_width == 0) {
+        int32_t width = 0;
+        text_context_get_text_size(ctx, cell->text, &width, nullptr);
+        region.start -= width + item->cell_padding * 2;
+      } else if (fixed_width > 0) {
+        region.start -= fixed_width;
+      }
       bar_cell_set_region(item, cell_index, region);
 
       end = region.start;
@@ -263,12 +267,30 @@ static void bar_output_layout(bar_output_t *bar_output, text_context_t *ctx) {
   if (center->count == 0) return;
   center->region = (bar_x_region_t){.start = start, .end = end};
 
-  auto width = (end - start) / (int32_t)center->count;
+  auto center_width = end - start;
+  auto center_count = center->count;
   for (size_t i = 0; i < center->count; ++i) {
-    bar_x_region_t region = {
-      .start = start,
-      .end = start + width + center->cell_padding * 2,
-    };
+    auto cell = &center->cells[i];
+    auto fixed_width = cell->fixed_width;
+    if (fixed_width > 0) {
+      center_width -= fixed_width;
+    } else if (fixed_width < 0) {
+      /* 隐藏的 cell 不占任何空间，平分宽度时不参与 */
+      --center_count;
+    }
+  }
+
+  auto width = center_width / (int32_t)center_count;
+  for (size_t i = 0; i < center->count; ++i) {
+    auto cell = &center->cells[i];
+    auto fixed_width = cell->fixed_width;
+
+    bar_x_region_t region = {.start = start, .end = start};
+    if (fixed_width == 0) {
+      region.end += width + center->cell_padding * 2;
+    } else if (fixed_width > 0) {
+      region.end += fixed_width;
+    }
     start = region.end;
     bar_cell_set_region(center, i, region);
   }
@@ -386,6 +408,42 @@ bar_output_draw(bar_output_t *bar_output, text_context_t *ctx, color_t *bg) {
   bar_item_draw(cr, &bar_output->center, ctx, bar_output->height);
 }
 
+static inline void bar_item_run_hook(
+  zdwm_bar_item_t *item,
+  void (*hook)(const zdwm_bar_item_hook_params_t *params)
+) {
+  if (!hook) return;
+
+  zdwm_bar_item_hook_params_t params = {
+    .item = item,
+    .cell_api = &bar_cell_api,
+    .region = item->region,
+    .state = item->state
+  };
+  hook(&params);
+}
+
+static void visitor_after_layout(zdwm_bar_item_t *item) {
+  bar_item_run_hook(item, item->api.after_layout);
+}
+
+static void visitor_after_draw(zdwm_bar_item_t *item) {
+  bar_item_run_hook(item, item->api.after_draw);
+}
+
+typedef void (*bar_item_visitor_t)(zdwm_bar_item_t *item);
+
+static void
+bar_output_foreach_item(bar_output_t *bar_output, bar_item_visitor_t visit) {
+  for (size_t i = 0; i < bar_output->left.count; ++i) {
+    visit(&bar_output->left.items[i]);
+  }
+  visit(&bar_output->center);
+  for (size_t i = 0; i < bar_output->right.count; ++i) {
+    visit(&bar_output->right.items[i]);
+  }
+}
+
 bool bar_draw(bar_t *bar) {
   auto ctx = bar->ctx;
 
@@ -396,7 +454,9 @@ bool bar_draw(bar_t *bar) {
     if (!bar_output_is_dirty(bar_output)) continue;
 
     bar_output_layout(bar_output, ctx);
+    bar_output_foreach_item(bar_output, visitor_after_layout);
     bar_output_draw(bar_output, ctx, &bar->palette.bg);
+    bar_output_foreach_item(bar_output, visitor_after_draw);
     changed = true;
   }
 

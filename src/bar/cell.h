@@ -12,4 +12,4 @@ void bar_cell_set_region(
   bar_x_region_t region
 );
 
-extern zdwm_bar_cell_api_t bar_cell_api;
+extern const zdwm_bar_cell_api_t bar_cell_api;

@@ -2,6 +2,7 @@
 
 #include <assert.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 #include <strings.h>
 #include <zdwm/types.h>
@@ -119,15 +120,37 @@ bar_cell_set_indicator(zdwm_bar_item_t *item, size_t index, bool show) {
   item->dirty = true;
 }
 
+static void
+bar_cell_set_fixed_width(zdwm_bar_item_t *item, size_t index, int32_t width) {
+  if (index >= item->count) return;
+
+  auto cell = &item->cells[index];
+  if (cell->fixed_width == width) return;
+
+  cell->fixed_width = width;
+
+  cell->dirty = true;
+  item->dirty = true;
+}
+
+static bar_x_region_t bar_cell_get_region(zdwm_bar_item_t *item, size_t index) {
+  if (index >= item->count) return (bar_x_region_t){0};
+
+  auto cell = &item->cells[index];
+  return cell->region;
+}
+
 /* clang-format off */
-zdwm_bar_cell_api_t bar_cell_api = {
-  .get_cell_count     = bar_cell_get_count,
-  .set_cell_count     = bar_cell_set_count,
-  .cell_set_text      = bar_cell_set_text,
-  .cell_set_bg        = bar_cell_set_bg,
-  .cell_set_fg        = bar_cell_set_fg,
-  .cell_set_icon      = bar_cell_set_icon,
-  .cell_set_indicator = bar_cell_set_indicator,
+const zdwm_bar_cell_api_t bar_cell_api = {
+  .get_cell_count       = bar_cell_get_count,
+  .set_cell_count       = bar_cell_set_count,
+  .cell_set_text        = bar_cell_set_text,
+  .cell_set_bg          = bar_cell_set_bg,
+  .cell_set_fg          = bar_cell_set_fg,
+  .cell_set_icon        = bar_cell_set_icon,
+  .cell_set_indicator   = bar_cell_set_indicator,
+  .cell_set_fixed_width = bar_cell_set_fixed_width,
+  .cell_get_region      = bar_cell_get_region,
 };
 /* clang-format on */
 
