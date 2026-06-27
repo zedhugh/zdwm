@@ -42,7 +42,7 @@ X11 系统托盘协议只要求：tray 创建一个 window 成为 =_NET_SYSTEM_T
 
 * 后端接口设计
 
-tray 契约独立成头 =src/bar/tray.h= —— *不放 core*，因为 tray 与 core 无关（core 不感知 tray）。由 bar 定义、后端实现（消费方定义接口、提供方实现的依赖倒置；契约是纯抽象头）。它只依赖 =core/types.h=（=window_id_t=），不含 =backend_t=，所以 bar include 它而不碰 =core/backend.h=，保持"bar 不知道后端内部"。=core/backend.h= 反过来 include =bar/tray.h=，让 =backend_bar_window_t= 内嵌 =tray_t=。
+tray 契约独立成头 =interface/tray.h= —— 落 interface 层：不放 core（tray 与 core 无关），也不放 bar（backend 也要实现它）。bar 和 backend 作为两个对等实现层，都依赖 =interface/tray.h= 来解耦——这正是分层消除 bar↔backend 交叉依赖的落点（详见 [[file:module-layering.org][module-layering.org]] 的 tray 落点）。它只依赖 =interface/types.h=（=window_id_t=），不含 =backend_t=，所以 bar include 它而不碰 =interface/backend.h= 的内部。=interface/backend.h= 反过来 include =interface/tray.h=，让 =backend_bar_window_t= 内嵌 =tray_t=。
 
 #+begin_src c
 typedef void (*tray_icons_change_cb_t)(void *user_data);
@@ -233,20 +233,20 @@ bar 重绘是 timerfd（fps）驱动，非事件驱动。tray icon 是真实窗�
 
 * 关键文件清单
 
-| 文件                         | 改动                                                                                                     |
-|------------------------------+----------------------------------------------------------------------------------------------------------|
-| =src/bar/tray.h=             | **新增** tray 契约：=tray_t= / =tray_api_t= / =tray_icons_change_cb_t=（bar 定义、后端实现；不进 core） |
-| =src/core/backend.h=         | include =bar/tray.h=；=backend_bar_window_t= 内嵌 =tray_t=；扩展 =backend_create_bar_window=（加 =enable_tray=） |
-| =src/backend/x11/tray.c=     | *新增*：selection / MANAGER / 基础 XEMBED / icon 管理 / =place=                                          |
-| =src/backend/x11/internal.h= | =ATOM_LIST= 追加 tray/XEMBED atoms；=backend_t= 加 =tray= 字段                                           |
-| =src/backend/x11/event.c=    | 消化 tray 相关 client message（不产 =event_t=）                                                          |
-| =src/backend/x11/backend.c=  | =backend_create_bar_window= 实现 enable_tray 分支；=backend_destroy= 释放 tray                           |
-| =src/bar/types.h=            | =bar_cell_t= 加 =fixed_width=；=bar_t= 加 =tray=                                                         |
-| =src/bar/cell.h= / =cell.c=  | =cell_api= 加 =cell_set_fixed_width= / =cell_get_region=                                                 |
-| =src/bar/bar.c=              | layout 支持 =fixed_width=；=bar_draw= 调 after 钩子；=bar_init= 加 tray item；新增 layout params 类型    |
-| =src/bar/tray.c=             | *新增*：tray item 实现                                                                                   |
-| =src/runtime/runtime.c=      | =runtime_init_bar= 传 =enable_tray=、存 =bar->tray=                                                      |
-| =include/zdwm/config.h=      | =zdwm_bar_config_t= 加 =tray_output_index=                                                               |
+| 文件                         | 改动                                                                                                                   |
+|------------------------------+------------------------------------------------------------------------------------------------------------------------|
+| =interface/tray.h=           | **新增** tray 契约：=tray_t= / =tray_api_t= / =tray_icons_change_cb_t=（bar 与 backend 共享，落 interface 解耦）       |
+| =interface/backend.h=        | include =interface/tray.h=；=backend_bar_window_t= 内嵌 =tray_t=；扩展 =backend_create_bar_window=（加 =enable_tray=） |
+| =src/backend/x11/tray.c=     | *新增*：selection / MANAGER / 基础 XEMBED / icon 管理 / =place=                                                        |
+| =src/backend/x11/internal.h= | =ATOM_LIST= 追加 tray/XEMBED atoms；=backend_t= 加 =tray= 字段                                                         |
+| =src/backend/x11/event.c=    | 消化 tray 相关 client message（不产 =event_t=）                                                                        |
+| =src/backend/x11/backend.c=  | =backend_create_bar_window= 实现 enable_tray 分支；=backend_destroy= 释放 tray                                         |
+| =src/bar/types.h=            | =bar_cell_t= 加 =fixed_width=；=bar_t= 加 =tray=                                                                       |
+| =src/bar/cell.h= / =cell.c=  | =cell_api= 加 =cell_set_fixed_width= / =cell_get_region=                                                               |
+| =src/bar/bar.c=              | layout 支持 =fixed_width=；=bar_draw= 调 after 钩子；=bar_init= 加 tray item；新增 layout params 类型                  |
+| =src/bar/tray.c=             | *新增*：tray item 实现                                                                                                 |
+| =src/runtime/runtime.c=      | =runtime_init_bar= 传 =enable_tray=、存 =bar->tray=                                                                    |
+| =include/zdwm/config.h=      | =zdwm_bar_config_t= 加 =tray_output_index=                                                                             |
 
 * 复用现有
 

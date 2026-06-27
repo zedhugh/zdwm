@@ -1,0 +1,91 @@
+#+title: ZDWM Tray 系统托盘实现计划
+#+OPTIONS: toc:2
+
+* 背景
+
+bar 当前没有系统托盘。目标是让外部应用（输入法、音量、蓝牙、网络等）的 tray icon 显示在 bar 右侧并正常交互。
+
+设计文档 [[file:tray-design.org][tray-design.org]] 已把方案定死。刚完成的模块分层重构（[[file:module-layering.org][module-layering.org]]）为 tray 铺了路——=interface/= 层让 bar 与 backend 经契约解耦，tray 契约落 =interface/tray.h= 消除 =bar↔backend= 交叉依赖（分层的核心动机之一）。
+
+* 关键决策
+
+- *契约落 =interface/tray.h=*（分层后的位置，非设计文档旧版的 =src/bar/tray.h=）。
+- *tray 闭环后端*：core 的 =event_t= / =policy= / =plan= 完全不感知；tray 消息在 =event.c= 拦截后 =return false=，不进 policy 路由。
+- *tray 是 bar 附属 + 后端单例*：生命周期随 bar 窗口；=_NET_SYSTEM_TRAY_S0= selection owner 全 display 唯一，挂到最后一个 =enable_tray=true= 的 output。
+- *第一版范围*：selection owner + MANAGER 广播 + 基础 XEMBED（reparent + =_XEMBED_EMBEDDED_NOTIFY=）+ icon 显示与点击 + icon 尺寸 = bar 高度（不缩放）。焦点/激活转发、尺寸协商、客户端异常断开清理放后续迭代。
+- *tray 存 =bar_t.tray=（一份）*：单例语义，=bar_init= 时用 =host_window()= 匹配决定哪个 output 渲染。
+
+* 实现步骤
+
+每步可独立编译，建议每步一个提交。
+
+** 步骤 1：契约层 + 调用点占位
+
+签名变更与唯一调用点耦合，必须一起改才能编译。
+
+- *新增 =src/interface/tray.h=*（纯声明，零 .c）：=tray_icons_change_cb_t=、=tray_api_t=（=host_window= / =icon_count= / =icon_size= / =place= / =set_listener=）、=tray_t=（=api= + =handle=）。只依赖 =interface/types.h=。
+- *=src/interface/backend.h=*：=#include "interface/tray.h"=；=backend_bar_window_t= 内嵌 =tray_t tray=；=backend_create_bar_window= 加 =bool enable_tray=。
+- *=src/runtime/runtime.c=*：临时传 =enable_tray=false=。
+- *=src/backend/x11/backend.c=*：签名加参数，函数体先忽略，返回 =.tray = {0}=。
+- 验证：编译通过，bar 行为不变。
+
+** 步骤 2：bar 框架扩展（零影响现有 3 个 item）
+
+为 tray item 铺路；钩子可空、=fixed_width= 默认 0，现有 item 走原路径。
+
+- *=include/zdwm/bar.h=*：=zdwm_bar_item_type_t= 加可空钩子 =after_layout= / =after_draw=；新增 =zdwm_bar_item_layout_params_t=（仿 =zdwm_bar_click_params_t=：=item= / =cell_api= / =region= / =state=）；=zdwm_bar_cell_api_t= 加 =cell_set_fixed_width=、=cell_get_region=。
+- *=src/bar/types.h=*：=bar_cell_t= 加 =int32_t fixed_width=（默认 0 = 走文本测量，=p_clear= 后天然正确；<0 = 隐藏哨兵）。
+- *=src/bar/cell.c=*：实现 =bar_cell_set_fixed_width= / =bar_cell_get_region=，注册进 =bar_cell_api=。
+- *=src/bar/bar.c=*：=bar_output_layout= 三处宽度计算加 =fixed_width= 分支（>0 固定 / ==0 测量 / <0 隐藏）；=bar_draw= 在 layout 后遍历调 =after_layout=、draw 后调 =after_draw=（NULL 跳过）。
+- 验证：编译 + 运行，*workspaces/binding/windows 三个 item 视觉与点击零变化*（关键回归点）。
+
+** 步骤 3：后端协议层（核心）
+
+tray 能力全部 X11 细节，"已实现但未启用"。
+
+- *新增 =src/backend/x11/tray.c=*：tray host 状态 + 成为 =_NET_SYSTEM_TRAY_S0= owner + 广播 MANAGER + 容器子窗口（reparent 到当前 bar）+ 基础 XEMBED（reparent icon + =_XEMBED_EMBEDDED_NOTIFY=）+ dock 请求处理 + =place(handle,x)=（move 容器、configure 每个 icon 到 =x + i*icon_size=）+ 填充 =static const tray_api_t=（=handle= 实际是 =backend_t*=）。=icon_size= 用 bar 窗口高度（单一数据源）。
+- *=src/backend/x11/internal.h=*：=ATOM_LIST= 追加 =_NET_SYSTEM_TRAY_S0= / =_NET_SYSTEM_TRAY_OPCODE= / =_NET_SYSTEM_TRAY_MESSAGE_DATA= / =_XEMBED= / =_XEMBED_INFO= / =Manager=；=backend_t= 加 tray host 字段（单例：host_window、icon 列表、listener、enabled）。
+- *=src/backend/x11/event.c=*（=handle_client_message=）：开头拦截 tray 消息（=Manager= 且 =data.data32[1]==_NET_SYSTEM_TRAY_S0=；=_NET_SYSTEM_TRAY_OPCODE= 的 =REQUEST_DOCK=），处理后 =return false=（不产 =event_t=）。
+- *=src/backend/x11/backend.c=*：=backend_create_bar_window= 的 =enable_tray=true= 分支（创建/迁移 host 容器到此 bar 窗口，返回 =tray= 填 backend 的 api + =handle=backend=）；=backend_destroy= 释放 tray（selection、容器、icon 列表）。
+- *=CMakeLists.txt=*：加 =src/backend/x11/tray.c=。
+- 验证：编译通过。runtime 仍传 false，行为不变。
+
+** 步骤 4：bar tray item
+
+消费步骤 2 的框架 + 步骤 3 的契约，tray 作为 right-side item 接入。
+
+- *新增 =src/bar/tray.c=*（参考 =workspaces.c= 模式）：=bar_tray= vtable = =create_state= / =update= / =on_click= / =after_layout= / =destroy_state=。=create_state= 拷贝 =tray_t= + =set_listener= 注册回调（置 dirty）；=update= 在 dirty 时 =set_cell_count(icon_count)= + 循环 =cell_set_fixed_width(i, icon_size)=；=on_click= 返回 =ACTION_NONE=（icon 真实子窗口自收点击）；=after_layout= 调 =place(handle, region.start)=。cell 不画 cairo（text 空，被真实 icon 窗口盖住）。
+- *=src/bar/bar.h=*：=bar_t= 加 =tray_t tray=（一份，单例）。
+- *=src/bar/bar.c=*（=bar_init=）：遍历 output，对 =bar->tray.host_window()= 匹配自身 =window_id= 的 output 调 =bar_output_add_tray=（right side），其余不加。
+- *=CMakeLists.txt=*：加 =src/bar/tray.c=。
+- 验证：编译通过。right side 仍空（runtime 未注入 tray）。
+
+** 步骤 5：runtime/配置串起来（启用）
+
+- *=include/zdwm/bar.h=*（=zdwm_bar_config_t=）：加 =int32_t tray_output_index=（默认 0 = 第一个 output）。
+- *=src/runtime/runtime.c=*（=runtime_init_bar=）：=bool enable_tray = ((int32_t)i == runtime->bar.config.tray_output_index);= 传给 =backend_create_bar_window=；=runtime->bar.tray = bar_window.tray;=（每个返回都一样，存一份）。
+- *=src/config/defaults.c=*：=tray_output_index= 默认 0。
+- 验证：编译 + 运行，tray 启用。
+
+* 风险点
+
+- *after 钩子对现有 item*：现有三个 item 的 vtable 不显式初始化新钩子 → NULL（C 部分初始化保证）；=bar_draw= 调用前判 NULL。=fixed_width= 默认 0 走原测量路径。步骤 2 后必须确认三个 item 零变化。
+- *selection owner 单例 vs per-output create*：host 是 backend 单例；每次 =enable_tray=true= 把容器 reparent 到本次 bar 窗口，最终挂最后一个 true 的 output；=host_window()= 返回当前挂载 window_id。
+- *XEMBED 第一版只做基础*：reparent + =EMBEDDED_NOTIFY=；不做焦点/激活/缩放。某些高级 applet（要求焦点的输入法）可能受限，基础音量/网络 icon 无影响。
+- *core 零感知*：tray 消息在 =event.c= 拦截 =return false=，不进 policy/plan。icon 增删不触发 core 重排——icon 是真实 X 子窗口，X server 自管绘制，bar 重绘靠 timerfd 驱动，region 变化经 =after_layout= → =place= 同步。
+- *tray cell padding*：=fixed_width = icon_size=，确保 tray item 的 cell padding 为 0，避免 icon 间额外间距。
+- *透明背景*：bar 窗口已 ARGB（=backend.c= 用 =window_get_visual(true)=），tray 容器子窗口继承，第一版白送。
+
+* 端到端验证
+
+1. *每步编译*：=cmake --build build=，零 warning（项目 =-Wall=）。
+2. *步骤 5 后运行*：=./build/zdwm=。
+3. *tray icon 验证*：启动一个提供 tray icon 的 app（=volumeicon= / =nm-applet= / =fcitx5= 等，不要用 stalonetray——它会抢 selection owner）。验证：icon 显示在 bar *右侧*、尺寸 = bar 高度无溢出、多 icon 横向无重叠、点击有响应、透明背景融入 bar。
+4. *动态增删*：启动/退出 tray app，观察 icon 实时增删 + 布局重排（经 =set_listener= 回调 → dirty → 下个 timerfd tick → =update= 重算 → =after_layout= 重排），无残留空位。
+5. *回归*（每步都做，重点步骤 2）：workspaces tag 切换、binding 模式、windows 标题、bar 点击命中全部不变。
+
+* 关键文件
+
+- *新增*：=src/interface/tray.h=（契约）、=src/backend/x11/tray.c=（协议核心）、=src/bar/tray.c=（bar item）。
+- *修改*：=src/interface/backend.h=、=src/backend/x11/{internal.h,event.c,backend.c}=、=include/zdwm/bar.h=、=src/bar/{types.h,cell.c,bar.c,bar.h}=、=src/runtime/runtime.c=、=src/config/defaults.c=、=CMakeLists.txt=。
+- *复用*：=workspaces.c=（item 模板）、=zdwm_bar_click_params_t=（layout params 打包先例）、=ATOM_LIST= 宏（atom 注册）、=window_get_visual(true)=（ARGB）、=bar_cell_api= vtable 机制。
