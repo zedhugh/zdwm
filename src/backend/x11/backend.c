@@ -774,7 +774,8 @@ void backend_scan_result_destroy(backend_scan_result_t *result) {
 backend_bar_window_t backend_create_bar_window(
   backend_t *backend,
   rect_t geometry,
-  uint32_t bg_pixel
+  uint32_t bg_pixel,
+  bool enable_tray
 ) {
   auto conn = backend->conn;
   auto root = backend->screen->root;

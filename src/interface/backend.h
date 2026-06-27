@@ -5,6 +5,7 @@
 
 #include "interface/effect.h"
 #include "interface/event.h"
+#include "interface/tray.h"
 #include "interface/types.h"
 
 typedef struct backend_t backend_t;
@@ -69,11 +70,13 @@ void backend_scan_result_destroy(backend_scan_result_t *result);
 typedef struct backend_bar_window_t {
   window_id_t window_id;
   cairo_t *cr;
+  tray_t tray;
 } backend_bar_window_t;
 
 backend_bar_window_t backend_create_bar_window(
   backend_t *backend,
   rect_t geometry,
-  uint32_t bg_pixel
+  uint32_t bg_pixel,
+  bool enable_tray
 );
 void backend_flush(backend_t *backend);

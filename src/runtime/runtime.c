@@ -121,7 +121,8 @@ static void runtime_init_bar(runtime_t *runtime) {
       .height = bar_height,
     };
     auto color = bar->palette.bg.argb;
-    auto bar_window = backend_create_bar_window(backend, bar_rect, color);
+    auto bar_window =
+      backend_create_bar_window(backend, bar_rect, color, false);
     auto bar_output = &bar->bars[i];
     bar_output->cr = bar_window.cr;
     bar_output->window_id = bar_window.window_id;
