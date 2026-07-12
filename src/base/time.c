@@ -1,7 +1,5 @@
 #include "base/time.h"
 
-#include <bits/time.h>
-#include <bits/types/struct_itimerspec.h>
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>

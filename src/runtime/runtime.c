@@ -1,6 +1,5 @@
 #include "runtime/runtime.h"
 
-#include <bits/types/sigset_t.h>
 #include <dlfcn.h>
 #include <signal.h>
 #include <stddef.h>
