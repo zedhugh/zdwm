@@ -9,6 +9,7 @@
 
 #include "common/window.h"
 #include "interface/event.h"
+#include "interface/tray.h"
 
 #define EWMH_ATOMS(X)                  \
   X(_NET_WM_NAME)                      \
@@ -86,6 +87,18 @@ typedef enum cursor_t {
   ZDWM_CURSOR_COUNT,
 } cursor_t;
 
+typedef struct tray_host_t {
+  bool enabled;
+  xcb_window_t host_window;
+  xcb_window_t container;
+  int32_t icon_size;
+  size_t icon_count;
+  tray_icons_change_cb_t icon_change_cb;
+  void *cb_user_data;
+} tray_host_t;
+
+extern const tray_api_t tray_api;
+
 typedef struct backend_t {
   xcb_key_symbols_t *key_symbols;
   xcb_connection_t *conn;
@@ -109,6 +122,8 @@ typedef struct backend_t {
   window_list_t unmap;
   window_list_t map;
   window_list_t kill;
+
+  tray_host_t tray;
 } backend_t;
 
 bool populate_window_event(
