@@ -845,7 +845,14 @@ backend_bar_window_t backend_create_bar_window(
     fatal("cannot create cairo context: %s", cairo_status_to_string(statue));
   }
 
-  return (backend_bar_window_t){.window_id = window_id, .cr = cr};
+  return (backend_bar_window_t){
+    .window_id = window_id,
+    .cr = cr,
+    .tray = {
+      .api = tray_api,
+      .handle = backend,
+    },
+  };
 }
 
 void backend_flush(backend_t *backend) { xcb_flush(backend->conn); }

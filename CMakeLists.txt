@@ -29,6 +29,7 @@ add_executable(${APP_NAME}
     ${SOURCE_DIR}/backend/x11/common.c
     ${SOURCE_DIR}/backend/x11/cursor.c
     ${SOURCE_DIR}/backend/x11/event.c
+    ${SOURCE_DIR}/backend/x11/tray.c
     ${SOURCE_DIR}/backend/x11/window.c
 
     ${SOURCE_DIR}/bar/bar.c
