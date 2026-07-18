@@ -122,6 +122,7 @@ static void runtime_init_bar(runtime_t *runtime) {
     auto color = bar->palette.bg.argb;
     auto bar_window =
       backend_create_bar_window(backend, bar_rect, color, false);
+    bar->tray = bar_window.tray;
     auto bar_output = &bar->bars[i];
     bar_output->cr = bar_window.cr;
     bar_output->window_id = bar_window.window_id;

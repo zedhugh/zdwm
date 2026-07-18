@@ -11,6 +11,7 @@
 #include "bar/types.h"
 #include "base/color.h"
 #include "common/listeners.h"
+#include "interface/tray.h"
 
 typedef struct bar_output_t {
   cairo_t *cr;
@@ -37,6 +38,7 @@ typedef struct bar_t {
   zdwm_bar_config_t config;
   bar_palette_t palette;
   text_context_t *ctx;
+  tray_t tray;
 } bar_t;
 
 void bar_init(bar_t *bar, listeners_t *listeners);

@@ -12,6 +12,7 @@
 #include "bar/binding.h"
 #include "bar/cell.h"
 #include "bar/text.h"
+#include "bar/tray.h"
 #include "bar/types.h"
 #include "bar/windows.h"
 #include "bar/workspaces.h"
@@ -130,9 +131,14 @@ static void bar_output_add_windows(
   bar_windows_add_listeners(listeners, item->state);
 }
 
+static inline void bar_output_add_tray(bar_output_t *bar_output, tray_t *tray) {
+  bar_add_item(bar_output->output_id, &bar_output->right, bar_tray, tray);
+}
+
 void bar_init(bar_t *bar, listeners_t *listeners) {
   auto c = &bar->config;
   bar->ctx = text_context_create(c->font_family, c->font_size, c->dpi);
+  auto tray = &bar->tray;
 
   for (size_t i = 0; i < bar->count; ++i) {
     auto bar_output = &bar->bars[i];
@@ -141,6 +147,10 @@ void bar_init(bar_t *bar, listeners_t *listeners) {
     bar_output_add_workspace(bar_output, &bar->config, listeners);
     bar_output_add_binding(bar_output, &bar->config, listeners);
     bar_output_add_windows(bar_output, &bar->config, listeners);
+
+    if (tray->api.host_window(tray->handle) == bar_output->window_id) {
+      bar_output_add_tray(bar_output, &bar->tray);
+    }
   }
 
   bar->timerfd = time_create_monotonic_timerfd_by_fps(bar->config.fps);
