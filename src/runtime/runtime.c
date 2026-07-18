@@ -120,8 +120,9 @@ static void runtime_init_bar(runtime_t *runtime) {
       .height = bar_height,
     };
     auto color = bar->palette.bg.argb;
+    bool enable_tray = (int32_t)i == bar->config.tray_output_index;
     auto bar_window =
-      backend_create_bar_window(backend, bar_rect, color, false);
+      backend_create_bar_window(backend, bar_rect, color, enable_tray);
     bar->tray = bar_window.tray;
     auto bar_output = &bar->bars[i];
     bar_output->cr = bar_window.cr;
