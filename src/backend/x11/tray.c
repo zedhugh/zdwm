@@ -191,6 +191,25 @@ static bool tray_take_selection_owner(tray_host_t *tray, backend_t *backend) {
   return success;
 }
 
+static void tray_broadcast_manager(tray_host_t *tray, backend_t *backend) {
+  auto conn = backend->conn;
+  auto root = backend->screen->root;
+
+  xcb_client_message_event_t event = {
+    .response_type = XCB_CLIENT_MESSAGE,
+    .window = root,
+    .format = 32,
+    .type = backend->atoms.MANAGER,
+    .data.data32 = {
+      [0] = XCB_CURRENT_TIME,
+      [1] = tray->selection_atom,
+      [2] = tray->container,
+    },
+  };
+  uint32_t event_mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+  xcb_send_event(conn, false, root, event_mask, (char *)&event);
+}
+
 void tray_init(
   backend_t *backend,
   xcb_window_t host_window,
@@ -220,4 +239,7 @@ void tray_init(
 
   tray->enabled = true;
   tray->initialized = true;
+
+  tray_broadcast_manager(tray, backend);
+  xcb_flush(backend->conn);
 }

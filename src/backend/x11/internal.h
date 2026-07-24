@@ -46,6 +46,8 @@
   X(_NET_WM_WINDOW_TYPE_NOTIFICATION)
 
 #define ATOM_LIST(X)          \
+  X(MANAGER)                  \
+                              \
   X(COMPOUND_TEXT)            \
   X(UTF8_STRING)              \
                               \
