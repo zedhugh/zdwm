@@ -19,6 +19,7 @@
 
 #include "backend/output_utils.h"
 #include "backend/x11/cursor.h"
+#include "backend/x11/tray.h"
 #include "backend/x11/window.h"
 #include "base/app.h"
 #include "base/array.h"
@@ -844,6 +845,8 @@ backend_bar_window_t backend_create_bar_window(
   if (statue != CAIRO_STATUS_SUCCESS) {
     fatal("cannot create cairo context: %s", cairo_status_to_string(statue));
   }
+
+  if (enable_tray) tray_init(backend, window_id, width, height);
 
   return (backend_bar_window_t){
     .window_id = window_id,
