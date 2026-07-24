@@ -243,3 +243,12 @@ void tray_init(
   tray_broadcast_manager(tray, backend);
   xcb_flush(backend->conn);
 }
+
+void tray_cleanup(backend_t *backend) {
+  auto conn = backend->conn;
+  auto tray = backend->tray;
+
+  xcb_destroy_window(conn, tray->container);
+  p_clear(backend->tray, 1);
+  p_delete(&backend->tray);
+}

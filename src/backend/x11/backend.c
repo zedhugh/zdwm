@@ -195,6 +195,8 @@ backend_t *backend_create(const char *display_name) {
 void backend_destroy(backend_t *backend) {
   if (!backend) return;
 
+  tray_cleanup(backend);
+
   p_delete(&backend->config_list.cfgs);
   p_clear(&backend->config_list, 1);
 

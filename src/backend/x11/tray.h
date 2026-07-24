@@ -15,3 +15,4 @@ void tray_init(
   int32_t host_width,
   int32_t host_height
 );
+void tray_cleanup(backend_t *backend);
