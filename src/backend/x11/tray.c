@@ -76,6 +76,22 @@ static inline void tray_dispatch_callback(tray_host_t *tray) {
   if (tray->icon_change_cb) tray->icon_change_cb(tray->cb_user_data);
 }
 
+static void tray_release_icon_window(backend_t *backend, tray_icon_t *icon) {
+  if (!icon || icon->window == XCB_WINDOW_NONE) return;
+
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return;
+
+  auto conn = backend->conn;
+  auto root = backend->screen->root;
+  auto window = icon->window;
+  auto mask = XCB_CW_EVENT_MASK;
+  xcb_params_cw_t params = {.event_mask = XCB_EVENT_MASK_NO_EVENT};
+  xcb_change_save_set(conn, XCB_SET_MODE_DELETE, window);
+  xcb_aux_change_window_attributes(conn, window, mask, &params);
+  xcb_reparent_window(conn, window, root, 0, 0);
+}
+
 static window_id_t tray_host_window(void *handle) {
   auto tray = get_tray_host(handle);
   if (!tray) return ZDWM_WINDOW_ID_INVALID;
@@ -272,7 +288,7 @@ void tray_init(
   };
   if (!tray_create_container_window(tray, backend, host_window_params)) return;
   if (!tray_take_selection_owner(tray, backend)) {
-    /* TODO: cleanup tray */
+    tray_cleanup(backend);
     return;
   }
 
@@ -284,10 +300,27 @@ void tray_init(
 }
 
 void tray_cleanup(backend_t *backend) {
-  auto conn = backend->conn;
   auto tray = backend->tray;
+  if (!tray) return;
 
-  xcb_destroy_window(conn, tray->container);
+  for (size_t i = 0; i < tray->icon_count; ++i) {
+    tray_release_icon_window(backend, &tray->icons[i]);
+  }
+  p_delete(&tray->icons);
+  tray->icon_count = 0;
+  tray->icon_capacity = 0;
+
+  auto conn = backend->conn;
+
+  auto atom = tray->selection_atom;
+  if (atom != XCB_ATOM_NONE) {
+    xcb_set_selection_owner(conn, XCB_WINDOW_NONE, atom, XCB_CURRENT_TIME);
+  }
+
+  if (tray->container != XCB_WINDOW_NONE) {
+    xcb_destroy_window(conn, tray->container);
+  }
+
   p_clear(backend->tray, 1);
   p_delete(&backend->tray);
 }
