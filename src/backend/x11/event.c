@@ -10,6 +10,7 @@
 #include <xcb/xproto.h>
 
 #include "backend/x11/common.h"
+#include "backend/x11/tray.h"
 #include "backend/x11/window.h"
 #include "base/memory.h"
 #include "interface/backend.h"
@@ -419,6 +420,8 @@ static bool handle_client_message(
   event_t *event,
   const xcb_client_message_event_t *xcb_event
 ) {
+  if (tray_handle_client_message(backend, xcb_event)) return false;
+
   auto atoms = &backend->atoms;
 
   if (xcb_event->type == atoms->_NET_ACTIVE_WINDOW) {

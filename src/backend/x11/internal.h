@@ -47,6 +47,8 @@
 
 #define ATOM_LIST(X)          \
   X(MANAGER)                  \
+  X(_NET_SYSTEM_TRAY_OPCODE)  \
+  X(_XEMBED)                  \
                               \
   X(COMPOUND_TEXT)            \
   X(UTF8_STRING)              \

@@ -1,19 +1,40 @@
 #include "backend/x11/tray.h"
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <xcb/xcb.h>
+#include <xcb/xcb_aux.h>
 #include <xcb/xproto.h>
 #include <zdwm/types.h>
 
 #include "backend/x11/window.h"
+#include "base/array.h"
 #include "base/log.h"
 #include "base/macros.h"
 #include "base/memory.h"
 #include "interface/tray.h"
 #include "interface/types.h"
 #include "internal.h"
+
+typedef enum tray_opcode_t {
+  SYSTEM_TRAY_REQUEST_DOCK = 0,
+  SYSTEM_TRAY_BEGIN_MESSAGE = 1,
+  SYSTEM_TRAY_CANCEL_MESSAGE = 2,
+} tray_opcode_t;
+
+typedef enum xembed_message_t {
+  XEMBED_EMBEDDED_NOTIFY = 0,
+} xembed_message_t;
+
+static constexpr auto XEMBED_VERSION = 0;
+
+typedef struct tray_icon_t {
+  xcb_window_t window;
+  uint16_t natural_width;
+  uint16_t natural_height;
+} tray_icon_t;
 
 typedef struct tray_host_t {
   bool enabled;
@@ -22,7 +43,11 @@ typedef struct tray_host_t {
   xcb_window_t host_window;
   xcb_window_t container;
   int32_t icon_size;
+
+  tray_icon_t *icons;
   size_t icon_count;
+  size_t icon_capacity;
+
   tray_icons_change_cb_t icon_change_cb;
   void *cb_user_data;
 } tray_host_t;
@@ -35,6 +60,20 @@ static tray_host_t *get_tray_host(void *handle) {
   if (!tray || !tray->enabled) return nullptr;
 
   return tray;
+}
+
+static tray_icon_t *tray_get_icon(tray_host_t *tray, xcb_window_t window) {
+  for (size_t i = 0; i < tray->icon_count; ++i) {
+    auto icon = &tray->icons[i];
+    if (icon->window == window) return icon;
+  }
+
+  return nullptr;
+}
+
+static inline void tray_dispatch_callback(tray_host_t *tray) {
+  assert(tray);
+  if (tray->icon_change_cb) tray->icon_change_cb(tray->cb_user_data);
 }
 
 static window_id_t tray_host_window(void *handle) {
@@ -251,4 +290,108 @@ void tray_cleanup(backend_t *backend) {
   xcb_destroy_window(conn, tray->container);
   p_clear(backend->tray, 1);
   p_delete(&backend->tray);
+}
+
+static void
+tray_select_icon_events(xcb_connection_t *conn, xcb_window_t window) {
+  xcb_params_cw_t params = {
+    .event_mask =
+      XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE,
+  };
+  uint32_t mask = XCB_CW_EVENT_MASK;
+  xcb_aux_change_window_attributes(conn, window, mask, &params);
+  xcb_clear_area(conn, false, window, 0, 0, 0, 0);
+}
+
+/* reference:
+ * https://specifications.freedesktop.org/xembed/latest-single/#id-1.7.4 */
+typedef struct xembed_message_data_t {
+  uint32_t message; /* message opcode */
+  uint32_t detail;  /* message detail */
+  uint32_t data1;   /* message data 1 */
+  uint32_t data2;   /* message data 2 */
+} xembed_message_data_t;
+
+static void tray_send_xembed_message(
+  backend_t *backend,
+  xcb_window_t window,
+  xembed_message_data_t message
+) {
+  auto conn = backend->conn;
+  auto message_type = backend->atoms._XEMBED;
+
+  xcb_client_message_event_t event = {
+    .response_type = XCB_CLIENT_MESSAGE,
+    .format = 32,
+    .window = window,
+    .type = message_type,
+    .data.data32 = {
+      [0] = XCB_CURRENT_TIME,
+      [1] = message.message,
+      [2] = message.detail,
+      [3] = message.data1,
+      [4] = message.data2,
+    },
+  };
+  uint32_t event_mask = XCB_EVENT_MASK_NO_EVENT;
+  xcb_send_event(conn, false, window, event_mask, (char *)&event);
+}
+
+static void tray_add_icon(backend_t *backend, xcb_window_t window) {
+  if (window == XCB_WINDOW_NONE) return;
+
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized || tray_get_icon(tray, window)) return;
+
+  rect_t geometry = {0};
+  if (!window_get_geometry(backend, window, &geometry)) return;
+
+  auto icon = array_push(tray->icons, tray->icon_count, tray->icon_capacity);
+  *icon = (tray_icon_t){
+    .window = window,
+    .natural_width = geometry.width,
+    .natural_height = geometry.height
+  };
+
+  auto conn = backend->conn;
+  auto container = tray->container;
+  xembed_message_data_t message = {
+    .message = XEMBED_EMBEDDED_NOTIFY,
+    .detail = 0,
+    .data1 = container,
+    .data2 = XEMBED_VERSION,
+  };
+  xcb_change_save_set(conn, XCB_SET_MODE_INSERT, window);
+  xcb_reparent_window(conn, window, tray->container, 0, 0);
+  tray_select_icon_events(conn, window);
+  tray_send_xembed_message(backend, window, message);
+  xcb_map_window(conn, window);
+  tray_dispatch_callback(tray);
+}
+
+bool tray_handle_client_message(
+  backend_t *backend,
+  const xcb_client_message_event_t *ev
+) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->enabled || !tray->initialized) return false;
+  if (ev->window != tray->container && ev->window != backend->screen->root) {
+    return false;
+  }
+
+  auto opcode = ev->data.data32[1];
+  switch (opcode) {
+  case SYSTEM_TRAY_REQUEST_DOCK:
+    auto window = ev->data.data32[2];
+    tray_add_icon(backend, window);
+    break;
+  case SYSTEM_TRAY_BEGIN_MESSAGE:
+  case SYSTEM_TRAY_CANCEL_MESSAGE:
+  default:
+    break;
+  }
+
+  xcb_flush(backend->conn);
+
+  return true;
 }
