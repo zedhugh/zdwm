@@ -9,13 +9,14 @@ extern const tray_api_t tray_api;
 
 typedef struct backend_t backend_t;
 
-/* TODO: 添加窗口背景色 */
-void tray_init(
-  backend_t *backend,
-  xcb_window_t host_window,
-  int32_t host_width,
-  int32_t host_height
-);
+typedef struct tray_host_window_t {
+  xcb_window_t window;
+  int32_t width;
+  int32_t height;
+  uint32_t bg_pixel;
+} tray_host_window_t;
+
+void tray_init(backend_t *backend, tray_host_window_t host_window);
 void tray_cleanup(backend_t *backend);
 
 bool tray_handle_client_message(

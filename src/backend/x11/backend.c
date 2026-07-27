@@ -848,7 +848,15 @@ backend_bar_window_t backend_create_bar_window(
     fatal("cannot create cairo context: %s", cairo_status_to_string(statue));
   }
 
-  if (enable_tray) tray_init(backend, window_id, width, height);
+  if (enable_tray) {
+    tray_host_window_t host_window = {
+      .window = window_id,
+      .width = width,
+      .height = height,
+      .bg_pixel = bg_pixel,
+    };
+    tray_init(backend, host_window);
+  }
 
   return (backend_bar_window_t){
     .window_id = window_id,

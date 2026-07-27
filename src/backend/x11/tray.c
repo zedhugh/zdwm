@@ -238,12 +238,6 @@ static bool tray_intern_selection_atom(tray_host_t *tray, backend_t *backend) {
   return true;
 }
 
-typedef struct tray_host_window_t {
-  xcb_window_t window;
-  int32_t width;
-  int32_t height;
-} tray_host_window_t;
-
 static bool tray_create_container_window(
   tray_host_t *tray,
   backend_t *backend,
@@ -266,7 +260,7 @@ static bool tray_create_container_window(
                         XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK |
                         XCB_CW_COLORMAP;
   xcb_create_window_value_list_t value_list = {
-    .background_pixel = 0,
+    .background_pixel = host_window.bg_pixel,
     .border_pixel = 0,
     .override_redirect = true,
     .event_mask =
@@ -360,12 +354,7 @@ static void tray_broadcast_manager(tray_host_t *tray, backend_t *backend) {
   xcb_send_event(conn, false, root, event_mask, (char *)&event);
 }
 
-void tray_init(
-  backend_t *backend,
-  xcb_window_t host_window,
-  int32_t host_width,
-  int32_t host_height
-) {
+void tray_init(backend_t *backend, tray_host_window_t host_window) {
   auto tray = get_tray_host(backend);
   if (!tray) {
     tray = p_new(tray_host_t, 1);
@@ -376,12 +365,7 @@ void tray_init(
 
   if (!tray_intern_selection_atom(tray, backend)) return;
 
-  tray_host_window_t host_window_params = {
-    .window = host_window,
-    .width = host_width,
-    .height = host_height
-  };
-  if (!tray_create_container_window(tray, backend, host_window_params)) return;
+  if (!tray_create_container_window(tray, backend, host_window)) return;
   if (!tray_take_selection_owner(tray, backend)) {
     tray_cleanup(backend);
     return;
@@ -389,11 +373,11 @@ void tray_init(
 
   tray->enabled = true;
   tray->initialized = true;
-  tray->host_window = host_window;
-  tray->icon_size = host_height;
+  tray->host_window = host_window.window;
+  tray->icon_size = host_window.height;
 
   tray_broadcast_manager(tray, backend);
-  tray_layout_icons(backend, host_width);
+  tray_layout_icons(backend, host_window.width);
   xcb_flush(backend->conn);
 }
 
