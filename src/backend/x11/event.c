@@ -205,6 +205,8 @@ static bool handle_unmap_notify(
   event_t *event,
   const xcb_unmap_notify_event_t *xcb_event
 ) {
+  if (tray_handle_unmap_notify(backend, xcb_event)) return false;
+
   event->type = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
   if (XCB_EVENT_SENT(xcb_event)) {
@@ -221,6 +223,8 @@ static bool handle_destroy_notify(
   event_t *event,
   const xcb_destroy_notify_event_t *xcb_event
 ) {
+  if (tray_handle_destroy_notify(backend, xcb_event)) return false;
+
   event->type = ZDWM_EVENT_WINDOW_REMOVE;
   event->as.window_remove.window = xcb_event->window;
   event->as.window_remove.reason = ZDWM_WINDOW_REMOVE_DESTROY;

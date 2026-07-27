@@ -34,3 +34,11 @@ bool tray_handle_property_notify(
   backend_t *backend,
   const xcb_property_notify_event_t *ev
 );
+bool tray_handle_unmap_notify(
+  backend_t *backend,
+  const xcb_unmap_notify_event_t *ev
+);
+bool tray_handle_destroy_notify(
+  backend_t *backend,
+  const xcb_destroy_notify_event_t *ev
+);

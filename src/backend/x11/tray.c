@@ -62,6 +62,14 @@ static tray_host_t *get_tray_host(void *handle) {
   return tray;
 }
 
+static size_t tray_find_icon(tray_host_t *tray, xcb_window_t window) {
+  for (size_t i = 0; i < tray->icon_count; ++i) {
+    if (tray->icons[i].window == window) return i;
+  }
+
+  return SIZE_MAX;
+}
+
 static tray_icon_t *tray_get_icon(tray_host_t *tray, xcb_window_t window) {
   for (size_t i = 0; i < tray->icon_count; ++i) {
     auto icon = &tray->icons[i];
@@ -90,6 +98,21 @@ static void tray_release_icon_window(backend_t *backend, tray_icon_t *icon) {
   xcb_change_save_set(conn, XCB_SET_MODE_DELETE, window);
   xcb_aux_change_window_attributes(conn, window, mask, &params);
   xcb_reparent_window(conn, window, root, 0, 0);
+}
+
+static void tray_remove_icon_by_index(
+  backend_t *backend,
+  size_t index,
+  bool release_window
+) {
+  auto tray = backend->tray;
+  if (index >= tray->icon_count) return;
+
+  auto icon = &tray->icons[index];
+  if (release_window) tray_release_icon_window(backend, icon);
+
+  array_erase(tray->icons, tray->icon_count, index);
+  tray_dispatch_callback(tray);
 }
 
 static zdwm_size_t tray_get_icon_size(tray_host_t *tray, size_t index) {
@@ -547,4 +570,37 @@ bool tray_handle_property_notify(
   if (ev->window == XCB_WINDOW_NONE) return false;
   if (ev->window == tray->container) return true;
   return tray_get_icon(tray, ev->window) != nullptr;
+}
+
+bool tray_handle_unmap_notify(
+  backend_t *backend,
+  const xcb_unmap_notify_event_t *ev
+) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return false;
+
+  auto index = tray_find_icon(tray, ev->window);
+  if (index == SIZE_MAX) return ev->window == tray->container;
+
+  tray_remove_icon_by_index(backend, index, true);
+  return true;
+}
+
+bool tray_handle_destroy_notify(
+  backend_t *backend,
+  const xcb_destroy_notify_event_t *ev
+) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return false;
+
+  if (ev->window == tray->container) {
+    tray_cleanup(backend);
+    return true;
+  }
+
+  auto index = tray_find_icon(tray, ev->window);
+  if (index == SIZE_MAX) return false;
+
+  tray_remove_icon_by_index(backend, index, false);
+  return true;
 }
