@@ -294,6 +294,8 @@ void tray_init(
 
   tray->enabled = true;
   tray->initialized = true;
+  tray->host_window = host_window;
+  tray->icon_size = host_height;
 
   tray_broadcast_manager(tray, backend);
   xcb_flush(backend->conn);
