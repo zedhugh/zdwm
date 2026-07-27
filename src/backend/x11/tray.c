@@ -92,6 +92,65 @@ static void tray_release_icon_window(backend_t *backend, tray_icon_t *icon) {
   xcb_reparent_window(conn, window, root, 0, 0);
 }
 
+static zdwm_size_t tray_get_icon_size(tray_host_t *tray, size_t index) {
+  auto target_size = MAX(tray->icon_size, (int32_t)1);
+  auto natural_width = tray->icons[index].natural_width;
+  auto natural_height = tray->icons[index].natural_height;
+
+  if (natural_width == 0) natural_width = target_size;
+  if (natural_height == 0) natural_height = target_size;
+
+  double width_scale = (double)target_size / (double)natural_width;
+  double height_scale = (double)target_size / (double)natural_height;
+  auto scale = MIN(width_scale, height_scale);
+  zdwm_size_t size = {
+    .width = natural_width * scale,
+    .height = natural_height * scale,
+  };
+  return size;
+}
+
+static void tray_layout_icons(backend_t *backend, int32_t start_x) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return;
+  if (tray->container == XCB_WINDOW_NONE) return;
+
+  auto conn = backend->conn;
+  if (tray->icon_count == 0) {
+    xcb_unmap_window(conn, tray->container);
+    return;
+  }
+
+  auto height = tray->icon_size;
+  auto width = height * (int32_t)tray->icon_count;
+  xcb_configure_window_value_list_t value_list = {
+    .x = start_x,
+    .y = 0,
+    .width = (uint32_t)width,
+    .height = (uint32_t)height,
+  };
+  uint16_t value_mask = XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT;
+  xcb_configure_window_aux(conn, tray->container, value_mask, &value_list);
+  xcb_map_window(conn, tray->container);
+
+  for (size_t i = 0; i < tray->icon_count; ++i) {
+    auto window = tray->icons[i].window;
+    auto icon_size = tray_get_icon_size(tray, i);
+    value_mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
+    auto offset_x = height * (int32_t)i;
+    value_list = (xcb_configure_window_value_list_t){
+      .x = offset_x + (icon_size.width - height) / 2,
+      .y = (icon_size.height - height) / 2,
+      .width = icon_size.width,
+      .height = icon_size.height,
+      .border_width = 0,
+    };
+    xcb_configure_window_aux(conn, window, value_mask, &value_list);
+    xcb_map_window(conn, window);
+  }
+}
+
 static window_id_t tray_host_window(void *handle) {
   auto tray = get_tray_host(handle);
   if (!tray) return ZDWM_WINDOW_ID_INVALID;
@@ -115,10 +174,7 @@ static void tray_place(void *handle, int32_t x) {
   auto tray = get_tray_host(handle);
   if (!tray) return;
 
-  auto conn = ((backend_t *)handle)->conn;
-  uint16_t value_mask = XCB_CONFIG_WINDOW_X;
-  xcb_configure_window_value_list_t value_list = {.x = x};
-  xcb_configure_window_aux(conn, tray->container, value_mask, &value_list);
+  tray_layout_icons((backend_t *)handle, x);
 }
 
 static void
@@ -298,6 +354,7 @@ void tray_init(
   tray->icon_size = host_height;
 
   tray_broadcast_manager(tray, backend);
+  tray_layout_icons(backend, host_width);
   xcb_flush(backend->conn);
 }
 
