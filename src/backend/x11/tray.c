@@ -251,15 +251,31 @@ static bool tray_create_container_window(
 ) {
   auto conn = backend->conn;
   auto window_id = xcb_generate_id(conn);
+  auto depth = backend->screen->root_depth;
+  auto visual_id = backend->screen->root_visual;
 
+  static xcb_colormap_t colormap = XCB_NONE;
+  if (colormap == XCB_NONE) {
+    colormap = xcb_generate_id(conn);
+    auto root = backend->screen->root;
+    uint8_t alloc = XCB_COLORMAP_ALLOC_NONE;
+    xcb_create_colormap(conn, alloc, colormap, root, visual_id);
+  }
+
+  uint32_t value_mask = XCB_CW_BACK_PIXEL | XCB_CW_BORDER_PIXEL |
+                        XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK |
+                        XCB_CW_COLORMAP;
   xcb_create_window_value_list_t value_list = {
+    .background_pixel = 0,
+    .border_pixel = 0,
     .override_redirect = true,
     .event_mask =
-      XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+      XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+    .colormap = colormap,
   };
   auto cookie = xcb_create_window_aux_checked(
     conn,
-    XCB_COPY_FROM_PARENT,
+    depth,
     window_id,
     host_window.window,
     (int16_t)host_window.width,
@@ -268,8 +284,8 @@ static bool tray_create_container_window(
     (uint16_t)MAX(1, host_window.height),
     0,
     XCB_WINDOW_CLASS_INPUT_OUTPUT,
-    XCB_COPY_FROM_PARENT,
-    XCB_CW_OVERRIDE_REDIRECT | XCB_CW_EVENT_MASK,
+    visual_id,
+    value_mask,
     &value_list
   );
 
