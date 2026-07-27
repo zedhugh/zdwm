@@ -487,3 +487,64 @@ bool tray_handle_client_message(
 
   return true;
 }
+
+bool tray_handle_configure_request(
+  backend_t *backend,
+  const xcb_configure_request_event_t *ev
+) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return false;
+
+  if (ev->window == tray->container) {
+    tray_dispatch_callback(tray);
+    return true;
+  }
+
+  auto icon = tray_get_icon(tray, ev->window);
+  if (!icon) return false;
+
+  if ((ev->value_mask & XCB_CONFIG_WINDOW_WIDTH) && ev->width > 0) {
+    icon->natural_width = (int32_t)ev->width;
+  }
+  if ((ev->value_mask & XCB_CONFIG_WINDOW_HEIGHT) && ev->height > 0) {
+    icon->natural_height = (int32_t)ev->height;
+  }
+
+  tray_dispatch_callback(tray);
+  return true;
+}
+
+bool tray_handle_map_request(
+  backend_t *backend,
+  const xcb_map_request_event_t *ev
+) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return false;
+
+  auto conn = backend->conn;
+  if (ev->window == tray->container) {
+    tray_dispatch_callback(tray);
+    return true;
+  }
+
+  auto icon = tray_get_icon(tray, ev->window);
+  if (!icon && ev->parent != tray->container) return false;
+
+  xcb_map_window(conn, ev->window);
+  xcb_flush(conn);
+
+  tray_dispatch_callback(tray);
+  return true;
+}
+
+bool tray_handle_property_notify(
+  backend_t *backend,
+  const xcb_property_notify_event_t *ev
+) {
+  auto tray = get_tray_host(backend);
+  if (!tray || !tray->initialized) return false;
+
+  if (ev->window == XCB_WINDOW_NONE) return false;
+  if (ev->window == tray->container) return true;
+  return tray_get_icon(tray, ev->window) != nullptr;
+}

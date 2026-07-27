@@ -190,6 +190,8 @@ static bool handle_map_request(
   event_t *event,
   const xcb_map_request_event_t *xcb_event
 ) {
+  if (tray_handle_map_request(backend, xcb_event)) return false;
+
   event->type = ZDWM_EVENT_WINDOW_MAP_REQUEST;
   return populate_window_event(
     backend,
@@ -231,6 +233,8 @@ static bool handle_configure_request(
   event_t *event,
   const xcb_configure_request_event_t *xcb_event
 ) {
+  if (tray_handle_configure_request(backend, xcb_event)) return false;
+
   event->type = ZDWM_EVENT_CONFIGURE_REQUEST;
   auto data = &event->as.configure_request;
   data->window = xcb_event->window;
@@ -342,6 +346,8 @@ static bool handle_property_notify(
   event_t *event,
   const xcb_property_notify_event_t *xcb_event
 ) {
+  if (tray_handle_property_notify(backend, xcb_event)) return false;
+
   auto window_id = xcb_event->window;
   if (
     xcb_event->atom == backend->atoms.WM_NAME ||
