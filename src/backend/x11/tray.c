@@ -32,8 +32,8 @@ static constexpr auto XEMBED_VERSION = 0;
 
 typedef struct tray_icon_t {
   xcb_window_t window;
-  uint16_t natural_width;
-  uint16_t natural_height;
+  int32_t natural_width;
+  int32_t natural_height;
 } tray_icon_t;
 
 typedef struct tray_host_t {
@@ -127,8 +127,8 @@ static zdwm_size_t tray_get_icon_size(tray_host_t *tray, size_t index) {
   double height_scale = (double)target_size / (double)natural_height;
   auto scale = MIN(width_scale, height_scale);
   zdwm_size_t size = {
-    .width = natural_width * scale,
-    .height = natural_height * scale,
+    .width = (int32_t)(natural_width * scale),
+    .height = (int32_t)(natural_height * scale),
   };
   return size;
 }
@@ -465,7 +465,7 @@ static void tray_add_icon(backend_t *backend, xcb_window_t window) {
   *icon = (tray_icon_t){
     .window = window,
     .natural_width = geometry.width,
-    .natural_height = geometry.height
+    .natural_height = geometry.height,
   };
 
   auto conn = backend->conn;
