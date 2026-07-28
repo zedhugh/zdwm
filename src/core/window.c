@@ -145,3 +145,11 @@ bool window_can_resize(const window_t *window) {
 
   return true;
 }
+
+const char *window_get_showing_title(const window_t *window) {
+  if (window->title) return window->title;
+  if (window->instance_name) return window->instance_name;
+  if (window->class_name) return window->class_name;
+  if (window->app_id) return window->app_id;
+  return nullptr;
+}

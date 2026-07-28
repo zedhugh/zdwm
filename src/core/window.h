@@ -67,3 +67,4 @@ bool window_need_resize(const window_t *window, int32_t width, int32_t height);
 bool window_should_has_border(const window_t *window);
 bool window_should_fix_size(const window_t *window);
 bool window_can_resize(const window_t *window);
+const char *window_get_showing_title(const window_t *window);

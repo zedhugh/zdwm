@@ -5,6 +5,7 @@
 #include "core/binding.h"
 #include "core/layout.h"
 #include "core/state.h"
+#include "core/window.h"
 
 #define FOR_EACH_LISTENER(FIELD, BODY)         \
   do {                                         \
@@ -117,7 +118,7 @@ static bool listeners_window_snapshot(
   *out = (zdwm_window_t){
     .workspace = window->workspace_id,
     .id = window->id,
-    .title = window->title,
+    .title = window_get_showing_title(window),
     .focused = workspace->focused_window_id == window->id,
     .urgent = window->urgent,
     .skip_taskbar = window->skip_taskbar,
