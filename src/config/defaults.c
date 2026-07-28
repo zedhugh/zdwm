@@ -122,7 +122,7 @@ bool config_defaults_build(
   RAISE_OR_RUN(default_mode, Super("e"), editor);
   RAISE_OR_RUN(default_mode, Super("q"), browser);
   RAISE_OR_RUN(default_mode, Super("a"), chrome);
-  BIND_DEFAULT(Super("f"), {.type = ZDWM_ACTION_WINDOW_TOGGLE_FLOATING});
+  BIND_DEFAULT(Super("f"), {.type = ZDWM_ACTION_WINDOW_TOGGLE_FULLSCREEN});
   BIND_DEFAULT(Super("m"), {.type = ZDWM_ACTION_WINDOW_TOGGLE_MAXIMIZE});
   BIND_DEFAULT(
     Super("Control+space"),
