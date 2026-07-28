@@ -17,6 +17,7 @@ typedef enum effect_type_t {
   ZDWM_EFFECT_MAXIMIZE_WINDOW,
   ZDWM_EFFECT_FULLSCREEN_WINDOW,
   ZDWM_EFFECT_CONFIGURE_WINDOW,
+  ZDWM_EFFECT_CONFIGURE_NOTIFY,
   ZDWM_EFFECT_CHANGE_BORDER_COLOR,
   ZDWM_EFFECT_CHANGE_WINDOW_LIST,
   ZDWM_EFFECT_RESTACK_WINDOWS,
@@ -86,6 +87,7 @@ typedef struct effect_t {
     effect_bool_window_t maximize;
     effect_bool_window_t fullscreen;
     configure_data_t configure;
+    only_window_data_t configure_notify;
     effect_change_border_color_t change_border_color;
     effect_window_list_t change_window_list;
     effect_window_list_t restack_windows;

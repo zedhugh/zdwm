@@ -558,6 +558,7 @@ static void backend_merge_effects(
     switch (e->type) {
     case ZDWM_EFFECT_MAP_WINDOW:
       window_list_push(&backend->map, e->as.map.window);
+      window_list_push(&backend->configure, e->as.map.window);
       break;
     case ZDWM_EFFECT_UNMAP_WINDOW:
       window_list_push(&backend->unmap, e->as.unmap.window);
@@ -612,6 +613,9 @@ static void backend_merge_effects(
     case ZDWM_EFFECT_CONFIGURE_WINDOW:
       merge_window_configure_params(backend, &e->as.configure);
       break;
+    case ZDWM_EFFECT_CONFIGURE_NOTIFY:
+      window_list_push(&backend->configure, e->as.configure_notify.window);
+      break;
     case ZDWM_EFFECT_CHANGE_BORDER_COLOR: {
       xcb_change_window_attributes_value_list_t value = {
         .border_pixel = e->as.change_border_color.color->argb
@@ -643,6 +647,46 @@ static void backend_merge_effects(
   }
 }
 
+static void batch_send_configure_notify(
+  xcb_connection_t *conn,
+  xcb_window_t *windows,
+  size_t count
+) {
+  if (count == 0) return;
+
+  auto cookie_list = p_new(xcb_get_geometry_cookie_t, count);
+
+  for (size_t i = 0; i < count; ++i) {
+    auto window = windows[i];
+    cookie_list[i] = xcb_get_geometry(conn, window);
+  }
+
+  uint32_t event_mask = XCB_EVENT_MASK_STRUCTURE_NOTIFY;
+  for (size_t i = 0; i < count; ++i) {
+    auto window = windows[i];
+    auto cookie = cookie_list[i];
+    auto reply = xcb_get_geometry_reply(conn, cookie, nullptr);
+    if (!reply) continue;
+
+    xcb_configure_notify_event_t ev = {
+      .response_type = XCB_CONFIGURE_NOTIFY,
+      .event = window,
+      .window = window,
+      .above_sibling = XCB_WINDOW_NONE,
+      .x = reply->x,
+      .y = reply->y,
+      .width = reply->width,
+      .height = reply->height,
+      .border_width = reply->border_width,
+      .override_redirect = false,
+    };
+    xcb_send_event(conn, false, window, event_mask, (char *)&ev);
+    p_delete(&reply);
+  }
+
+  p_delete(&cookie_list);
+}
+
 static void backend_batch_apply_effects(backend_t *backend) {
   xcb_connection_t *conn = backend->conn;
   if (backend->unmap.count) {
@@ -672,6 +716,12 @@ static void backend_batch_apply_effects(backend_t *backend) {
 
   backend_apply_window_configure_list(backend);
 
+  {
+    auto windows = backend->configure.windows;
+    auto count = backend->configure.count;
+    batch_send_configure_notify(conn, windows, count);
+  }
+
   if (backend->update_focus) {
     backend_focus_window(backend, backend->focus_window);
   }
@@ -687,6 +737,7 @@ bool backend_apply_effect(
   window_list_reset(&backend->unmap);
   window_list_reset(&backend->map);
   window_list_reset(&backend->kill);
+  window_list_reset(&backend->configure);
 
   backend_merge_effects(backend, effects, effect_count);
   backend_batch_apply_effects(backend);

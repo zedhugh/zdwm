@@ -115,6 +115,7 @@ typedef struct backend_t {
   window_list_t unmap;
   window_list_t map;
   window_list_t kill;
+  window_list_t configure;
 
   tray_host_t *tray;
 } backend_t;

@@ -26,6 +26,7 @@ void plan_push_kill_effect(plan_t *plan, window_id_t window_id);
 void plan_push_withdraw_effect(plan_t *plan, window_id_t window_id);
 void plan_push_move_effect(plan_t *plan, window_id_t window_id);
 void plan_push_resize_effect(plan_t *plan, window_id_t window_id);
+void plan_push_configure_notify_effect(plan_t *plan, window_id_t window_id);
 void plan_push_fullscreen_effect(
   plan_t *plan,
   window_id_t window_id,

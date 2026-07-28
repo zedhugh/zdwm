@@ -771,6 +771,15 @@ static void route_window_state_request(
   command_buffer_push(out, &change_window_state_cmd);
 }
 
+static void
+add_notify_configure_command(command_buffer_t *out, window_id_t window) {
+  command_t notify_cmd = {
+    .type = ZDWM_COMMAND_NOTIFY_CONFIGURE,
+    .as.notify_configure = {.window = window},
+  };
+  command_buffer_push(out, &notify_cmd);
+}
+
 static void route_configure_request(
   state_t *state,
   const configure_data_t *data,
@@ -788,6 +797,7 @@ static void route_configure_request(
   }
 
   if (!state_workspace_show(state, window->workspace_id)) return;
+  add_notify_configure_command(out, data->window);
   if (window_need_layout(window)) return;
   auto workspace = state_workspace_get(state, window->workspace_id);
   if (layout_get(layouts, workspace->layout_id)) return;
@@ -1689,6 +1699,9 @@ void policy_apply_command(
       break;
     case ZDWM_COMMAND_CONFIGURE_WINDOW:
       configure_window(state, &cmd->as.configure, plan);
+      break;
+    case ZDWM_COMMAND_NOTIFY_CONFIGURE:
+      plan_push_configure_notify_effect(plan, cmd->as.notify_configure.window);
       break;
     case ZDWM_COMMAND_CHANGE_WINDOW_STATE:
       change_window_state(ctx, &cmd->as.state_change, plan);

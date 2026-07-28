@@ -11,6 +11,7 @@ typedef enum command_type_t {
   ZDWM_COMMAND_RAISE_WINDOW,
   ZDWM_COMMAND_WITHDRAW_WINDOW,
   ZDWM_COMMAND_CONFIGURE_WINDOW,
+  ZDWM_COMMAND_NOTIFY_CONFIGURE,
   ZDWM_COMMAND_CHANGE_WINDOW_STATE,
   ZDWM_COMMAND_START_MOVE_WINDOW,
   ZDWM_COMMAND_STOP_MOVE_WINDOW,
@@ -102,6 +103,7 @@ typedef struct command_t {
     only_window_data_t raise;
     only_window_data_t withdraw;
     configure_data_t configure;
+    only_window_data_t notify_configure;
     window_state_change_command_t state_change;
     start_interaction_command_t move;
     start_interaction_command_t resize;
