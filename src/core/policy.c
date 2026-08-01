@@ -948,10 +948,13 @@ static void manage_window(
   auto window = state_window_add(state, &command->info);
   auto window_id = window->id;
   auto workspace_id = command->workspace;
+  auto workspace = state_workspace_get(state, workspace_id);
+  auto old_focused_window = workspace->focused_window_id;
   state_window_set_workspace(state, window_id, workspace_id);
   set_foucs_window(ctx, workspace_id, window_id, plan);
   plan_push_grab_button_effect(plan, window_id);
   push_window_list_effect(state, plan);
+  listeners_notify_window_updated(ctx->listeners, state, old_focused_window);
   listeners_notify_window_added(ctx->listeners, state, window_id);
 
   if (window_should_fix_size(window)) {
@@ -960,7 +963,6 @@ static void manage_window(
     state_window_set_floating(state, window_id, command->floating);
   }
 
-  auto workspace = state_workspace_get(state, workspace_id);
   auto need_layout = window_need_layout(window);
   auto layout_func = layout_get(ctx->layouts, workspace->layout_id);
 
