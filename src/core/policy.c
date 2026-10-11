@@ -83,6 +83,15 @@ add_focus_window_command(command_buffer_t *command_buffer, window_id_t window) {
   command_buffer_push(command_buffer, &focus_command);
 }
 
+static void
+add_raise_window_command(command_buffer_t *command_buffer, window_id_t window) {
+  command_t raise_command = {
+    .type = ZDWM_COMMAND_RAISE_WINDOW,
+    .as.raise.window = window
+  };
+  command_buffer_push(command_buffer, &raise_command);
+}
+
 static void raise_or_run(
   const state_t *state,
   const zdwm_action_data_raise_or_run_t *data,
@@ -96,6 +105,7 @@ static void raise_or_run(
 
   add_switch_workspace_command(command_buffer, window->workspace_id);
   add_focus_window_command(command_buffer, window->id);
+  add_raise_window_command(command_buffer, window->id);
 }
 
 static output_id_t get_cycled_output(const state_t *state, int32_t delta) {
@@ -280,12 +290,7 @@ static void cycle_focused_window(
   auto target = state_window_at(state, indices[next]);
 
   add_focus_window_command(command_buffer, target->id);
-
-  command_t raise_cmd = {
-    .type = ZDWM_COMMAND_RAISE_WINDOW,
-    .as.raise.window = target->id,
-  };
-  command_buffer_push(command_buffer, &raise_cmd);
+  add_raise_window_command(command_buffer, target->id);
 }
 
 static void
