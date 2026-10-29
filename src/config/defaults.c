@@ -132,6 +132,31 @@ static bool define_workspace(
   return true;
 }
 
+static bool add_rules(const zdwm_api_t *api, zdwm_config_builder_t *builder) {
+  zdwm_rule_match_t firefox = {.class_name = "firefox"};
+  zdwm_rule_match_t chrome = {.class_name = "Google-chrome"};
+  zdwm_rule_match_t emacs = {.class_name = "Emacs"};
+  zdwm_rule_match_t mpv = {.class_name = "mpv"};
+
+  zdwm_rule_action_t browser_action = {
+    .workspace = special_workspaces.browser,
+    .maximize = true,
+  };
+  zdwm_rule_action_t emacs_action = {
+    .workspace = special_workspaces.emacs,
+    .switch_to_workspace = true,
+  };
+  zdwm_rule_action_t mpv_action = {
+    .workspace = special_workspaces.media,
+    .switch_to_workspace = true,
+    .fullscreen = true,
+  };
+  return api->add_rule(builder, &firefox, &browser_action) &&
+         api->add_rule(builder, &chrome, &browser_action) &&
+         api->add_rule(builder, &emacs, &emacs_action) &&
+         api->add_rule(builder, &mpv, &mpv_action);
+}
+
 static bool bind_default_keys(
   const zdwm_api_t *api,
   zdwm_config_builder_t *builder,
@@ -265,6 +290,8 @@ bool config_defaults_build(
   layouts_t layouts = {};
   if (!register_layouts(api, builder, &layouts)) return false;
   if (!define_workspace(api, builder, output_count, &layouts)) return false;
+
+  add_rules(api, builder);
 
   auto default_mode = api->add_mode(builder, "default");
   if (default_mode == ZDWM_BINDING_MODE_ID_INVALID) {
