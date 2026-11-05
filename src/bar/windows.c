@@ -20,6 +20,9 @@ typedef struct bar_windows_state_t {
 
   bar_windows_config_t config;
 
+  zdwm_output_id_t current_output;
+
+  bool current_output_inited;
   bool workspace_inited;
   bool dirty;
 } bar_windows_state_t;
@@ -68,8 +71,9 @@ static void bar_windows_update(
   cells->set_cell_count(item, count);
   for (size_t i = 0; i < count; ++i) {
     auto window = &windows[i];
-    auto bg = window->focused ? data->config.focused_bg : data->config.bg;
-    auto fg = window->focused ? data->config.focused_fg : data->config.fg;
+    auto focused = data->output_id == data->current_output && window->focused;
+    auto bg = focused ? data->config.focused_bg : data->config.bg;
+    auto fg = focused ? data->config.focused_fg : data->config.fg;
     cells->cell_set_text(item, i, window->title);
     cells->cell_set_bg(item, i, bg);
     cells->cell_set_fg(item, i, fg);
@@ -92,6 +96,19 @@ zdwm_bar_item_type_t bar_windows = {
   .destroy_state = bar_windows_destroy_state,
   .update_interval_ms = 0,
 };
+
+static void
+bar_windows_current_output_change(zdwm_output_id_t output_id, void *user_data) {
+  bar_windows_state_t *state = user_data;
+
+  if (state->current_output_inited && state->current_output == output_id) {
+    return;
+  }
+
+  state->current_output = output_id;
+  state->current_output_inited = true;
+  state->dirty = true;
+}
 
 static void bar_windows_workspace_active(
   zdwm_output_id_t output_id,
@@ -165,6 +182,7 @@ bar_windows_remove_window(zdwm_window_id_t window_id, void *user_data) {
 void bar_windows_add_listeners(listeners_t *listeners, void *state) {
 #define ADD(ADD_FN, LISTENER) ADD_FN(listeners, LISTENER, state)
 
+  ADD(listeners_add_output_listener, bar_windows_current_output_change);
   ADD(listeners_add_active_workspace_listener, bar_windows_workspace_active);
   ADD(listeners_add_initial_window_listener, bar_windows_initial);
   ADD(listeners_add_window_added_listener, bar_windows_add_window);
