@@ -138,6 +138,9 @@ static void state_workspace_adjust_focused_window(
       window = state_window_get(state, window_id);
       if (window && window->workspace_id == workspace_id) {
         workspace->focused_window_id = window_id;
+        if (state_workspace_show(state, workspace_id)) {
+          window_set_urgent((window_t *)window, false);
+        }
         return;
       }
     }
@@ -191,6 +194,9 @@ void state_workspace_set_focused_window(
     window_t *window = &state->windows[i];
     if (window->id == window_id && window->workspace_id == workspace_id) {
       workspace->focused_window_id = window_id;
+      if (state_workspace_show(state, workspace_id)) {
+        window_set_urgent(window, false);
+      }
       return;
     }
   }
