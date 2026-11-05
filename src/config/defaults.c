@@ -73,63 +73,67 @@ static bool register_layouts(
   return true;
 }
 
+typedef struct workspace_config_t {
+  const char *name;
+  uint32_t output_index;
+  zdwm_layout_id_t default_layout;
+  zdwm_workspace_id_t *slot;
+} workspace_config_t;
+
+static bool define_one_workspace(
+  const zdwm_api_t *api,
+  zdwm_config_builder_t *builder,
+  const layouts_t *layouts,
+  const workspace_config_t *config
+) {
+  auto workspace = api->define_workspace(
+    builder,
+    config->output_index,
+    config->name,
+    layouts->ids,
+    countof(layouts->ids),
+    config->default_layout
+  );
+  if (workspace_id_invalid(workspace)) {
+    logger("== define workspace \"%s\" failed\n", config->name);
+    return false;
+  }
+  if (config->slot != nullptr) *config->slot = workspace;
+  return true;
+}
+
 static bool define_workspace(
   const zdwm_api_t *api,
   zdwm_config_builder_t *builder,
   size_t output_count,
   const layouts_t *layouts
 ) {
-  typedef struct workspace_config_t {
-    const char *name;
-    zdwm_layout_id_t default_layout;
-    zdwm_workspace_id_t *slot;
-  } workspace_config_t;
-
-#define DEF_WORKSPACE(OUTPUT_INDEX, WORKSPACE_CONFIG_LIST)         \
-  do {                                                             \
-    auto config = &(WORKSPACE_CONFIG_LIST)[i];                     \
-    auto workspace = api->define_workspace(                        \
-      builder,                                                     \
-      (OUTPUT_INDEX),                                              \
-      config->name,                                                \
-      layouts->ids,                                                \
-      countof(layouts->ids),                                       \
-      config->default_layout                                       \
-    );                                                             \
-    if (workspace_id_invalid(workspace)) {                         \
-      logger("== define workspace \"%s\" failed\n", config->name); \
-      return false;                                                \
-    }                                                              \
-    if (config->slot != nullptr) *config->slot = workspace;        \
-  } while (false)
-
   if (output_count == 2) {
-    const workspace_config_t right[] = {
-      {"1 ", layouts->fair, nullptr},
-      {"2 ", layouts->floating, &special_workspaces.browser},
-      {"3 ", layouts->fair, nullptr}
+    const workspace_config_t list[] = {
+      {"1 ", 0, layouts->fair, nullptr},
+      {"2 ", 0, layouts->floating, &special_workspaces.browser},
+      {"3 ", 0, layouts->fair, nullptr},
+      {"1 ", 1, layouts->fair, nullptr},
+      {"2 ", 1, layouts->fair, &special_workspaces.emacs},
+      {"3 ", 1, layouts->fair, &special_workspaces.media},
+      {"5 ", 1, layouts->fair, nullptr},
     };
-    const workspace_config_t left[] = {
-      {"1 ", layouts->fair, nullptr},
-      {"2 ", layouts->fair, &special_workspaces.emacs},
-      {"3 ", layouts->fair, &special_workspaces.media},
-      {"5 ", layouts->fair, nullptr},
-    };
-
-    for (size_t i = 0; i < countof(right); ++i) DEF_WORKSPACE(0, right);
-    for (size_t i = 0; i < countof(left); ++i) DEF_WORKSPACE(1, left);
+    for (size_t i = 0; i < countof(list); ++i) {
+      if (!define_one_workspace(api, builder, layouts, &list[i])) return false;
+    }
   } else {
     const workspace_config_t list[] = {
-      {"1 ", layouts->fair, nullptr},
-      {"2 ", layouts->floating, &special_workspaces.browser},
-      {"3 ", layouts->fair, &special_workspaces.emacs},
-      {"4 ", layouts->fair, &special_workspaces.media},
-      {"5 ", layouts->fair, nullptr},
+      {"1 ", 0, layouts->fair, nullptr},
+      {"2 ", 0, layouts->floating, &special_workspaces.browser},
+      {"3 ", 0, layouts->fair, &special_workspaces.emacs},
+      {"4 ", 0, layouts->fair, &special_workspaces.media},
+      {"5 ", 0, layouts->fair, nullptr},
     };
-    for (size_t i = 0; i < countof(list); ++i) DEF_WORKSPACE(0, list);
+    for (size_t i = 0; i < countof(list); ++i) {
+      if (!define_one_workspace(api, builder, layouts, &list[i])) return false;
+    }
   }
 
-#undef DEF_WORKSPACE
   return true;
 }
 
