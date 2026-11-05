@@ -66,6 +66,7 @@ static bool register_layouts(
       logger("== register layout \"%s\" failed\n", name);
       return false;
     }
+    layouts->ids[i] = id;
   }
   layouts->fair = layouts->ids[0];
   layouts->floating = layouts->ids[3];
