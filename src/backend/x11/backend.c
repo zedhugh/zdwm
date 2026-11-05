@@ -460,6 +460,14 @@ backend_restack_windows(backend_t *backend, const effect_window_list_t *list) {
 
   xcb_connection_t *conn = backend->conn;
   xcb_window_t sibling_window = backend->window_no_focus;
+  xcb_configure_window_aux(
+    conn,
+    sibling_window,
+    XCB_CONFIG_WINDOW_STACK_MODE,
+    &(xcb_configure_window_value_list_t){
+      .stack_mode = XCB_STACK_MODE_ABOVE,
+    }
+  );
   for (size_t i = 0; i < list->count; ++i) {
     uint16_t mask = XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE;
     xcb_configure_window_value_list_t params = {
