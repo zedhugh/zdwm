@@ -968,13 +968,17 @@ static void manage_window(
     state_window_set_floating(state, window_id, command->floating);
   }
 
+  if (window->fullscreen || window->maximized) {
+    state_window_set_border_width(state, window_id, 0);
+  } else {
+    state_window_set_border_width(state, window_id, ctx->border->width);
+  }
+
   auto need_layout = window_need_layout(window);
   auto layout_func = layout_get(ctx->layouts, workspace->layout_id);
 
   if (need_layout && layout_func) {
     adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
-  } else {
-    state_window_set_border_width(state, window_id, ctx->border->width);
   }
 
   if (!state_workspace_show(state, command->workspace)) return;
