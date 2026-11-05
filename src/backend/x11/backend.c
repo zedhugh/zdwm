@@ -130,6 +130,15 @@ static void create_no_focus_window(backend_t *backend) {
   backend->window_no_focus = win;
 }
 
+static void set_root_bg(backend_t *backend) {
+  auto conn = backend->conn;
+  auto root = backend->screen->root;
+  xcb_change_window_attributes_value_list_t value_list = {
+    .background_pixel = backend->screen->black_pixel,
+  };
+  xcb_change_window_attributes_aux(conn, root, XCB_CW_BACK_PIXEL, &value_list);
+}
+
 backend_t *backend_create(const char *display_name) {
   int screen_num = 0;
   xcb_connection_t *conn = xcb_connect(display_name, &screen_num);
@@ -187,6 +196,7 @@ backend_t *backend_create(const char *display_name) {
   create_wm_check_window(backend);
   create_no_focus_window(backend);
 
+  set_root_bg(backend);
   window_change_cursor(backend, root, ZDWM_CURSOR_NORMAL);
 
   return backend;
