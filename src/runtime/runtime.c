@@ -436,7 +436,6 @@ static void runtime_scan(runtime_t *runtime) {
   if (!result) return;
 
   policy_context_t ctx = policy_context_init(runtime);
-  ctx.listeners = nullptr;
 
   auto backend = runtime->backend;
   auto command_buffer = &runtime->command_buffer;
@@ -460,7 +459,7 @@ static void runtime_scan(runtime_t *runtime) {
   backend_scan_result_destroy(result);
   result = nullptr;
 
-  listeners_notify_initial_windows(&runtime->listeners, &runtime->state);
+  /* listeners_notify_initial_windows(&runtime->listeners, &runtime->state); */
 }
 
 static bool runtime_handle_bar_click(

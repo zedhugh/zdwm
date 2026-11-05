@@ -981,7 +981,10 @@ static void manage_window(
     adjust_layout_windows_border_width(state, ctx->border->width, workspace_id);
   }
 
-  if (!state_workspace_show(state, command->workspace)) return;
+  if (!state_workspace_show(state, command->workspace)) {
+    plan_push_unmap_effect(plan, window_id);
+    return;
+  }
 
   plan_push_map_effect(plan, window_id);
   plan_push_focus_effect(plan, window_id);
