@@ -11,7 +11,6 @@
 #include <zdwm/layout.h>
 
 #include "bar/bar.h"
-#include "base/array.h"
 #include "base/color.h"
 #include "base/log.h"
 #include "base/macros.h"
@@ -305,6 +304,7 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
   zdwm_layout_result_reset(result);
 
   auto state = &runtime->state;
+  window_list_t window_list = {0};
   for (size_t i = 0; i < state->output_count; ++i) {
     auto output = state_output_at(state, i);
     if (!output) continue;
@@ -312,18 +312,13 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
     auto workspace = state_workspace_get(state, output->current_workspace_id);
     if (!workspace) continue;
 
-    size_t window_count = 0;
-    size_t window_list_capacity = 0;
-    window_id_t *window_ids = nullptr;
-
+    window_list_reset(&window_list);
     for (size_t j = 0; j < state_window_count(state); j++) {
       auto window = state_window_at(state, j);
       if (!window || window->workspace_id != workspace->id) continue;
 
       if (window_need_layout(window)) {
-        window_id_t *window_id_slot =
-          array_push(window_ids, window_count, window_list_capacity);
-        *window_id_slot = window->id;
+        window_list_push(&window_list, window->id);
       } else if (window->fullscreen) {
         layout_item_t item = {
           .window_id = window->id,
@@ -340,20 +335,20 @@ static const layout_result_t *runtime_layout_calc(runtime_t *runtime) {
     }
 
     auto layout_func = layout_get(&runtime->layouts, workspace->layout_id);
-    if (window_count && layout_func) {
+    if (window_list.count && layout_func) {
       zdwm_layout_ctx_t ctx = {
         .workspace_id = workspace->id,
         .focused_window_id = workspace->focused_window_id,
         .output_geometry = output->geometry,
         .workarea = output->workarea,
-        .window_ids = window_ids,
-        .window_count = window_count,
+        .window_ids = window_list.windows,
+        .window_count = window_list.count,
       };
       layout_func(&ctx, result);
     }
-
-    if (window_ids) p_delete(&window_ids);
   }
+
+  window_list_cleanup(&window_list);
 
   return result->item_count ? result : nullptr;
 }
